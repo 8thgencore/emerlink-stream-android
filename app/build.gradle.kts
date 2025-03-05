@@ -55,11 +55,7 @@ dependencies {
     
     // Navigation
     implementation(libs.androidx.navigation.compose)
-    
-    // Streaming library
-    implementation(libs.rtplibrary)
-    implementation(libs.extra.sources)
-    
+
     // Permissions
     implementation(libs.accompanist.permissions)
     
@@ -75,6 +71,17 @@ dependencies {
     
     // Onboarding
     implementation(libs.appintro)
+
+    // Streaming library
+    implementation (libs.library)
+    implementation (libs.extra.sources)
+
+    implementation(libs.rootencoder.common)
+    implementation(libs.rootencoder.encoder)
+    implementation(libs.rootencoder.rtmp)
+    implementation(libs.rootencoder.rtsp)
+    implementation(libs.rootencoder.srt)
+    implementation(libs.rootencoder.udp)
 
     // Testing
     testImplementation(libs.junit)

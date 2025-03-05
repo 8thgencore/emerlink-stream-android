@@ -17,7 +17,14 @@ activityCompose = "1.10.1"
 composeBom = "2025.02.00"
 navigationCompose = "2.8.8"
 preferenceKtx = "1.2.1"
-rtplibrary = "2.5.7"
+# Pedro dependencies
+library = "2.5.7"
+encoder = "2.5.7"
+rtmp = "2.5.7"
+common = "2.5.7"
+rtsp = "2.5.7"
+srt = "2.5.7"
+udp = "2.5.7"
 
 [libraries]
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissions" }
@@ -43,7 +50,14 @@ androidx-preference-ktx = { group = "androidx.preference", name = "preference-kt
 koin-android = { module = "io.insert-koin:koin-android", version.ref = "koinAndroid" }
 koin-androidx-compose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koinAndroidxCompose" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinxCoroutinesAndroid" }
-rtplibrary = { module = "com.github.pedroSG94.RootEncoder:rtplibrary", version.ref = "rtplibrary" }
+# com.github.pedroSG94.RootEncoder
+library = { module = "com.github.pedroSG94.RootEncoder:library", version.ref = "library" }
+rootencoder-common = { module = "com.github.pedroSG94.RootEncoder:common", version.ref = "common" }
+rootencoder-encoder = { module = "com.github.pedroSG94.RootEncoder:encoder", version.ref = "encoder" }
+rootencoder-rtmp = { module = "com.github.pedroSG94.RootEncoder:rtmp", version.ref = "rtmp" }
+rootencoder-rtsp = { module = "com.github.pedroSG94.RootEncoder:rtsp", version.ref = "rtsp" }
+rootencoder-srt = { module = "com.github.pedroSG94.RootEncoder:srt", version.ref = "srt" }
+rootencoder-udp = { module = "com.github.pedroSG94.RootEncoder:udp", version.ref = "udp" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

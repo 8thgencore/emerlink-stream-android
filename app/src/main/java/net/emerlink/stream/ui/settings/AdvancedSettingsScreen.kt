@@ -10,7 +10,6 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -26,6 +25,7 @@ import net.emerlink.stream.ui.settings.components.DropdownPreference
 import net.emerlink.stream.ui.settings.components.InputPreference
 import net.emerlink.stream.ui.settings.components.PreferenceCategory
 import net.emerlink.stream.ui.settings.components.SwitchPreference
+import androidx.core.content.edit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,7 +35,7 @@ fun AdvancedSettingsScreen(
     val context = LocalContext.current
     val preferences = PreferenceManager.getDefaultSharedPreferences(context)
     val scrollState = rememberScrollState()
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -68,11 +68,16 @@ fun AdvancedSettingsScreen(
                         PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT
                     ) ?: PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT,
                     onValueChange = { value ->
-                        preferences.edit().putString(PreferenceKeys.VIDEO_KEYFRAME_INTERVAL, value).apply()
+                        preferences.edit() {
+                            putString(
+                                PreferenceKeys.VIDEO_KEYFRAME_INTERVAL,
+                                value
+                            )
+                        }
                     },
                     keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
                 )
-                
+
                 DropdownPreference(
                     title = stringResource(id = R.string.video_profile),
                     summary = stringResource(id = R.string.video_profile_summary),
@@ -82,10 +87,10 @@ fun AdvancedSettingsScreen(
                     ) ?: PreferenceKeys.VIDEO_PROFILE_DEFAULT,
                     options = listOf("baseline", "main", "high"),
                     onValueSelected = { value ->
-                        preferences.edit().putString(PreferenceKeys.VIDEO_PROFILE, value).apply()
+                        preferences.edit() { putString(PreferenceKeys.VIDEO_PROFILE, value) }
                     }
                 )
-                
+
                 DropdownPreference(
                     title = stringResource(id = R.string.video_level),
                     summary = stringResource(id = R.string.video_level_summary),
@@ -95,10 +100,10 @@ fun AdvancedSettingsScreen(
                     ) ?: PreferenceKeys.VIDEO_LEVEL_DEFAULT,
                     options = listOf("3.0", "3.1", "4.0", "4.1", "4.2"),
                     onValueSelected = { value ->
-                        preferences.edit().putString(PreferenceKeys.VIDEO_LEVEL, value).apply()
+                        preferences.edit() { putString(PreferenceKeys.VIDEO_LEVEL, value) }
                     }
                 )
-                
+
                 DropdownPreference(
                     title = stringResource(id = R.string.bitrate_mode),
                     summary = stringResource(id = R.string.bitrate_mode_summary),
@@ -108,10 +113,12 @@ fun AdvancedSettingsScreen(
                     ) ?: PreferenceKeys.VIDEO_BITRATE_MODE_DEFAULT,
                     options = listOf("vbr", "cbr", "cq"),
                     onValueSelected = { value ->
-                        preferences.edit().putString(PreferenceKeys.VIDEO_BITRATE_MODE, value).apply()
+                        preferences.edit() {
+                            putString(PreferenceKeys.VIDEO_BITRATE_MODE, value)
+                        }
                     }
                 )
-                
+
                 DropdownPreference(
                     title = stringResource(id = R.string.encoding_quality),
                     summary = stringResource(id = R.string.encoding_quality_summary),
@@ -121,11 +128,11 @@ fun AdvancedSettingsScreen(
                     ) ?: PreferenceKeys.VIDEO_QUALITY_DEFAULT,
                     options = listOf("fastest", "fast", "medium", "slow", "slowest"),
                     onValueSelected = { value ->
-                        preferences.edit().putString(PreferenceKeys.VIDEO_QUALITY, value).apply()
+                        preferences.edit() { putString(PreferenceKeys.VIDEO_QUALITY, value) }
                     }
                 )
             }
-            
+
             // Network Settings
             PreferenceCategory(title = stringResource(id = R.string.network_settings)) {
                 InputPreference(
@@ -136,11 +143,13 @@ fun AdvancedSettingsScreen(
                         PreferenceKeys.NETWORK_BUFFER_SIZE_DEFAULT
                     ) ?: PreferenceKeys.NETWORK_BUFFER_SIZE_DEFAULT,
                     onValueChange = { value ->
-                        preferences.edit().putString(PreferenceKeys.NETWORK_BUFFER_SIZE, value).apply()
+                        preferences.edit() {
+                            putString(PreferenceKeys.NETWORK_BUFFER_SIZE, value)
+                        }
                     },
                     keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
                 )
-                
+
                 InputPreference(
                     title = stringResource(id = R.string.connection_timeout),
                     summary = stringResource(id = R.string.connection_timeout_summary),
@@ -153,7 +162,7 @@ fun AdvancedSettingsScreen(
                     },
                     keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
                 )
-                
+
                 SwitchPreference(
                     title = stringResource(id = R.string.auto_reconnect),
                     summary = stringResource(id = R.string.auto_reconnect_summary),
@@ -162,10 +171,11 @@ fun AdvancedSettingsScreen(
                         PreferenceKeys.NETWORK_RECONNECT_DEFAULT
                     ),
                     onCheckedChange = { checked ->
-                        preferences.edit().putBoolean(PreferenceKeys.NETWORK_RECONNECT, checked).apply()
+                        preferences.edit().putBoolean(PreferenceKeys.NETWORK_RECONNECT, checked)
+                            .apply()
                     }
                 )
-                
+
                 InputPreference(
                     title = stringResource(id = R.string.reconnect_delay),
                     summary = stringResource(id = R.string.reconnect_delay_summary),
@@ -174,11 +184,12 @@ fun AdvancedSettingsScreen(
                         PreferenceKeys.NETWORK_RECONNECT_DELAY_DEFAULT
                     ) ?: PreferenceKeys.NETWORK_RECONNECT_DELAY_DEFAULT,
                     onValueChange = { value ->
-                        preferences.edit().putString(PreferenceKeys.NETWORK_RECONNECT_DELAY, value).apply()
+                        preferences.edit().putString(PreferenceKeys.NETWORK_RECONNECT_DELAY, value)
+                            .apply()
                     },
                     keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
                 )
-                
+
                 InputPreference(
                     title = stringResource(id = R.string.max_reconnect_attempts),
                     summary = stringResource(id = R.string.max_reconnect_attempts_summary),
@@ -187,12 +198,13 @@ fun AdvancedSettingsScreen(
                         PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS_DEFAULT
                     ) ?: PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS_DEFAULT,
                     onValueChange = { value ->
-                        preferences.edit().putString(PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS, value).apply()
+                        preferences.edit()
+                            .putString(PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS, value).apply()
                     },
                     keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
                 )
             }
-            
+
             // Stability Settings
             PreferenceCategory(title = stringResource(id = R.string.stability_settings)) {
                 SwitchPreference(
@@ -203,10 +215,11 @@ fun AdvancedSettingsScreen(
                         PreferenceKeys.STABILITY_LOW_LATENCY_DEFAULT
                     ),
                     onCheckedChange = { checked ->
-                        preferences.edit().putBoolean(PreferenceKeys.STABILITY_LOW_LATENCY, checked).apply()
+                        preferences.edit().putBoolean(PreferenceKeys.STABILITY_LOW_LATENCY, checked)
+                            .apply()
                     }
                 )
-                
+
                 SwitchPreference(
                     title = stringResource(id = R.string.hardware_rotation),
                     summary = stringResource(id = R.string.hardware_rotation_summary),
@@ -215,10 +228,11 @@ fun AdvancedSettingsScreen(
                         PreferenceKeys.STABILITY_HARDWARE_ROTATION_DEFAULT
                     ),
                     onCheckedChange = { checked ->
-                        preferences.edit().putBoolean(PreferenceKeys.STABILITY_HARDWARE_ROTATION, checked).apply()
+                        preferences.edit()
+                            .putBoolean(PreferenceKeys.STABILITY_HARDWARE_ROTATION, checked).apply()
                     }
                 )
-                
+
                 SwitchPreference(
                     title = stringResource(id = R.string.dynamic_fps),
                     summary = stringResource(id = R.string.dynamic_fps_summary),
@@ -227,7 +241,8 @@ fun AdvancedSettingsScreen(
                         PreferenceKeys.STABILITY_DYNAMIC_FPS_DEFAULT
                     ),
                     onCheckedChange = { checked ->
-                        preferences.edit().putBoolean(PreferenceKeys.STABILITY_DYNAMIC_FPS, checked).apply()
+                        preferences.edit().putBoolean(PreferenceKeys.STABILITY_DYNAMIC_FPS, checked)
+                            .apply()
                     }
                 )
             }
