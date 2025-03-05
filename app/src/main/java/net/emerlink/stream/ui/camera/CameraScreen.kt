@@ -42,6 +42,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.service.StreamService
 
+
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun CameraScreen(
@@ -53,6 +54,8 @@ fun CameraScreen(
     var streamService by remember { mutableStateOf<StreamService?>(null) }
     var isStreaming by remember { mutableStateOf(false) }
     var isFlashOn by remember { mutableStateOf(false) }
+    
+    var previewStarted by remember { mutableStateOf(false) }
 
     val serviceConnection = remember {
         object : ServiceConnection {
@@ -71,11 +74,20 @@ fun CameraScreen(
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_START) {
-                val intent = Intent(context, StreamService::class.java)
-                context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
-            } else if (event == Lifecycle.Event.ON_STOP) {
-                context.unbindService(serviceConnection)
+            when (event) {
+                Lifecycle.Event.ON_START -> {
+                    val intent = Intent(context, StreamService::class.java)
+                    context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+                }
+                Lifecycle.Event.ON_STOP -> {
+                    streamService?.stopPreview()
+                    previewStarted = false
+                    context.unbindService(serviceConnection)
+                }
+                Lifecycle.Event.ON_RESUME -> {
+                    previewStarted = false
+                }
+                else -> {}
             }
         }
 
@@ -91,7 +103,7 @@ fun CameraScreen(
         AndroidView(
             factory = { ctx ->
                 OpenGlView(ctx).apply {
-                    streamService?.startPreview(this)
+                    Log.d("CameraScreen", "Создание OpenGlView")
                 }
             },
             modifier = Modifier
@@ -112,8 +124,10 @@ fun CameraScreen(
                     }
                 },
             update = { view ->
-                if (streamService != null && !streamService!!.isPreviewActive()) {
+                if (streamService != null && !previewStarted) {
+                    Log.d("CameraScreen", "Запуск preview")
                     streamService?.startPreview(view)
+                    previewStarted = true
                 }
             }
         )
@@ -154,7 +168,10 @@ fun CameraScreen(
             ) {
                 SmallFloatingActionButton(
                     onClick = {
-                        isFlashOn = streamService?.toggleLantern() ?: false
+                        streamService?.let {
+                            isFlashOn = it.toggleLantern()
+                            Log.d("CameraScreen", "Переключение фонарика: $isFlashOn")
+                        }
                     },
                     containerColor = MaterialTheme.colorScheme.secondary,
                     contentColor = MaterialTheme.colorScheme.onSecondary
@@ -170,11 +187,14 @@ fun CameraScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(bottom = 16.dp),
-                contentAlignment = Alignment.BottomCenter
+                contentAlignment = Alignment.BottomStart
             ) {
                 SmallFloatingActionButton(
                     onClick = {
-                        streamService?.takePhoto()
+                        streamService?.let {
+                            Log.d("CameraScreen", "Попытка сделать фото")
+                            it.takePhoto()
+                        }
                     },
                     containerColor = MaterialTheme.colorScheme.secondary,
                     contentColor = MaterialTheme.colorScheme.onSecondary,
@@ -195,7 +215,10 @@ fun CameraScreen(
             ) {
                 SmallFloatingActionButton(
                     onClick = {
-                        streamService?.switchCamera()
+                        streamService?.let {
+                            Log.d("CameraScreen", "Попытка переключить камеру")
+                            it.switchCamera()
+                        }
                     },
                     containerColor = MaterialTheme.colorScheme.secondary,
                     contentColor = MaterialTheme.colorScheme.onSecondary

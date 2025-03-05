@@ -357,16 +357,16 @@ fun SettingsScreen(
                         }
                     )
                 }
-            }
-
-            // Advanced Settings Button
-            Button(
-                onClick = onAdvancedSettingsClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp)
-            ) {
-                Text(text = stringResource(id = R.string.advanced_settings))
+                
+                // Advanced Settings Button
+                Button(
+                    onClick = onAdvancedSettingsClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp)
+                ) {
+                    Text(text = stringResource(id = R.string.advanced_settings))
+                }
             }
         }
     }

@@ -20,10 +20,10 @@ import android.util.Size
 import android.view.MotionEvent
 import android.view.Surface
 import android.view.WindowManager
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.MutableLiveData
 import androidx.preference.PreferenceManager
 import com.pedro.common.ConnectChecker
-import com.pedro.encoder.input.sources.video.Camera2Source
 import com.pedro.library.util.BitrateAdapter
 import com.pedro.library.view.OpenGlView
 import com.pedro.rtmp.rtmp.RtmpClient
@@ -40,6 +40,10 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import android.hardware.camera2.CameraManager as AndroidCameraManager
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraAccessException
+import net.emerlink.stream.util.PreferencesLoader
 
 class StreamService :
     Service(),
@@ -157,6 +161,10 @@ class StreamService :
     private lateinit var rtspClient: RtspClient
     private lateinit var srtClient: SrtClient
     private lateinit var udpClient: UdpClient
+
+    // New variables
+    private var currentCameraId = 0
+    private var isFlashOn = false
 
     override fun onCreate() {
         super.onCreate()
@@ -346,20 +354,88 @@ class StreamService :
     }
 
     fun startPreview(openGlView: OpenGlView) {
-        this.openGlView = openGlView
-        streamManager.startPreview(openGlView)
+        try {
+            Log.d(TAG, "Запуск preview")
+            this.openGlView = openGlView
+            
+            // Необходимо обеспечить корректное освобождение ресурсов перед запуском нового preview
+            if (streamManager.isOnPreview()) {
+                Log.d(TAG, "Останавливаем существующий preview перед запуском нового")
+                streamManager.stopPreview()
+            }
+            
+            streamManager.startPreview(openGlView)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при запуске preview: ${e.message}", e)
+        }
     }
 
     fun stopPreview() {
-        streamManager.stopPreview()
+        try {
+            Log.d(TAG, "Остановка preview")
+            if (streamManager.isOnPreview()) {
+                streamManager.stopPreview()
+            }
+            this.openGlView = null
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при остановке preview: ${e.message}", e)
+        }
     }
 
     fun toggleLantern(): Boolean {
-        return cameraManager.toggleLantern()
+        try {
+            val androidCameraManager = applicationContext.getSystemService(Context.CAMERA_SERVICE) as AndroidCameraManager
+            val cameraId = if (cameraIds.isNotEmpty()) cameraIds[currentCameraId] else "0"
+            
+            // Проверяем, есть ли фонарик
+            val characteristics = androidCameraManager.getCameraCharacteristics(cameraId)
+            val available = characteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE) ?: false
+            
+            if (available) {
+                val flashMode = if (isFlashOn) {
+                    isFlashOn = false
+                    android.hardware.camera2.CameraMetadata.FLASH_MODE_OFF
+                } else {
+                    isFlashOn = true
+                    android.hardware.camera2.CameraMetadata.FLASH_MODE_TORCH
+                }
+                
+                androidCameraManager.setTorchMode(cameraId, isFlashOn)
+                return isFlashOn
+            }
+            
+            return false
+        } catch (e: CameraAccessException) {
+            Log.e(TAG, "Ошибка при управлении фонариком: ${e.message}", e)
+            return false
+        } catch (e: Exception) {
+            Log.e(TAG, "Другая ошибка при управлении фонариком: ${e.message}", e)
+            return false
+        }
     }
 
     fun switchCamera() {
-        cameraManager.switchCamera()
+        try {
+            Log.d(TAG, "Переключение камеры")
+            
+            // Останавливаем текущую предпросмотр
+            streamManager.stopPreview()
+            
+            // Меняем ID камеры
+            currentCameraId++
+            if (currentCameraId >= cameraIds.size) {
+                currentCameraId = 0
+            }
+            
+            // Запускаем предпросмотр заново
+            openGlView?.let {
+                streamManager.startPreview(it)
+            }
+            
+            Log.d(TAG, "Камера переключена на ${cameraIds[currentCameraId]}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при переключении камеры: ${e.message}", e)
+        }
     }
 
     fun setZoom(motionEvent: MotionEvent) {
@@ -371,70 +447,82 @@ class StreamService :
     }
 
     fun takePhoto() {
-        (streamManager.getGlInterface() as com.pedro.library.view.GlInterface).takePhoto { bitmap ->
-            val handlerThread = android.os.HandlerThread("HandlerThread")
-            handlerThread.start()
-            Handler(handlerThread.looper).post {
-                try {
-                    val dateFormat = SimpleDateFormat("yyyy-MM-dd_HH:mm:ss", Locale.getDefault())
-                    val currentDateAndTime = dateFormat.format(Date())
-                    val filename = "EmerlinkStream_$currentDateAndTime.jpg"
-                    val filePath = "${folder.absolutePath}/$filename"
-                    
-                    // Use ContentValues and MediaStore for modern API
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        val contentValues = android.content.ContentValues().apply {
-                            put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, filename)
-                            put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-                            put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, 
-                                "Pictures/EmerlinkStream")
-                        }
-                        
-                        val resolver = applicationContext.contentResolver
-                        val uri = resolver.insert(
-                            android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, 
-                            contentValues
-                        )
-                        
-                        uri?.let {
-                            resolver.openOutputStream(it)?.use { outputStream ->
-                                val success = bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
-                                if (success) {
-                                    applicationContext.sendBroadcast(Intent(ACTION_TOOK_PICTURE))
-                                    notificationHelper.updateNotification(getString(R.string.saved_photo), true)
-                                } else {
-                                    notificationHelper.updateNotification(getString(R.string.saved_photo_failed), false)
-                                }
-                            }
-                        }
-                    } else {
-                        // For older versions, use direct file saving
-                        val file = File(filePath)
-                        val fos = java.io.FileOutputStream(file)
-                        val success = bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos)
-                        fos.flush()
-                        fos.close()
-                        
-                        if (success) {
-                            // Make the image visible in gallery
-                            val mediaScanIntent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
-                            mediaScanIntent.data = android.net.Uri.fromFile(file)
-                            applicationContext.sendBroadcast(mediaScanIntent)
-                            
-                            applicationContext.sendBroadcast(Intent(ACTION_TOOK_PICTURE))
-                            notificationHelper.updateNotification(getString(R.string.saved_photo), true)
-                        } else {
-                            notificationHelper.updateNotification(getString(R.string.saved_photo_failed), false)
-                        }
+        try {
+            Log.d(TAG, "Делаем снимок")
+            
+            // Используем streamManager для получения glInterface
+            val glInterface = streamManager.getGlInterface()
+            
+            // Проверяем, что glInterface - это тот тип, который нам нужен
+            if (glInterface is com.pedro.library.view.GlInterface) {
+                glInterface.takePhoto { bitmap ->
+                    val handlerThread = android.os.HandlerThread("HandlerThread")
+                    handlerThread.start()
+                    Handler(handlerThread.looper).post {
+                        saveBitmapToGallery(bitmap)
                     }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to save photo: ${e.message}")
-                    notificationHelper.updateNotification(
-                        getString(R.string.saved_photo_failed) + ": " + e.message,
-                        false
-                    )
                 }
+            } else {
+                Log.e(TAG, "glInterface неправильного типа: ${glInterface?.javaClass?.name}")
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при создании снимка: ${e.message}", e)
+        }
+    }
+
+    private fun saveBitmapToGallery(bitmap: Bitmap) {
+        try {
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd_HH:mm:ss", Locale.getDefault())
+            val currentDateAndTime = dateFormat.format(Date())
+            val filename = "EmerlinkStream_$currentDateAndTime.jpg"
+            val filePath = "${folder.absolutePath}/$filename"
+            
+            // Use ContentValues and MediaStore for modern API
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val contentValues = android.content.ContentValues().apply {
+                    put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, filename)
+                    put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                    put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, 
+                        "Pictures/EmerlinkStream")
+                }
+                
+                val resolver = applicationContext.contentResolver
+                val uri = resolver.insert(
+                    android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, 
+                    contentValues
+                )
+                
+                uri?.let {
+                    resolver.openOutputStream(it)?.use { outputStream ->
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+                        applicationContext.sendBroadcast(Intent(ACTION_TOOK_PICTURE))
+                        notificationHelper.updateNotification(getString(R.string.saved_photo), true)
+                    } ?: run {
+                        notificationHelper.updateNotification(getString(R.string.saved_photo_failed), false)
+                    }
+                }
+            } else {
+                // For older versions, use direct file saving
+                val file = File(filePath)
+                val fos = java.io.FileOutputStream(file)
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos)
+                fos.flush()
+                fos.close()
+                
+                // Make the image visible in gallery
+                val mediaScanIntent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
+                mediaScanIntent.data = android.net.Uri.fromFile(file)
+                applicationContext.sendBroadcast(mediaScanIntent)
+                
+                applicationContext.sendBroadcast(Intent(ACTION_TOOK_PICTURE))
+                notificationHelper.updateNotification(getString(R.string.saved_photo), true)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при сохранении фото: ${e.message}", e)
+            notificationHelper.updateNotification(
+                getString(R.string.saved_photo_failed) + ": " + e.message,
+                false
+            )
         }
     }
 
@@ -450,293 +538,85 @@ class StreamService :
 
     private fun getCameraIds() {
         if (videoSource == PreferenceKeys.VIDEO_SOURCE_DEFAULT) {
-            val camera2Source = streamManager.getVideoSource() as Camera2Source
-            cameraIds.addAll(camera2Source.camerasAvailable().toList())
-
-            Log.d(TAG, "Got cameraIds $cameraIds")
+            try {
+                // Библиотека RTMP-RTSP использует класс CameraHelper для управления камерой
+                // Попробуем получить доступ к камерам через android.hardware.camera2.CameraManager
+                val cameraManager = applicationContext.getSystemService(Context.CAMERA_SERVICE) as android.hardware.camera2.CameraManager
+                cameraIds.addAll(cameraManager.cameraIdList.toList())
+                
+                Log.d(TAG, "Получены идентификаторы камер через CameraManager: $cameraIds")
+            } catch (e: Exception) {
+                Log.e(TAG, "Ошибка при получении списка камер", e)
+                
+                // Резервный вариант - добавляем стандартные идентификаторы "0" и "1"
+                // Обычно "0" - это задняя камера, "1" - фронтальная
+                if (cameraIds.isEmpty()) {
+                    cameraIds.add("0") // Задняя камера
+                    cameraIds.add("1") // Фронтальная камера
+                    Log.d(TAG, "Используем стандартные идентификаторы камер: $cameraIds")
+                }
+            }
         }
     }
 
     private fun loadPreferences() {
-        Log.d(TAG, "Get settings")
-
-        uid =
-            preferences.getString(PreferenceKeys.UID, PreferenceKeys.UID_DEFAULT)
-                ?: PreferenceKeys.UID_DEFAULT
-
+        val preferencesLoader = PreferencesLoader(applicationContext)
+        val settings = preferencesLoader.loadPreferences(preferences)
+        
+        // Сохраняем старый протокол для проверки изменений
         val oldProtocol = protocol
-        protocol =
-            preferences.getString(
-                PreferenceKeys.STREAM_PROTOCOL,
-                PreferenceKeys.STREAM_PROTOCOL_DEFAULT
-            )
-                ?: PreferenceKeys.STREAM_PROTOCOL_DEFAULT
-
+        
+        // Копируем все настройки из объекта settings в поля класса
+        protocol = settings.protocol
+        address = settings.address
+        port = settings.port
+        path = settings.path
+        tcp = settings.tcp
+        username = settings.username
+        password = settings.password
+        streamSelfSignedCert = settings.streamSelfSignedCert
+        certFile = settings.certFile
+        certPassword = settings.certPassword
+        
+        sampleRate = settings.sampleRate
+        stereo = settings.stereo
+        echoCancel = settings.echoCancel
+        noiseReduction = settings.noiseReduction
+        enableAudio = settings.enableAudio
+        audioBitrate = settings.audioBitrate
+        audioCodec = settings.audioCodec
+        
+        fps = settings.fps
+        resolution = settings.resolution
+        adaptiveBitrate = settings.adaptiveBitrate
+        record = settings.record
+        stream = settings.stream
+        bitrate = settings.bitrate
+        codec = settings.codec
+        uid = settings.uid
+        
+        videoSource = settings.videoSource
+        
+        keyframeInterval = settings.keyframeInterval
+        videoProfile = settings.videoProfile
+        videoLevel = settings.videoLevel
+        bitrateMode = settings.bitrateMode
+        encodingQuality = settings.encodingQuality
+        
+        bufferSize = settings.bufferSize
+        connectionTimeout = settings.connectionTimeout
+        autoReconnect = settings.autoReconnect
+        reconnectDelay = settings.reconnectDelay
+        maxReconnectAttempts = settings.maxReconnectAttempts
+        
+        lowLatencyMode = settings.lowLatencyMode
+        hardwareRotation = settings.hardwareRotation
+        dynamicFps = settings.dynamicFps
+        
+        // Если протокол изменился, обновляем тип стрима
         if (protocol != oldProtocol && ::streamManager.isInitialized) {
             streamManager.setStreamType(getStreamTypeFromProtocol(protocol))
         }
-
-        // Stream Preferences
-        stream =
-            preferences.getBoolean(
-                PreferenceKeys.STREAM_VIDEO,
-                PreferenceKeys.STREAM_VIDEO_DEFAULT
-            )
-        address =
-            preferences.getString(
-                PreferenceKeys.STREAM_ADDRESS,
-                PreferenceKeys.STREAM_ADDRESS_DEFAULT
-            )
-                ?: PreferenceKeys.STREAM_ADDRESS_DEFAULT
-        port =
-            preferences
-                .getString(PreferenceKeys.STREAM_PORT, PreferenceKeys.STREAM_PORT_DEFAULT)
-                ?.toInt()
-                ?: PreferenceKeys.STREAM_PORT_DEFAULT.toInt()
-        path =
-            preferences.getString(
-                PreferenceKeys.STREAM_PATH,
-                PreferenceKeys.STREAM_PATH_DEFAULT
-            )
-                ?: PreferenceKeys.STREAM_PATH_DEFAULT
-        tcp =
-            preferences.getBoolean(
-                PreferenceKeys.STREAM_USE_TCP,
-                PreferenceKeys.STREAM_USE_TCP_DEFAULT
-            )
-        username =
-            preferences.getString(
-                PreferenceKeys.STREAM_USERNAME,
-                PreferenceKeys.STREAM_USERNAME_DEFAULT
-            )
-                ?: PreferenceKeys.STREAM_USERNAME_DEFAULT
-        password =
-            preferences.getString(
-                PreferenceKeys.STREAM_PASSWORD,
-                PreferenceKeys.STREAM_PASSWORD_DEFAULT
-            )
-                ?: PreferenceKeys.STREAM_PASSWORD_DEFAULT
-        streamSelfSignedCert =
-            preferences.getBoolean(
-                PreferenceKeys.STREAM_SELF_SIGNED_CERT,
-                PreferenceKeys.STREAM_SELF_SIGNED_CERT_DEFAULT
-            )
-        certFile =
-            preferences.getString(
-                PreferenceKeys.STREAM_CERTIFICATE,
-                PreferenceKeys.STREAM_CERTIFICATE_DEFAULT
-            )
-        certPassword =
-            preferences.getString(
-                PreferenceKeys.STREAM_CERTIFICATE_PASSWORD,
-                PreferenceKeys.STREAM_CERTIFICATE_PASSWORD_DEFAULT
-            )
-                ?: PreferenceKeys.STREAM_CERTIFICATE_PASSWORD_DEFAULT
-
-        // Video Preferences
-        fps =
-            preferences
-                .getString(PreferenceKeys.VIDEO_FPS, PreferenceKeys.VIDEO_FPS_DEFAULT)
-                ?.toInt()
-                ?: PreferenceKeys.VIDEO_FPS_DEFAULT.toInt()
-        record =
-            preferences.getBoolean(
-                PreferenceKeys.RECORD_VIDEO,
-                PreferenceKeys.RECORD_VIDEO_DEFAULT
-            )
-        codec =
-            preferences.getString(
-                PreferenceKeys.VIDEO_CODEC,
-                PreferenceKeys.VIDEO_CODEC_DEFAULT
-            )
-                ?: PreferenceKeys.VIDEO_CODEC_DEFAULT
-        bitrate =
-            preferences
-                .getString(
-                    PreferenceKeys.VIDEO_BITRATE,
-                    PreferenceKeys.VIDEO_BITRATE_DEFAULT
-                )
-                ?.toInt()
-                ?: PreferenceKeys.VIDEO_BITRATE_DEFAULT.toInt()
-        adaptiveBitrate =
-            preferences.getBoolean(
-                PreferenceKeys.VIDEO_ADAPTIVE_BITRATE,
-                PreferenceKeys.VIDEO_ADAPTIVE_BITRATE_DEFAULT
-            )
-
-        // Audio Preferences
-        enableAudio =
-            preferences.getBoolean(
-                PreferenceKeys.ENABLE_AUDIO,
-                PreferenceKeys.ENABLE_AUDIO_DEFAULT
-            )
-        echoCancel =
-            preferences.getBoolean(
-                PreferenceKeys.AUDIO_ECHO_CANCEL,
-                PreferenceKeys.AUDIO_ECHO_CANCEL_DEFAULT
-            )
-        noiseReduction =
-            preferences.getBoolean(
-                PreferenceKeys.AUDIO_NOISE_REDUCTION,
-                PreferenceKeys.AUDIO_NOISE_REDUCTION_DEFAULT
-            )
-        sampleRate =
-            preferences
-                .getString(
-                    PreferenceKeys.AUDIO_SAMPLE_RATE,
-                    PreferenceKeys.AUDIO_SAMPLE_RATE_DEFAULT
-                )
-                ?.toInt()
-                ?: PreferenceKeys.AUDIO_SAMPLE_RATE_DEFAULT.toInt()
-        stereo =
-            preferences.getBoolean(
-                PreferenceKeys.AUDIO_STEREO,
-                PreferenceKeys.AUDIO_STEREO_DEFAULT
-            )
-        audioBitrate =
-            preferences
-                .getString(
-                    PreferenceKeys.AUDIO_BITRATE,
-                    PreferenceKeys.AUDIO_BITRATE_DEFAULT
-                )
-                ?.toInt()
-                ?: PreferenceKeys.AUDIO_BITRATE_DEFAULT.toInt()
-        audioCodec =
-            preferences.getString(
-                PreferenceKeys.AUDIO_CODEC,
-                PreferenceKeys.AUDIO_CODEC_DEFAULT
-            )
-                ?: PreferenceKeys.AUDIO_CODEC_DEFAULT
-
-        // Camera Preferences
-        videoSource =
-            preferences.getString(
-                PreferenceKeys.VIDEO_SOURCE,
-                PreferenceKeys.VIDEO_SOURCE_DEFAULT
-            )
-                ?: PreferenceKeys.VIDEO_SOURCE_DEFAULT
-
-        // Resolution
-        val resolutionString =
-            preferences.getString(
-                PreferenceKeys.VIDEO_RESOLUTION,
-                PreferenceKeys.VIDEO_RESOLUTION_DEFAULT
-            )
-                ?: PreferenceKeys.VIDEO_RESOLUTION_DEFAULT
-
-        val split = resolutionString.split("x")
-        if (split.size == 2) {
-            try {
-                val width = split[0].trim().toInt()
-                val height = split[1].trim().toInt()
-                resolution = Size(width, height)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to parse resolution: $resolutionString", e)
-                resolution = Size(1280, 720)
-            }
-        } else {
-            resolution = Size(1280, 720)
-        }
-
-        // Advanced Video Settings
-        keyframeInterval =
-            preferences
-                .getString(
-                    PreferenceKeys.VIDEO_KEYFRAME_INTERVAL,
-                    PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT
-                )
-                ?.toInt()
-                ?: PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT.toInt()
-
-        videoProfile =
-            preferences.getString(
-                PreferenceKeys.VIDEO_PROFILE,
-                PreferenceKeys.VIDEO_PROFILE_DEFAULT
-            )
-                ?: PreferenceKeys.VIDEO_PROFILE_DEFAULT
-
-        videoLevel =
-            preferences.getString(
-                PreferenceKeys.VIDEO_LEVEL,
-                PreferenceKeys.VIDEO_LEVEL_DEFAULT
-            )
-                ?: PreferenceKeys.VIDEO_LEVEL_DEFAULT
-
-        bitrateMode =
-            preferences.getString(
-                PreferenceKeys.VIDEO_BITRATE_MODE,
-                PreferenceKeys.VIDEO_BITRATE_MODE_DEFAULT
-            )
-                ?: PreferenceKeys.VIDEO_BITRATE_MODE_DEFAULT
-
-        encodingQuality =
-            preferences.getString(
-                PreferenceKeys.VIDEO_QUALITY,
-                PreferenceKeys.VIDEO_QUALITY_DEFAULT
-            )
-                ?: PreferenceKeys.VIDEO_QUALITY_DEFAULT
-
-        // Network Settings
-        bufferSize =
-            preferences
-                .getString(
-                    PreferenceKeys.NETWORK_BUFFER_SIZE,
-                    PreferenceKeys.NETWORK_BUFFER_SIZE_DEFAULT
-                )
-                ?.toInt()
-                ?: PreferenceKeys.NETWORK_BUFFER_SIZE_DEFAULT.toInt()
-
-        connectionTimeout =
-            preferences
-                .getString(
-                    PreferenceKeys.NETWORK_TIMEOUT,
-                    PreferenceKeys.NETWORK_TIMEOUT_DEFAULT
-                )
-                ?.toInt()
-                ?: PreferenceKeys.NETWORK_TIMEOUT_DEFAULT.toInt()
-
-        autoReconnect =
-            preferences.getBoolean(
-                PreferenceKeys.NETWORK_RECONNECT,
-                PreferenceKeys.NETWORK_RECONNECT_DEFAULT
-            )
-
-        reconnectDelay =
-            preferences
-                .getString(
-                    PreferenceKeys.NETWORK_RECONNECT_DELAY,
-                    PreferenceKeys.NETWORK_RECONNECT_DELAY_DEFAULT
-                )
-                ?.toInt()
-                ?: PreferenceKeys.NETWORK_RECONNECT_DELAY_DEFAULT.toInt()
-
-        maxReconnectAttempts =
-            preferences
-                .getString(
-                    PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS,
-                    PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS_DEFAULT
-                )
-                ?.toInt()
-                ?: PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS_DEFAULT.toInt()
-
-        // Stability Settings
-        lowLatencyMode =
-            preferences.getBoolean(
-                PreferenceKeys.STABILITY_LOW_LATENCY,
-                PreferenceKeys.STABILITY_LOW_LATENCY_DEFAULT
-            )
-
-        hardwareRotation =
-            preferences.getBoolean(
-                PreferenceKeys.STABILITY_HARDWARE_ROTATION,
-                PreferenceKeys.STABILITY_HARDWARE_ROTATION_DEFAULT
-            )
-
-        dynamicFps =
-            preferences.getBoolean(
-                PreferenceKeys.STABILITY_DYNAMIC_FPS,
-                PreferenceKeys.STABILITY_DYNAMIC_FPS_DEFAULT
-            )
     }
 
     private fun startStream() {
@@ -883,24 +763,10 @@ class StreamService :
     }
 
     private fun initializeStream() {
-        // Initialize based on stream type
-        when (getStreamTypeFromProtocol(protocol)) {
-            StreamType.RTMP -> {
-                rtmpClient = RtmpClient(this)
-            }
-
-            StreamType.RTSP -> {
-                rtspClient = RtspClient(this)
-            }
-
-            StreamType.SRT -> {
-                srtClient = SrtClient(this)
-            }
-
-            StreamType.UDP -> {
-                udpClient = UdpClient(this)
-            }
-        }
+        // Используем streamManager для инициализации, это более безопасно
+        streamManager.setStreamType(getStreamTypeFromProtocol(protocol))
+        // Получаем доступные камеры
+        getCameraIds()
     }
 
     // Add this inner class inside your StreamService class
