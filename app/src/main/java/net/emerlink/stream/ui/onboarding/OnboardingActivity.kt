@@ -57,6 +57,8 @@ class OnboardingActivity : AppIntro() {
             )
         )
         
+        askForPermissions(arrayOf(Manifest.permission.CAMERA), 1)
+        
         addSlide(
             AppIntroFragment.createInstance(
                 title = getString(R.string.microphone_permission),
@@ -65,6 +67,8 @@ class OnboardingActivity : AppIntro() {
                 backgroundColorRes = R.color.primary
             )
         )
+        
+        askForPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 2)
         
         addSlide(
             AppIntroFragment.createInstance(
@@ -75,6 +79,8 @@ class OnboardingActivity : AppIntro() {
             )
         )
         
+        askForPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 3)
+        
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             addSlide(
                 AppIntroFragment.createInstance(
@@ -84,6 +90,12 @@ class OnboardingActivity : AppIntro() {
                     backgroundColorRes = R.color.primary
                 )
             )
+            
+            askForPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 4)
+        }
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            askForPermissions(arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION), 3)
         }
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -95,10 +107,10 @@ class OnboardingActivity : AppIntro() {
                     backgroundColorRes = R.color.primary
                 )
             )
+            
+            val slideIndex = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) 5 else 4
+            askForPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), slideIndex)
         }
-        
-        // Ask for permissions
-        askForPermissions(permissions, 2)
     }
     
     override fun onSkipPressed(currentFragment: Fragment?) {
@@ -112,7 +124,7 @@ class OnboardingActivity : AppIntro() {
     }
     
     private fun finishOnboarding() {
-        // Mark first run as completed
+        // Отмечаем онбординг как завершенный (устанавливаем флаг в false, чтобы показать, что это НЕ первый запуск)
         val preferences = PreferenceManager.getDefaultSharedPreferences(this)
         preferences.edit { putBoolean(PreferenceKeys.FIRST_RUN, false) }
         

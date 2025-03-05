@@ -2,11 +2,14 @@ package net.emerlink.stream
 
 import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -15,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.preference.PreferenceManager
+import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.service.StreamService
 import net.emerlink.stream.ui.camera.CameraScreen
 import net.emerlink.stream.ui.onboarding.OnboardingActivity
@@ -41,15 +46,41 @@ class MainActivity : ComponentActivity() {
         }
     }.toTypedArray()
     
+    // Регистрируем обработчик для множественного запроса разрешений
+    private val requestPermissionsLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        // Если все необходимые разрешения получены или пользователь отказал
+        // Всё равно запускаем интерфейс
+        startMainUI()
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         
-        if (!PermissionUtil.hasPermissions(this, requiredPermissions)) {
+        // Получаем флаг, прошел ли пользователь онбординг
+        val preferences = PreferenceManager.getDefaultSharedPreferences(this)
+        val isFirstRun = preferences.getBoolean(PreferenceKeys.FIRST_RUN, true)
+        
+        // Запускаем онбординг только если это первый запуск
+        if (isFirstRun) {
             startOnboarding()
             return
         }
         
+        // Проверяем разрешения после онбординга
+        if (!PermissionUtil.hasPermissions(this, requiredPermissions)) {
+            // Запрашиваем разрешения с помощью нового API
+            requestPermissionsLauncher.launch(requiredPermissions)
+            return
+        }
+        
+        // Если все разрешения уже есть, запускаем обычный интерфейс
+        startMainUI()
+    }
+    
+    private fun startMainUI() {
         setContent {
             EmerlinkStreamTheme {
                 Surface(

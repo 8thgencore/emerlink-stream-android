@@ -57,7 +57,7 @@
             android:name=".ui.onboarding.OnboardingActivity"
             android:exported="false"
             android:screenOrientation="portrait"
-            android:theme="@style/Theme.EmerlinkStream" />
+            android:theme="@style/Theme.AppCompat.DayNight.NoActionBar" />
             
         <service
             android:name=".service.StreamService"
