@@ -1,0 +1,124 @@
+package net.emerlink.stream.ui.onboarding
+
+import android.Manifest
+import android.content.Intent
+import android.os.Build
+import android.os.Bundle
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
+import androidx.preference.PreferenceManager
+import com.github.appintro.AppIntro
+import com.github.appintro.AppIntroFragment
+import net.emerlink.stream.MainActivity
+import net.emerlink.stream.R
+import net.emerlink.stream.data.preferences.PreferenceKeys
+
+class OnboardingActivity : AppIntro() {
+    
+    private val permissions = mutableListOf(
+        Manifest.permission.CAMERA,
+        Manifest.permission.RECORD_AUDIO,
+        Manifest.permission.ACCESS_FINE_LOCATION
+    ).apply {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }.toTypedArray()
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        
+        // Set immersive mode
+        isSystemBackButtonLocked = true
+        isIndicatorEnabled = true
+        
+        // Add slides
+        addSlide(
+            AppIntroFragment.createInstance(
+                title = getString(R.string.welcome_to_emerlink),
+                description = getString(R.string.welcome_description),
+                imageDrawable = R.drawable.ic_welcome,
+                backgroundColor = ContextCompat.getColor(this, R.color.primary)
+            )
+        )
+        
+        addSlide(
+            AppIntroFragment.createInstance(
+                title = getString(R.string.camera_permission),
+                description = getString(R.string.camera_permission_description),
+                imageDrawable = R.drawable.ic_camera,
+                backgroundColor = ContextCompat.getColor(this, R.color.primary)
+            )
+        )
+        
+        addSlide(
+            AppIntroFragment.createInstance(
+                title = getString(R.string.microphone_permission),
+                description = getString(R.string.microphone_permission_description),
+                imageDrawable = R.drawable.ic_microphone,
+                backgroundColor = ContextCompat.getColor(this, R.color.primary)
+            )
+        )
+        
+        addSlide(
+            AppIntroFragment.createInstance(
+                title = getString(R.string.location_permission),
+                description = getString(R.string.location_permission_description),
+                imageDrawable = R.drawable.ic_location,
+                backgroundColor = ContextCompat.getColor(this, R.color.primary)
+            )
+        )
+        
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            addSlide(
+                AppIntroFragment.createInstance(
+                    title = getString(R.string.storage_permission),
+                    description = getString(R.string.storage_permission_description),
+                    imageDrawable = R.drawable.ic_storage,
+                    backgroundColor = ContextCompat.getColor(this, R.color.primary)
+                )
+            )
+        }
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            addSlide(
+                AppIntroFragment.createInstance(
+                    title = getString(R.string.notification_permission),
+                    description = getString(R.string.notification_permission_description),
+                    imageDrawable = R.drawable.ic_notification,
+                    backgroundColor = ContextCompat.getColor(this, R.color.primary)
+                )
+            )
+        }
+        
+        // Ask for permissions
+        askForPermissions(permissions, 2)
+    }
+    
+    override fun onSkipPressed(currentFragment: Fragment?) {
+        super.onSkipPressed(currentFragment)
+        finishOnboarding()
+    }
+    
+    override fun onDonePressed(currentFragment: Fragment?) {
+        super.onDonePressed(currentFragment)
+        finishOnboarding()
+    }
+    
+    private fun finishOnboarding() {
+        // Mark first run as completed
+        val preferences = PreferenceManager.getDefaultSharedPreferences(this)
+        preferences.edit().putBoolean(PreferenceKeys.FIRST_RUN, false).apply()
+        
+        // Start main activity
+        val intent = Intent(this, MainActivity::class.java)
+        startActivity(intent)
+        finish()
+    }
+} 
