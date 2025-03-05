@@ -384,55 +384,96 @@ class StreamService :
 
     fun toggleLantern(): Boolean {
         try {
-            val androidCameraManager = applicationContext.getSystemService(Context.CAMERA_SERVICE) as AndroidCameraManager
-            val cameraId = if (cameraIds.isNotEmpty()) cameraIds[currentCameraId] else "0"
+            Log.d(TAG, "Вызов toggleLantern")
             
-            // Проверяем, есть ли фонарик
-            val characteristics = androidCameraManager.getCameraCharacteristics(cameraId)
-            val available = characteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE) ?: false
-            
-            if (available) {
-                val flashMode = if (isFlashOn) {
-                    isFlashOn = false
-                    android.hardware.camera2.CameraMetadata.FLASH_MODE_OFF
-                } else {
-                    isFlashOn = true
-                    android.hardware.camera2.CameraMetadata.FLASH_MODE_TORCH
+            // Не можем использовать CameraManager напрямую, так как камера уже используется
+            // Вместо этого воспользуемся методом streamManager
+            return try {
+                when (getStreamTypeFromProtocol(protocol)) {
+                    StreamType.RTMP -> {
+                        val camera = streamManager.getStream() as com.pedro.library.rtmp.RtmpCamera2
+                        isFlashOn = !isFlashOn
+                        if (isFlashOn) {
+                            camera.enableLantern()
+                        } else {
+                            camera.disableLantern()
+                        }
+                        isFlashOn
+                    }
+                    StreamType.RTSP -> {
+                        val camera = streamManager.getStream() as com.pedro.library.rtsp.RtspCamera2
+                        isFlashOn = !isFlashOn
+                        if (isFlashOn) {
+                            camera.enableLantern()
+                        } else {
+                            camera.disableLantern()
+                        }
+                        isFlashOn
+                    }
+                    StreamType.SRT -> {
+                        val camera = streamManager.getStream() as com.pedro.library.srt.SrtCamera2
+                        isFlashOn = !isFlashOn
+                        if (isFlashOn) {
+                            camera.enableLantern()
+                        } else {
+                            camera.disableLantern()
+                        }
+                        isFlashOn
+                    }
+                    StreamType.UDP -> {
+                        val camera = streamManager.getStream() as com.pedro.library.udp.UdpCamera2
+                        isFlashOn = !isFlashOn
+                        if (isFlashOn) {
+                            camera.enableLantern()
+                        } else {
+                            camera.disableLantern()
+                        }
+                        isFlashOn
+                    }
                 }
-                
-                androidCameraManager.setTorchMode(cameraId, isFlashOn)
-                return isFlashOn
+            } catch (e: ClassCastException) {
+                Log.e(TAG, "Ошибка приведения типа при управлении фонариком", e)
+                false
             }
-            
-            return false
-        } catch (e: CameraAccessException) {
-            Log.e(TAG, "Ошибка при управлении фонариком: ${e.message}", e)
-            return false
         } catch (e: Exception) {
-            Log.e(TAG, "Другая ошибка при управлении фонариком: ${e.message}", e)
+            Log.e(TAG, "Ошибка при toggleLantern: ${e.message}", e)
             return false
         }
     }
 
     fun switchCamera() {
         try {
-            Log.d(TAG, "Переключение камеры")
+            Log.d(TAG, "Вызов метода switchCamera")
             
-            // Останавливаем текущую предпросмотр
-            streamManager.stopPreview()
-            
-            // Меняем ID камеры
-            currentCameraId++
-            if (currentCameraId >= cameraIds.size) {
-                currentCameraId = 0
+            // Используем API библиотеки для переключения камеры
+            val switchResult = when (getStreamTypeFromProtocol(protocol)) {
+                StreamType.RTMP -> {
+                    val camera = streamManager.getStream() as com.pedro.library.rtmp.RtmpCamera2
+                    camera.switchCamera()
+                }
+                StreamType.RTSP -> {
+                    val camera = streamManager.getStream() as com.pedro.library.rtsp.RtspCamera2
+                    camera.switchCamera()
+                }
+                StreamType.SRT -> {
+                    val camera = streamManager.getStream() as com.pedro.library.srt.SrtCamera2
+                    camera.switchCamera()
+                }
+                StreamType.UDP -> {
+                    val camera = streamManager.getStream() as com.pedro.library.udp.UdpCamera2
+                    camera.switchCamera()
+                }
             }
             
-            // Запускаем предпросмотр заново
-            openGlView?.let {
-                streamManager.startPreview(it)
-            }
+            // Обновляем индекс текущей камеры после переключения
+            currentCameraId = (currentCameraId + 1) % cameraIds.size
             
-            Log.d(TAG, "Камера переключена на ${cameraIds[currentCameraId]}")
+            Log.d(TAG, "Камера переключена на ${cameraIds[currentCameraId]}, результат: $switchResult")
+            
+            // Сбрасываем состояние фонарика при переключении камер
+            isFlashOn = false
+        } catch (e: ClassCastException) {
+            Log.e(TAG, "Ошибка приведения типа при переключении камеры", e)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при переключении камеры: ${e.message}", e)
         }
