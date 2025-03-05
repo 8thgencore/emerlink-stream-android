@@ -85,7 +85,6 @@
     
     <!-- Error messages -->
     <string name="unknown_error">Неизвестная ошибка</string>
-    <string name="connection_failed">Ошибка подключения к серверу</string>
     <string name="unknown_host">Не удалось найти сервер</string>
     <string name="ssl_error">Ошибка SSL-соединения</string>
     <string name="io_error">Ошибка ввода/вывода</string>

@@ -64,18 +64,18 @@ class StreamManager(
             when {
                 protocol.startsWith("rtmp") -> {
                     if (username.isNotEmpty() && password.isNotEmpty()) {
-                        rtmpCamera.setAuthorization(username, password)
+                        rtmpCamera.getStreamClient().setAuthorization(username, password)
                     }
                     rtmpCamera.startStream(url)
                 }
                 protocol.startsWith("rtsp") -> {
                     if (username.isNotEmpty() && password.isNotEmpty()) {
-                        rtspCamera.setAuth(username, password)
+                        rtspCamera.getStreamClient().setAuthorization(username, password)
                     }
                     if (tcp) {
-                        rtspCamera.setProtocol(Protocol.TCP)
+                        rtspCamera.getStreamClient().setProtocol(Protocol.TCP)
                     } else {
-                        rtspCamera.setProtocol(Protocol.UDP)
+                        rtspCamera.getStreamClient().setProtocol(Protocol.UDP)
                     }
                     rtspCamera.startStream(url)
                 }
@@ -140,19 +140,19 @@ class StreamManager(
                 Log.d(TAG, "Starting Preview")
                 when (streamType) {
                     StreamType.RTMP -> {
-                        rtmpCamera.setGlInterface(openGlView)
+                        rtmpCamera.replaceView(openGlView)
                         rtmpCamera.startPreview(CameraHelper.Facing.BACK, 0)
                     }
                     StreamType.RTSP -> {
-                        rtspCamera.setGlInterface(openGlView)
+                        rtspCamera.replaceView(openGlView)
                         rtspCamera.startPreview(CameraHelper.Facing.BACK, 0)
                     }
                     StreamType.SRT -> {
-                        srtCamera.setGlInterface(openGlView)
+                        srtCamera.replaceView(openGlView)
                         srtCamera.startPreview(CameraHelper.Facing.BACK, 0)
                     }
                     StreamType.UDP -> {
-                        udpCamera.setGlInterface(openGlView)
+                        udpCamera.replaceView(openGlView)
                         udpCamera.startPreview(CameraHelper.Facing.BACK, 0)
                     }
                 }
@@ -216,7 +216,7 @@ class StreamManager(
         }
     }
 
-    fun isOnPreview(): Boolean {
+    private fun isOnPreview(): Boolean {
         return when (streamType) {
             StreamType.RTMP -> rtmpCamera.isOnPreview
             StreamType.RTSP -> rtspCamera.isOnPreview
@@ -225,12 +225,12 @@ class StreamManager(
         }
     }
 
-    fun getVideoSource(): Any? {
+    fun getVideoSource(): Any {
         return when (streamType) {
-            StreamType.RTMP -> rtmpCamera.videoSource
-            StreamType.RTSP -> rtspCamera.videoSource
-            StreamType.SRT -> srtCamera.videoSource
-            StreamType.UDP -> udpCamera.videoSource
+            StreamType.RTMP -> rtmpCamera
+            StreamType.RTSP -> rtspCamera
+            StreamType.SRT -> srtCamera
+            StreamType.UDP -> udpCamera
         }
     }
 
@@ -254,10 +254,10 @@ class StreamManager(
 
     fun hasCongestion(): Boolean {
         return when (streamType) {
-            StreamType.RTMP -> rtmpCamera.hasCongestion()
-            StreamType.RTSP -> rtspCamera.hasCongestion()
-            StreamType.SRT -> srtCamera.hasCongestion()
-            StreamType.UDP -> udpCamera.hasCongestion()
+            StreamType.RTMP -> rtmpCamera.getStreamClient().hasCongestion()
+            StreamType.RTSP -> rtspCamera.getStreamClient().hasCongestion()
+            StreamType.SRT -> srtCamera.getStreamClient().hasCongestion()
+            StreamType.UDP -> udpCamera.getStreamClient().hasCongestion()
         }
     }
 }
