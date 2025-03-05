@@ -341,6 +341,10 @@ class StreamService :
     }
 
     // Public methods
+    fun isPreviewActive(): Boolean {
+        return streamManager.isOnPreview()
+    }
+
     fun startPreview(openGlView: OpenGlView) {
         this.openGlView = openGlView
         streamManager.startPreview(openGlView)

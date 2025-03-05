@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -29,6 +29,7 @@ import net.emerlink.stream.ui.settings.components.DropdownPreference
 import net.emerlink.stream.ui.settings.components.InputPreference
 import net.emerlink.stream.ui.settings.components.PreferenceCategory
 import net.emerlink.stream.ui.settings.components.SwitchPreference
+import androidx.core.content.edit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,7 +40,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val preferences = PreferenceManager.getDefaultSharedPreferences(context)
     val scrollState = rememberScrollState()
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -47,7 +48,7 @@ fun SettingsScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(id = R.string.back)
                         )
                     }
@@ -77,10 +78,10 @@ fun SettingsScreen(
                             PreferenceKeys.STREAM_VIDEO_DEFAULT
                         ),
                         onCheckedChange = { checked ->
-                            preferences.edit().putBoolean(PreferenceKeys.STREAM_VIDEO, checked).apply()
+                            preferences.edit { putBoolean(PreferenceKeys.STREAM_VIDEO, checked) }
                         }
                     )
-                    
+
                     DropdownPreference(
                         title = stringResource(id = R.string.stream_protocol),
                         summary = stringResource(id = R.string.stream_protocol_summary),
@@ -90,10 +91,10 @@ fun SettingsScreen(
                         ) ?: PreferenceKeys.STREAM_PROTOCOL_DEFAULT,
                         options = listOf("rtmp", "rtmps", "rtsp", "rtsps", "srt"),
                         onValueSelected = { value ->
-                            preferences.edit().putString(PreferenceKeys.STREAM_PROTOCOL, value).apply()
+                            preferences.edit { putString(PreferenceKeys.STREAM_PROTOCOL, value) }
                         }
                     )
-                    
+
                     InputPreference(
                         title = stringResource(id = R.string.stream_address),
                         summary = stringResource(id = R.string.stream_address_summary),
@@ -102,10 +103,10 @@ fun SettingsScreen(
                             PreferenceKeys.STREAM_ADDRESS_DEFAULT
                         ) ?: PreferenceKeys.STREAM_ADDRESS_DEFAULT,
                         onValueChange = { value ->
-                            preferences.edit().putString(PreferenceKeys.STREAM_ADDRESS, value).apply()
+                            preferences.edit { putString(PreferenceKeys.STREAM_ADDRESS, value) }
                         }
                     )
-                    
+
                     InputPreference(
                         title = stringResource(id = R.string.stream_port),
                         summary = stringResource(id = R.string.stream_port_summary),
@@ -114,10 +115,10 @@ fun SettingsScreen(
                             PreferenceKeys.STREAM_PORT_DEFAULT
                         ) ?: PreferenceKeys.STREAM_PORT_DEFAULT,
                         onValueChange = { value ->
-                            preferences.edit().putString(PreferenceKeys.STREAM_PORT, value).apply()
+                            preferences.edit { putString(PreferenceKeys.STREAM_PORT, value) }
                         }
                     )
-                    
+
                     InputPreference(
                         title = stringResource(id = R.string.stream_path),
                         summary = stringResource(id = R.string.stream_path_summary),
@@ -126,10 +127,10 @@ fun SettingsScreen(
                             PreferenceKeys.STREAM_PATH_DEFAULT
                         ) ?: PreferenceKeys.STREAM_PATH_DEFAULT,
                         onValueChange = { value ->
-                            preferences.edit().putString(PreferenceKeys.STREAM_PATH, value).apply()
+                            preferences.edit { putString(PreferenceKeys.STREAM_PATH, value) }
                         }
                     )
-                    
+
                     SwitchPreference(
                         title = stringResource(id = R.string.use_tcp),
                         summary = stringResource(id = R.string.use_tcp_summary),
@@ -138,10 +139,15 @@ fun SettingsScreen(
                             PreferenceKeys.STREAM_USE_TCP_DEFAULT
                         ),
                         onCheckedChange = { checked ->
-                            preferences.edit().putBoolean(PreferenceKeys.STREAM_USE_TCP, checked).apply()
+                            preferences.edit {
+                                putBoolean(
+                                    PreferenceKeys.STREAM_USE_TCP,
+                                    checked
+                                )
+                            }
                         }
                     )
-                    
+
                     InputPreference(
                         title = stringResource(id = R.string.username),
                         summary = stringResource(id = R.string.username_summary),
@@ -150,10 +156,10 @@ fun SettingsScreen(
                             PreferenceKeys.STREAM_USERNAME_DEFAULT
                         ) ?: PreferenceKeys.STREAM_USERNAME_DEFAULT,
                         onValueChange = { value ->
-                            preferences.edit().putString(PreferenceKeys.STREAM_USERNAME, value).apply()
+                            preferences.edit { putString(PreferenceKeys.STREAM_USERNAME, value) }
                         }
                     )
-                    
+
                     InputPreference(
                         title = stringResource(id = R.string.password),
                         summary = stringResource(id = R.string.password_summary),
@@ -163,11 +169,11 @@ fun SettingsScreen(
                         ) ?: PreferenceKeys.STREAM_PASSWORD_DEFAULT,
                         isPassword = true,
                         onValueChange = { value ->
-                            preferences.edit().putString(PreferenceKeys.STREAM_PASSWORD, value).apply()
+                            preferences.edit { putString(PreferenceKeys.STREAM_PASSWORD, value) }
                         }
                     )
                 }
-                
+
                 // Video Settings
                 PreferenceCategory(title = stringResource(id = R.string.video_settings)) {
                     DropdownPreference(
@@ -179,10 +185,10 @@ fun SettingsScreen(
                         ) ?: PreferenceKeys.VIDEO_RESOLUTION_DEFAULT,
                         options = listOf("1920x1080", "1280x720", "854x480", "640x360"),
                         onValueSelected = { value ->
-                            preferences.edit().putString(PreferenceKeys.VIDEO_RESOLUTION, value).apply()
+                            preferences.edit { putString(PreferenceKeys.VIDEO_RESOLUTION, value) }
                         }
                     )
-                    
+
                     InputPreference(
                         title = stringResource(id = R.string.video_fps),
                         summary = stringResource(id = R.string.video_fps_summary),
@@ -191,10 +197,10 @@ fun SettingsScreen(
                             PreferenceKeys.VIDEO_FPS_DEFAULT
                         ) ?: PreferenceKeys.VIDEO_FPS_DEFAULT,
                         onValueChange = { value ->
-                            preferences.edit().putString(PreferenceKeys.VIDEO_FPS, value).apply()
+                            preferences.edit { putString(PreferenceKeys.VIDEO_FPS, value) }
                         }
                     )
-                    
+
                     InputPreference(
                         title = stringResource(id = R.string.video_bitrate),
                         summary = stringResource(id = R.string.video_bitrate_summary),
@@ -203,10 +209,10 @@ fun SettingsScreen(
                             PreferenceKeys.VIDEO_BITRATE_DEFAULT
                         ) ?: PreferenceKeys.VIDEO_BITRATE_DEFAULT,
                         onValueChange = { value ->
-                            preferences.edit().putString(PreferenceKeys.VIDEO_BITRATE, value).apply()
+                            preferences.edit { putString(PreferenceKeys.VIDEO_BITRATE, value) }
                         }
                     )
-                    
+
                     DropdownPreference(
                         title = stringResource(id = R.string.video_codec),
                         summary = stringResource(id = R.string.video_codec_summary),
@@ -216,10 +222,10 @@ fun SettingsScreen(
                         ) ?: PreferenceKeys.VIDEO_CODEC_DEFAULT,
                         options = listOf("h264", "h265"),
                         onValueSelected = { value ->
-                            preferences.edit().putString(PreferenceKeys.VIDEO_CODEC, value).apply()
+                            preferences.edit { putString(PreferenceKeys.VIDEO_CODEC, value) }
                         }
                     )
-                    
+
                     SwitchPreference(
                         title = stringResource(id = R.string.adaptive_bitrate),
                         summary = stringResource(id = R.string.adaptive_bitrate_summary),
@@ -228,10 +234,15 @@ fun SettingsScreen(
                             PreferenceKeys.VIDEO_ADAPTIVE_BITRATE_DEFAULT
                         ),
                         onCheckedChange = { checked ->
-                            preferences.edit().putBoolean(PreferenceKeys.VIDEO_ADAPTIVE_BITRATE, checked).apply()
+                            preferences.edit {
+                                putBoolean(
+                                    PreferenceKeys.VIDEO_ADAPTIVE_BITRATE,
+                                    checked
+                                )
+                            }
                         }
                     )
-                    
+
                     SwitchPreference(
                         title = stringResource(id = R.string.record_video),
                         summary = stringResource(id = R.string.record_video_summary),
@@ -240,11 +251,11 @@ fun SettingsScreen(
                             PreferenceKeys.RECORD_VIDEO_DEFAULT
                         ),
                         onCheckedChange = { checked ->
-                            preferences.edit().putBoolean(PreferenceKeys.RECORD_VIDEO, checked).apply()
+                            preferences.edit { putBoolean(PreferenceKeys.RECORD_VIDEO, checked) }
                         }
                     )
                 }
-                
+
                 // Audio Settings
                 PreferenceCategory(title = stringResource(id = R.string.audio_settings)) {
                     SwitchPreference(
@@ -255,10 +266,10 @@ fun SettingsScreen(
                             PreferenceKeys.ENABLE_AUDIO_DEFAULT
                         ),
                         onCheckedChange = { checked ->
-                            preferences.edit().putBoolean(PreferenceKeys.ENABLE_AUDIO, checked).apply()
+                            preferences.edit { putBoolean(PreferenceKeys.ENABLE_AUDIO, checked) }
                         }
                     )
-                    
+
                     InputPreference(
                         title = stringResource(id = R.string.audio_bitrate),
                         summary = stringResource(id = R.string.audio_bitrate_summary),
@@ -267,10 +278,10 @@ fun SettingsScreen(
                             PreferenceKeys.AUDIO_BITRATE_DEFAULT
                         ) ?: PreferenceKeys.AUDIO_BITRATE_DEFAULT,
                         onValueChange = { value ->
-                            preferences.edit().putString(PreferenceKeys.AUDIO_BITRATE, value).apply()
+                            preferences.edit { putString(PreferenceKeys.AUDIO_BITRATE, value) }
                         }
                     )
-                    
+
                     DropdownPreference(
                         title = stringResource(id = R.string.audio_sample_rate),
                         summary = stringResource(id = R.string.audio_sample_rate_summary),
@@ -280,34 +291,42 @@ fun SettingsScreen(
                         ) ?: PreferenceKeys.AUDIO_SAMPLE_RATE_DEFAULT,
                         options = listOf("8000", "16000", "22050", "32000", "44100", "48000"),
                         onValueSelected = { value ->
-                            preferences.edit().putString(PreferenceKeys.AUDIO_SAMPLE_RATE, value).apply()
+                            preferences.edit {
+                                putString(
+                                    PreferenceKeys.AUDIO_SAMPLE_RATE,
+                                    value
+                                )
+                            }
                         }
                     )
-                    
+
                     SwitchPreference(
-                        title = stringResource(id = R.string.stereo),
-                        summary = stringResource(id = R.string.stereo_summary),
-                        checked = preferences.getBoolean(
+                        stringResource(id = R.string.stereo),
+                        stringResource(id = R.string.stereo_summary),
+                        preferences.getBoolean(
                             PreferenceKeys.AUDIO_STEREO,
                             PreferenceKeys.AUDIO_STEREO_DEFAULT
-                        ),
-                        onCheckedChange = { checked ->
-                            preferences.edit().putBoolean(PreferenceKeys.AUDIO_STEREO, checked).apply()
-                        }
-                    )
-                    
+                        )
+                    ) { checked ->
+                        preferences.edit { putBoolean(PreferenceKeys.AUDIO_STEREO, checked) }
+                    }
+
                     SwitchPreference(
-                        title = stringResource(id = R.string.echo_cancellation),
-                        summary = stringResource(id = R.string.echo_cancellation_summary),
-                        checked = preferences.getBoolean(
+                        stringResource(id = R.string.echo_cancellation),
+                        stringResource(id = R.string.echo_cancellation_summary),
+                        preferences.getBoolean(
                             PreferenceKeys.AUDIO_ECHO_CANCEL,
                             PreferenceKeys.AUDIO_ECHO_CANCEL_DEFAULT
-                        ),
-                        onCheckedChange = { checked ->
-                            preferences.edit().putBoolean(PreferenceKeys.AUDIO_ECHO_CANCEL, checked).apply()
+                        )
+                    ) { checked ->
+                        preferences.edit {
+                            putBoolean(
+                                PreferenceKeys.AUDIO_ECHO_CANCEL,
+                                checked
+                            )
                         }
-                    )
-                    
+                    }
+
                     SwitchPreference(
                         title = stringResource(id = R.string.noise_reduction),
                         summary = stringResource(id = R.string.noise_reduction_summary),
@@ -316,10 +335,15 @@ fun SettingsScreen(
                             PreferenceKeys.AUDIO_NOISE_REDUCTION_DEFAULT
                         ),
                         onCheckedChange = { checked ->
-                            preferences.edit().putBoolean(PreferenceKeys.AUDIO_NOISE_REDUCTION, checked).apply()
+                            preferences.edit {
+                                putBoolean(
+                                    PreferenceKeys.AUDIO_NOISE_REDUCTION,
+                                    checked
+                                )
+                            }
                         }
                     )
-                    
+
                     DropdownPreference(
                         title = stringResource(id = R.string.audio_codec),
                         summary = stringResource(id = R.string.audio_codec_summary),
@@ -329,12 +353,12 @@ fun SettingsScreen(
                         ) ?: PreferenceKeys.AUDIO_CODEC_DEFAULT,
                         options = listOf("aac", "opus"),
                         onValueSelected = { value ->
-                            preferences.edit().putString(PreferenceKeys.AUDIO_CODEC, value).apply()
+                            preferences.edit { putString(PreferenceKeys.AUDIO_CODEC, value) }
                         }
                     )
                 }
             }
-            
+
             // Advanced Settings Button
             Button(
                 onClick = onAdvancedSettingsClick,

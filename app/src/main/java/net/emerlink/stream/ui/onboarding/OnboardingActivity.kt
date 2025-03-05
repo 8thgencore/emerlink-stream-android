@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.preference.PreferenceManager
 import com.github.appintro.AppIntro
@@ -12,6 +11,7 @@ import com.github.appintro.AppIntroFragment
 import net.emerlink.stream.MainActivity
 import net.emerlink.stream.R
 import net.emerlink.stream.data.preferences.PreferenceKeys
+import androidx.core.content.edit
 
 class OnboardingActivity : AppIntro() {
     
@@ -44,7 +44,7 @@ class OnboardingActivity : AppIntro() {
                 title = getString(R.string.welcome_to_emerlink),
                 description = getString(R.string.welcome_description),
                 imageDrawable = R.drawable.ic_welcome,
-                backgroundColor = ContextCompat.getColor(this, R.color.primary)
+                backgroundColorRes = R.color.primary
             )
         )
         
@@ -53,7 +53,7 @@ class OnboardingActivity : AppIntro() {
                 title = getString(R.string.camera_permission),
                 description = getString(R.string.camera_permission_description),
                 imageDrawable = R.drawable.ic_camera,
-                backgroundColor = ContextCompat.getColor(this, R.color.primary)
+                backgroundColorRes = R.color.primary
             )
         )
         
@@ -62,7 +62,7 @@ class OnboardingActivity : AppIntro() {
                 title = getString(R.string.microphone_permission),
                 description = getString(R.string.microphone_permission_description),
                 imageDrawable = R.drawable.ic_microphone,
-                backgroundColor = ContextCompat.getColor(this, R.color.primary)
+                backgroundColorRes = R.color.primary
             )
         )
         
@@ -71,7 +71,7 @@ class OnboardingActivity : AppIntro() {
                 title = getString(R.string.location_permission),
                 description = getString(R.string.location_permission_description),
                 imageDrawable = R.drawable.ic_location,
-                backgroundColor = ContextCompat.getColor(this, R.color.primary)
+                backgroundColorRes = R.color.primary
             )
         )
         
@@ -81,7 +81,7 @@ class OnboardingActivity : AppIntro() {
                     title = getString(R.string.storage_permission),
                     description = getString(R.string.storage_permission_description),
                     imageDrawable = R.drawable.ic_storage,
-                    backgroundColor = ContextCompat.getColor(this, R.color.primary)
+                    backgroundColorRes = R.color.primary
                 )
             )
         }
@@ -92,7 +92,7 @@ class OnboardingActivity : AppIntro() {
                     title = getString(R.string.notification_permission),
                     description = getString(R.string.notification_permission_description),
                     imageDrawable = R.drawable.ic_notification,
-                    backgroundColor = ContextCompat.getColor(this, R.color.primary)
+                    backgroundColorRes = R.color.primary
                 )
             )
         }
@@ -114,7 +114,7 @@ class OnboardingActivity : AppIntro() {
     private fun finishOnboarding() {
         // Mark first run as completed
         val preferences = PreferenceManager.getDefaultSharedPreferences(this)
-        preferences.edit().putBoolean(PreferenceKeys.FIRST_RUN, false).apply()
+        preferences.edit { putBoolean(PreferenceKeys.FIRST_RUN, false) }
         
         // Start main activity
         val intent = Intent(this, MainActivity::class.java)

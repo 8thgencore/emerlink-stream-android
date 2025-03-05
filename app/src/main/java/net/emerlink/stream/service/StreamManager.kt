@@ -216,7 +216,7 @@ class StreamManager(
         }
     }
 
-    private fun isOnPreview(): Boolean {
+    fun isOnPreview(): Boolean {
         return when (streamType) {
             StreamType.RTMP -> rtmpCamera.isOnPreview
             StreamType.RTSP -> rtspCamera.isOnPreview

@@ -38,7 +38,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.pedro.extrasources.extractor.view.OpenGlView
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.service.StreamService
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -47,12 +48,12 @@ fun CameraScreen(
     onSettingsClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    
+    val lifecycleOwner = LocalLifecycleOwner.current
+
     var streamService by remember { mutableStateOf<StreamService?>(null) }
     var isStreaming by remember { mutableStateOf(false) }
     var isFlashOn by remember { mutableStateOf(false) }
-    
+
     val serviceConnection = remember {
         object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -60,14 +61,14 @@ fun CameraScreen(
                 streamService = binder.getService()
                 Log.d("CameraScreen", "Service connected")
             }
-            
+
             override fun onServiceDisconnected(name: ComponentName?) {
                 streamService = null
                 Log.d("CameraScreen", "Service disconnected")
             }
         }
     }
-    
+
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_START) {
@@ -77,14 +78,14 @@ fun CameraScreen(
                 context.unbindService(serviceConnection)
             }
         }
-        
+
         lifecycleOwner.lifecycle.addObserver(observer)
-        
+
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
-    
+
     Box(modifier = Modifier.fillMaxSize()) {
         // Camera Preview
         AndroidView(
@@ -101,20 +102,22 @@ fun CameraScreen(
                             streamService?.tapToFocus(event)
                             true
                         }
+
                         MotionEvent.ACTION_MOVE -> {
                             streamService?.setZoom(event)
                             true
                         }
+
                         else -> false
                     }
                 },
             update = { view ->
-                if (streamService != null && !streamService!!.isOnPreview) {
+                if (streamService != null && !streamService!!.isPreviewActive()) {
                     streamService?.startPreview(view)
                 }
             }
         )
-        
+
         // Camera Controls
         Box(
             modifier = Modifier
@@ -141,7 +144,7 @@ fun CameraScreen(
                     contentDescription = if (isStreaming) "Stop Streaming" else "Start Streaming"
                 )
             }
-            
+
             // Secondary Controls
             Box(
                 modifier = Modifier
@@ -162,7 +165,7 @@ fun CameraScreen(
                     )
                 }
             }
-            
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -183,7 +186,7 @@ fun CameraScreen(
                     )
                 }
             }
-            
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -204,7 +207,7 @@ fun CameraScreen(
                 }
             }
         }
-        
+
         // Settings Button
         Box(
             modifier = Modifier

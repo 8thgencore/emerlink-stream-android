@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,7 +43,7 @@ fun AdvancedSettingsScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(id = R.string.back)
                         )
                     }
@@ -68,14 +68,13 @@ fun AdvancedSettingsScreen(
                         PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT
                     ) ?: PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT,
                     onValueChange = { value ->
-                        preferences.edit() {
+                        preferences.edit {
                             putString(
                                 PreferenceKeys.VIDEO_KEYFRAME_INTERVAL,
                                 value
                             )
                         }
-                    },
-                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                    }
                 )
 
                 DropdownPreference(
@@ -87,7 +86,7 @@ fun AdvancedSettingsScreen(
                     ) ?: PreferenceKeys.VIDEO_PROFILE_DEFAULT,
                     options = listOf("baseline", "main", "high"),
                     onValueSelected = { value ->
-                        preferences.edit() { putString(PreferenceKeys.VIDEO_PROFILE, value) }
+                        preferences.edit { putString(PreferenceKeys.VIDEO_PROFILE, value) }
                     }
                 )
 
@@ -100,7 +99,7 @@ fun AdvancedSettingsScreen(
                     ) ?: PreferenceKeys.VIDEO_LEVEL_DEFAULT,
                     options = listOf("3.0", "3.1", "4.0", "4.1", "4.2"),
                     onValueSelected = { value ->
-                        preferences.edit() { putString(PreferenceKeys.VIDEO_LEVEL, value) }
+                        preferences.edit { putString(PreferenceKeys.VIDEO_LEVEL, value) }
                     }
                 )
 
@@ -113,7 +112,7 @@ fun AdvancedSettingsScreen(
                     ) ?: PreferenceKeys.VIDEO_BITRATE_MODE_DEFAULT,
                     options = listOf("vbr", "cbr", "cq"),
                     onValueSelected = { value ->
-                        preferences.edit() {
+                        preferences.edit {
                             putString(PreferenceKeys.VIDEO_BITRATE_MODE, value)
                         }
                     }
@@ -128,7 +127,7 @@ fun AdvancedSettingsScreen(
                     ) ?: PreferenceKeys.VIDEO_QUALITY_DEFAULT,
                     options = listOf("fastest", "fast", "medium", "slow", "slowest"),
                     onValueSelected = { value ->
-                        preferences.edit() { putString(PreferenceKeys.VIDEO_QUALITY, value) }
+                        preferences.edit { putString(PreferenceKeys.VIDEO_QUALITY, value) }
                     }
                 )
             }
@@ -143,11 +142,10 @@ fun AdvancedSettingsScreen(
                         PreferenceKeys.NETWORK_BUFFER_SIZE_DEFAULT
                     ) ?: PreferenceKeys.NETWORK_BUFFER_SIZE_DEFAULT,
                     onValueChange = { value ->
-                        preferences.edit() {
+                        preferences.edit {
                             putString(PreferenceKeys.NETWORK_BUFFER_SIZE, value)
                         }
-                    },
-                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                    }
                 )
 
                 InputPreference(
@@ -158,9 +156,8 @@ fun AdvancedSettingsScreen(
                         PreferenceKeys.NETWORK_TIMEOUT_DEFAULT
                     ) ?: PreferenceKeys.NETWORK_TIMEOUT_DEFAULT,
                     onValueChange = { value ->
-                        preferences.edit().putString(PreferenceKeys.NETWORK_TIMEOUT, value).apply()
+                        preferences.edit { putString(PreferenceKeys.NETWORK_TIMEOUT, value) }
                     },
-                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
                 )
 
                 SwitchPreference(
@@ -171,8 +168,9 @@ fun AdvancedSettingsScreen(
                         PreferenceKeys.NETWORK_RECONNECT_DEFAULT
                     ),
                     onCheckedChange = { checked ->
-                        preferences.edit().putBoolean(PreferenceKeys.NETWORK_RECONNECT, checked)
-                            .apply()
+                        preferences.edit {
+                            putBoolean(PreferenceKeys.NETWORK_RECONNECT, checked)
+                        }
                     }
                 )
 
@@ -184,10 +182,10 @@ fun AdvancedSettingsScreen(
                         PreferenceKeys.NETWORK_RECONNECT_DELAY_DEFAULT
                     ) ?: PreferenceKeys.NETWORK_RECONNECT_DELAY_DEFAULT,
                     onValueChange = { value ->
-                        preferences.edit().putString(PreferenceKeys.NETWORK_RECONNECT_DELAY, value)
-                            .apply()
+                        preferences.edit {
+                            putString(PreferenceKeys.NETWORK_RECONNECT_DELAY, value)
+                        }
                     },
-                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
                 )
 
                 InputPreference(
@@ -198,10 +196,10 @@ fun AdvancedSettingsScreen(
                         PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS_DEFAULT
                     ) ?: PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS_DEFAULT,
                     onValueChange = { value ->
-                        preferences.edit()
-                            .putString(PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS, value).apply()
+                        preferences.edit {
+                            putString(PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS, value)
+                        }
                     },
-                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
                 )
             }
 
@@ -215,8 +213,9 @@ fun AdvancedSettingsScreen(
                         PreferenceKeys.STABILITY_LOW_LATENCY_DEFAULT
                     ),
                     onCheckedChange = { checked ->
-                        preferences.edit().putBoolean(PreferenceKeys.STABILITY_LOW_LATENCY, checked)
-                            .apply()
+                        preferences.edit {
+                            putBoolean(PreferenceKeys.STABILITY_LOW_LATENCY, checked)
+                        }
                     }
                 )
 
@@ -228,8 +227,9 @@ fun AdvancedSettingsScreen(
                         PreferenceKeys.STABILITY_HARDWARE_ROTATION_DEFAULT
                     ),
                     onCheckedChange = { checked ->
-                        preferences.edit()
-                            .putBoolean(PreferenceKeys.STABILITY_HARDWARE_ROTATION, checked).apply()
+                        preferences.edit {
+                            putBoolean(PreferenceKeys.STABILITY_HARDWARE_ROTATION, checked)
+                        }
                     }
                 )
 
@@ -241,8 +241,9 @@ fun AdvancedSettingsScreen(
                         PreferenceKeys.STABILITY_DYNAMIC_FPS_DEFAULT
                     ),
                     onCheckedChange = { checked ->
-                        preferences.edit().putBoolean(PreferenceKeys.STABILITY_DYNAMIC_FPS, checked)
-                            .apply()
+                        preferences.edit {
+                            putBoolean(PreferenceKeys.STABILITY_DYNAMIC_FPS, checked)
+                        }
                     }
                 )
             }

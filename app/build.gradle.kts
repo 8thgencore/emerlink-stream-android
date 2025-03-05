@@ -45,36 +45,37 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.preference.ktx)
-    
+
     // Compose dependencies
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    
+    implementation(libs.androidx.material.icons.extended)
+
     // Navigation
     implementation(libs.androidx.navigation.compose)
 
     // Permissions
     implementation(libs.accompanist.permissions)
-    
+
     // Preferences
     implementation(libs.androidx.datastore.preferences)
-    
+
     // Dependency Injection
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
-    
+
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
-    
+
     // Onboarding
     implementation(libs.appintro)
 
     // Streaming library
-    implementation (libs.library)
-    implementation (libs.extra.sources)
+    implementation(libs.library)
+    implementation(libs.extra.sources)
 
     implementation(libs.rootencoder.common)
     implementation(libs.rootencoder.encoder)
