@@ -3,13 +3,23 @@ package net.emerlink.stream.ui.camera
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.ServiceConnection
+import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import android.view.MotionEvent
+import androidx.annotation.RequiresApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.FlashOff
@@ -23,6 +33,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -42,19 +54,17 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.service.StreamService
 
-
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun CameraScreen(
-    onSettingsClick: () -> Unit
-) {
+fun CameraScreen(onSettingsClick: () -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
     var streamService by remember { mutableStateOf<StreamService?>(null) }
     var isStreaming by remember { mutableStateOf(false) }
     var isFlashOn by remember { mutableStateOf(false) }
-    
+
     var previewStarted by remember { mutableStateOf(false) }
 
     val serviceConnection = remember {
@@ -79,22 +89,55 @@ fun CameraScreen(
                     val intent = Intent(context, StreamService::class.java)
                     context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
                 }
+
                 Lifecycle.Event.ON_STOP -> {
                     streamService?.stopPreview()
                     previewStarted = false
                     context.unbindService(serviceConnection)
                 }
+
                 Lifecycle.Event.ON_RESUME -> {
                     previewStarted = false
                 }
+
                 else -> {}
             }
         }
 
         lifecycleOwner.lifecycle.addObserver(observer)
 
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // Add a broadcast receiver to update streaming status
+    DisposableEffect(Unit) {
+        val streamStartReceiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                isStreaming = true
+            }
+        }
+
+        val streamStopReceiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                isStreaming = false
+            }
+        }
+
+        context.registerReceiver(
+            streamStartReceiver,
+            IntentFilter(StreamService.ACTION_START_STREAM),
+            Context.RECEIVER_NOT_EXPORTED
+        )
+
+        context.registerReceiver(
+            streamStopReceiver,
+            IntentFilter(StreamService.ACTION_STOP_STREAM),
+            Context.RECEIVER_NOT_EXPORTED
+        )
+
         onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
+            context.unregisterReceiver(streamStartReceiver)
+            context.unregisterReceiver(streamStopReceiver)
         }
     }
 
@@ -102,11 +145,8 @@ fun CameraScreen(
         // Camera Preview
         AndroidView(
             factory = { ctx ->
-                OpenGlView(ctx).apply {
-                    Log.d("CameraScreen", "Создание OpenGlView")
-                }
-            },
-            modifier = Modifier
+                OpenGlView(ctx).apply { Log.d("CameraScreen", "Создание OpenGlView") }
+            }, modifier = Modifier
                 .fillMaxSize()
                 .pointerInteropFilter { event ->
                     when (event.action) {
@@ -122,15 +162,46 @@ fun CameraScreen(
 
                         else -> false
                     }
-                },
-            update = { view ->
+                }, update = { view ->
                 if (streamService != null && !previewStarted) {
                     Log.d("CameraScreen", "Запуск preview")
                     streamService?.startPreview(view)
                     previewStarted = true
                 }
+            })
+
+        // Stream Status Indicator
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp), contentAlignment = Alignment.TopStart
+        ) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                modifier = Modifier.padding(top = 8.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .background(
+                                color = if (isStreaming) MaterialTheme.colorScheme.error
+                                else MaterialTheme.colorScheme.surfaceVariant, shape = CircleShape
+                            )
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isStreaming) "LIVE" else "OFF",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
-        )
+        }
 
         // Camera Controls
         Box(
@@ -143,9 +214,15 @@ fun CameraScreen(
             FloatingActionButton(
                 onClick = {
                     if (isStreaming) {
-                        context.sendBroadcast(Intent(StreamService.ACTION_STOP_STREAM))
+                        val intent = Intent(StreamService.ACTION_STOP_STREAM).apply {
+                            setPackage(context.packageName)
+                        }
+                        context.sendBroadcast(intent)
                     } else {
-                        context.sendBroadcast(Intent(StreamService.ACTION_START_STREAM))
+                        val intent = Intent(StreamService.ACTION_START_STREAM).apply {
+                            setPackage(context.packageName)
+                        }
+                        context.sendBroadcast(intent)
                     }
                     isStreaming = !isStreaming
                 },
@@ -154,7 +231,8 @@ fun CameraScreen(
                 modifier = Modifier.padding(bottom = 16.dp)
             ) {
                 Icon(
-                    imageVector = if (isStreaming) Icons.Default.VideocamOff else Icons.Default.Videocam,
+                    imageVector = if (isStreaming) Icons.Default.VideocamOff
+                    else Icons.Default.Videocam,
                     contentDescription = if (isStreaming) "Stop Streaming" else "Start Streaming"
                 )
             }
@@ -177,7 +255,8 @@ fun CameraScreen(
                     contentColor = MaterialTheme.colorScheme.onSecondary
                 ) {
                     Icon(
-                        imageVector = if (isFlashOn) Icons.Default.FlashOn else Icons.Default.FlashOff,
+                        imageVector = if (isFlashOn) Icons.Default.FlashOn
+                        else Icons.Default.FlashOff,
                         contentDescription = if (isFlashOn) "Turn Flash Off" else "Turn Flash On"
                     )
                 }
@@ -200,10 +279,7 @@ fun CameraScreen(
                     contentColor = MaterialTheme.colorScheme.onSecondary,
                     modifier = Modifier.padding(start = 80.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.PhotoCamera,
-                        contentDescription = "Take Photo"
-                    )
+                    Icon(imageVector = Icons.Default.PhotoCamera, contentDescription = "Take Photo")
                 }
             }
 
@@ -235,8 +311,7 @@ fun CameraScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            contentAlignment = Alignment.TopEnd
+                .padding(16.dp), contentAlignment = Alignment.TopEnd
         ) {
             IconButton(onClick = onSettingsClick) {
                 Icon(
@@ -247,4 +322,4 @@ fun CameraScreen(
             }
         }
     }
-} 
+}
