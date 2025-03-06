@@ -5,16 +5,20 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.ServiceConnection
+import android.content.res.Configuration
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import android.view.MotionEvent
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -32,7 +36,6 @@ import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideocamOff
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
@@ -47,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInteropFilter
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -140,6 +144,122 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
         }
     }
 
+    // Extract common control buttons
+    @Composable
+    fun RecordButton() {
+        FloatingActionButton(
+            onClick = {
+                if (isStreaming) {
+                    val intent = Intent(StreamService.ACTION_STOP_STREAM).apply {
+                        setPackage(context.packageName)
+                    }
+                    context.sendBroadcast(intent)
+                } else {
+                    val intent = Intent(StreamService.ACTION_START_STREAM).apply {
+                        setPackage(context.packageName)
+                    }
+                    context.sendBroadcast(intent)
+                }
+                isStreaming = !isStreaming
+            },
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        ) {
+            Icon(
+                imageVector = if (isStreaming) Icons.Default.VideocamOff else Icons.Default.Videocam,
+                contentDescription = if (isStreaming) "Stop Streaming" else "Start Streaming"
+            )
+        }
+    }
+
+    @Composable
+    fun FlashButton() {
+        SmallFloatingActionButton(
+            onClick = {
+                streamService?.let {
+                    isFlashOn = it.toggleLantern()
+                    Log.d("CameraScreen", "Переключение фонарика: $isFlashOn")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.secondary,
+            contentColor = MaterialTheme.colorScheme.onSecondary
+        ) {
+            Icon(
+                imageVector = if (isFlashOn) Icons.Default.FlashOn else Icons.Default.FlashOff,
+                contentDescription = if (isFlashOn) "Turn Flash Off" else "Turn Flash On"
+            )
+        }
+    }
+
+    @Composable
+    fun PhotoButton() {
+        SmallFloatingActionButton(
+            onClick = {
+                streamService?.let {
+                    Log.d("CameraScreen", "Попытка сделать фото")
+                    it.takePhoto()
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.secondary,
+            contentColor = MaterialTheme.colorScheme.onSecondary
+        ) {
+            Icon(imageVector = Icons.Default.PhotoCamera, contentDescription = "Take Photo")
+        }
+    }
+
+    @Composable
+    fun MuteButton() {
+        SmallFloatingActionButton(
+            onClick = {
+                streamService?.let {
+                    isMuted = !isMuted
+                    it.toggleMute(isMuted)
+                    Log.d("CameraScreen", "Toggle mute: $isMuted")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.secondary,
+            contentColor = MaterialTheme.colorScheme.onSecondary
+        ) {
+            Icon(
+                imageVector = if (isMuted) Icons.Default.MicOff else Icons.Default.Mic,
+                contentDescription = if (isMuted) "Unmute" else "Mute"
+            )
+        }
+    }
+
+    @Composable
+    fun SwitchCameraButton() {
+        SmallFloatingActionButton(
+            onClick = {
+                streamService?.let {
+                    Log.d("CameraScreen", "Попытка переключить камеру")
+                    it.switchCamera()
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.secondary,
+            contentColor = MaterialTheme.colorScheme.onSecondary
+        ) {
+            Icon(
+                imageVector = Icons.Default.Cameraswitch,
+                contentDescription = "Switch Camera"
+            )
+        }
+    }
+
+    @Composable
+    fun SettingsButton() {
+        SmallFloatingActionButton(
+            onClick = onSettingsClick,
+            containerColor = MaterialTheme.colorScheme.secondary,
+            contentColor = MaterialTheme.colorScheme.onSecondary
+        ) {
+            Icon(
+                imageVector = Icons.Default.Settings,
+                contentDescription = "Settings"
+            )
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         // Camera Preview
         AndroidView(
@@ -206,136 +326,93 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp), contentAlignment = Alignment.BottomCenter
+                .padding(16.dp),
+            contentAlignment = Alignment.BottomCenter
         ) {
-            // Main Controls (Record button in center)
-            FloatingActionButton(
-                onClick = {
-                    if (isStreaming) {
-                        val intent = Intent(StreamService.ACTION_STOP_STREAM).apply {
-                            setPackage(context.packageName)
-                        }
-                        context.sendBroadcast(intent)
-                    } else {
-                        val intent = Intent(StreamService.ACTION_START_STREAM).apply {
-                            setPackage(context.packageName)
-                        }
-                        context.sendBroadcast(intent)
+            // Detect orientation
+            val configuration = LocalConfiguration.current
+            val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+            if (isLandscape) {
+                // Right side controls column
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .padding(end = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Top controls
+                        SettingsButton()
+                        MuteButton()
+
+                        // Record button in the middle
+                        Spacer(modifier = Modifier.height(8.dp))
+                        RecordButton()
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Bottom controls
+                        PhotoButton()
+                        FlashButton()
                     }
-                    isStreaming = !isStreaming
-                },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.padding(bottom = 16.dp)
-            ) {
-                Icon(
-                    imageVector = if (isStreaming) Icons.Default.VideocamOff
-                    else Icons.Default.Videocam,
-                    contentDescription = if (isStreaming) "Stop Streaming" else "Start Streaming"
-                )
-            }
-
-            // Left Controls
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = 16.dp),
-                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Start,
-                verticalAlignment = Alignment.Bottom
-            ) {
-                // Flash button (leftmost)
-                SmallFloatingActionButton(
-                    onClick = {
-                        streamService?.let {
-                            isFlashOn = it.toggleLantern()
-                            Log.d("CameraScreen", "Переключение фонарика: $isFlashOn")
-                        }
-                    },
-                    containerColor = MaterialTheme.colorScheme.secondary,
-                    contentColor = MaterialTheme.colorScheme.onSecondary
-                ) {
-                    Icon(
-                        imageVector = if (isFlashOn) Icons.Default.FlashOn
-                        else Icons.Default.FlashOff,
-                        contentDescription = if (isFlashOn) "Turn Flash Off" else "Turn Flash On"
-                    )
                 }
 
-                Spacer(modifier = Modifier.width(16.dp))
-
-                // Take Photo button (second from left)
-                SmallFloatingActionButton(
-                    onClick = {
-                        streamService?.let {
-                            Log.d("CameraScreen", "Попытка сделать фото")
-                            it.takePhoto()
-                        }
-                    },
-                    containerColor = MaterialTheme.colorScheme.secondary,
-                    contentColor = MaterialTheme.colorScheme.onSecondary
+                // Left side - camera switch button
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.CenterStart
                 ) {
-                    Icon(imageVector = Icons.Default.PhotoCamera, contentDescription = "Take Photo")
+                    Box(
+                        modifier = Modifier.padding(start = 16.dp)
+                    ) {
+                        SwitchCameraButton()
+                    }
                 }
-            }
+            } else {
+                // Portrait mode
+                // Main Controls (Record button in center)
+                RecordButton()
 
-            // Right Controls
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = 16.dp),
-                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End,
-                verticalAlignment = Alignment.Bottom
-            ) {
-                // Mute button (second from right)
-                SmallFloatingActionButton(
-                    onClick = {
-                        streamService?.let {
-                            isMuted = !isMuted
-                            it.toggleMute(isMuted)
-                            Log.d("CameraScreen", "Toggle mute: $isMuted")
-                        }
-                    },
-                    containerColor = MaterialTheme.colorScheme.secondary,
-                    contentColor = MaterialTheme.colorScheme.onSecondary
+                // Left Controls
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.Start,
+                    verticalAlignment = Alignment.Bottom
                 ) {
-                    Icon(
-                        imageVector = if (isMuted) Icons.Default.MicOff else Icons.Default.Mic,
-                        contentDescription = if (isMuted) "Unmute" else "Mute"
-                    )
+                    FlashButton()
+                    Spacer(modifier = Modifier.width(16.dp))
+                    PhotoButton()
                 }
 
-                Spacer(modifier = Modifier.width(16.dp))
 
-                // Switch Camera button (rightmost)
-                SmallFloatingActionButton(
-                    onClick = {
-                        streamService?.let {
-                            Log.d("CameraScreen", "Попытка переключить камеру")
-                            it.switchCamera()
-                        }
-                    },
-                    containerColor = MaterialTheme.colorScheme.secondary,
-                    contentColor = MaterialTheme.colorScheme.onSecondary
+                // Right Controls
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.Bottom
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Cameraswitch, contentDescription = "Switch Camera"
-                    )
+                    MuteButton()
+                    Spacer(modifier = Modifier.width(16.dp))
+                    SettingsButton()
                 }
-            }
-        }
 
-        // Settings Button
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp), contentAlignment = Alignment.TopEnd
-        ) {
-            IconButton(onClick = onSettingsClick) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = "Settings",
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
+
+                // Center Left - Camera Switch
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 16.dp, start = 0.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    SwitchCameraButton()
+                }
             }
         }
     }

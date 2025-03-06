@@ -134,6 +134,6 @@
     <string name="dynamic_fps_summary">Автоматически регулировать частоту кадров в зависимости от нагрузки</string>
     
     <!-- Screen Orientation -->
-    <string name="screen_orientation">Screen Orientation</string>
-    <string name="screen_orientation_summary">Set the preferred screen orientation</string>
+    <string name="screen_orientation">Ориентация экрана</string>
+    <string name="screen_orientation_summary">Установите предпочтительную ориентацию экрана</string>
 </resources>
