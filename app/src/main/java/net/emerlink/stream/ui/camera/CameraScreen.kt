@@ -24,6 +24,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Videocam
@@ -64,6 +66,7 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
     var streamService by remember { mutableStateOf<StreamService?>(null) }
     var isStreaming by remember { mutableStateOf(false) }
     var isFlashOn by remember { mutableStateOf(false) }
+    var isMuted by remember { mutableStateOf(false) }
 
     var previewStarted by remember { mutableStateOf(false) }
 
@@ -145,8 +148,8 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
         // Camera Preview
         AndroidView(
             factory = { ctx ->
-                OpenGlView(ctx).apply { Log.d("CameraScreen", "Создание OpenGlView") }
-            }, modifier = Modifier
+            OpenGlView(ctx).apply { Log.d("CameraScreen", "Создание OpenGlView") }
+        }, modifier = Modifier
                 .fillMaxSize()
                 .pointerInteropFilter { event ->
                     when (event.action) {
@@ -163,12 +166,12 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
                         else -> false
                     }
                 }, update = { view ->
-                if (streamService != null && !previewStarted) {
-                    Log.d("CameraScreen", "Запуск preview")
-                    streamService?.startPreview(view)
-                    previewStarted = true
-                }
-            })
+            if (streamService != null && !previewStarted) {
+                Log.d("CameraScreen", "Запуск preview")
+                streamService?.startPreview(view)
+                previewStarted = true
+            }
+        })
 
         // Stream Status Indicator
         Box(
@@ -210,7 +213,7 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
                 .padding(16.dp),
             contentAlignment = Alignment.BottomCenter
         ) {
-            // Main Controls
+            // Main Controls (Record button in center)
             FloatingActionButton(
                 onClick = {
                     if (isStreaming) {
@@ -237,13 +240,15 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
                 )
             }
 
-            // Secondary Controls
-            Box(
+            // Left Controls
+            Row(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(bottom = 16.dp),
-                contentAlignment = Alignment.BottomStart
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Start,
+                verticalAlignment = Alignment.Bottom
             ) {
+                // Flash button (leftmost)
                 SmallFloatingActionButton(
                     onClick = {
                         streamService?.let {
@@ -260,14 +265,10 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
                         contentDescription = if (isFlashOn) "Turn Flash Off" else "Turn Flash On"
                     )
                 }
-            }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = 16.dp),
-                contentAlignment = Alignment.BottomStart
-            ) {
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // Take Photo button (second from left)
                 SmallFloatingActionButton(
                     onClick = {
                         streamService?.let {
@@ -276,19 +277,41 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
                         }
                     },
                     containerColor = MaterialTheme.colorScheme.secondary,
-                    contentColor = MaterialTheme.colorScheme.onSecondary,
-                    modifier = Modifier.padding(start = 80.dp)
+                    contentColor = MaterialTheme.colorScheme.onSecondary
                 ) {
                     Icon(imageVector = Icons.Default.PhotoCamera, contentDescription = "Take Photo")
                 }
             }
 
-            Box(
+            // Right Controls
+            Row(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(bottom = 16.dp),
-                contentAlignment = Alignment.BottomEnd
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End,
+                verticalAlignment = Alignment.Bottom
             ) {
+                // Mute button (second from right)
+                SmallFloatingActionButton(
+                    onClick = {
+                        streamService?.let {
+                            isMuted = !isMuted
+                            it.toggleMute(isMuted)
+                            Log.d("CameraScreen", "Toggle mute: $isMuted")
+                        }
+                    },
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    contentColor = MaterialTheme.colorScheme.onSecondary
+                ) {
+                    Icon(
+                        imageVector = if (isMuted) Icons.Default.MicOff else Icons.Default.Mic,
+                        contentDescription = if (isMuted) "Unmute" else "Mute"
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // Switch Camera button (rightmost)
                 SmallFloatingActionButton(
                     onClick = {
                         streamService?.let {

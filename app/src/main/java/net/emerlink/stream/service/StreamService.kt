@@ -814,4 +814,47 @@ class StreamService :
     inner class LocalBinder : Binder() {
         fun getService(): StreamService = this@StreamService
     }
+
+    fun toggleMute(muted: Boolean) {
+        try {
+            Log.d(TAG, "Setting mute state to: $muted")
+            
+            when (getStreamTypeFromProtocol(protocol)) {
+                StreamType.RTMP -> {
+                    val camera = streamManager.getStream() as com.pedro.library.rtmp.RtmpCamera2
+                    if (muted) {
+                        camera.disableAudio()
+                    } else {
+                        camera.enableAudio()
+                    }
+                }
+                StreamType.RTSP -> {
+                    val camera = streamManager.getStream() as com.pedro.library.rtsp.RtspCamera2
+                    if (muted) {
+                        camera.disableAudio()
+                    } else {
+                        camera.enableAudio()
+                    }
+                }
+                StreamType.SRT -> {
+                    val camera = streamManager.getStream() as com.pedro.library.srt.SrtCamera2
+                    if (muted) {
+                        camera.disableAudio()
+                    } else {
+                        camera.enableAudio()
+                    }
+                }
+                StreamType.UDP -> {
+                    val camera = streamManager.getStream() as com.pedro.library.udp.UdpCamera2
+                    if (muted) {
+                        camera.disableAudio()
+                    } else {
+                        camera.enableAudio()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error toggling mute state: ${e.message}", e)
+        }
+    }
 }
