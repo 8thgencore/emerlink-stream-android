@@ -156,17 +156,15 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
         FloatingActionButton(
             onClick = {
                 if (isStreaming) {
-                    val intent = Intent(StreamService.ACTION_STOP_STREAM).apply {
-                        setPackage(context.packageName)
-                    }
-                    context.sendBroadcast(intent)
+                    // Вместо отправки бродкаста, напрямую взаимодействуем с сервисом
+                    streamService?.stopStream(null, null)
+                    isStreaming = false
                 } else {
-                    val intent = Intent(StreamService.ACTION_START_STREAM).apply {
-                        setPackage(context.packageName)
-                    }
-                    context.sendBroadcast(intent)
+                    // Вместо отправки бродкаста, напрямую взаимодействуем с сервисом
+                    streamService?.startStream()
+                    isStreaming = true
                 }
-                isStreaming = !isStreaming
+                // isStreaming = !isStreaming // Это будет установлено через BroadcastReceiver
             },
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary

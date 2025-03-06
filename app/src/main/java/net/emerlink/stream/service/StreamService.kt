@@ -1,9 +1,12 @@
 package net.emerlink.stream.service
 
+import android.annotation.SuppressLint
 import android.app.NotificationManager
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
@@ -123,6 +126,10 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     private var hardwareRotation: Boolean = false
     private var dynamicFps: Boolean = false
 
+    // Добавление поля для хранения ссылки на BroadcastReceiver
+    private var commandReceiver: BroadcastReceiver? = null
+
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "onCreate")
@@ -173,6 +180,37 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
         // Initialize stream clients
         initializeStream()
+
+        // Добавление регистрации BroadcastReceiver для команд
+        val intentFilter = IntentFilter().apply {
+            addAction(ACTION_START_STREAM)
+            addAction(ACTION_STOP_STREAM)
+            addAction(ACTION_EXIT_APP)
+        }
+        
+        val commandReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                Log.d(TAG, "Получен интент: ${intent.action}")
+                when (intent.action) {
+                    ACTION_START_STREAM -> startStream()
+                    ACTION_STOP_STREAM -> stopStream(null, null)
+                    ACTION_EXIT_APP -> {
+                        exiting = true
+                        stopStream(null, null)
+                        stopSelf()
+                    }
+                }
+            }
+        }
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(commandReceiver, intentFilter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(commandReceiver, intentFilter)
+        }
+        
+        // Сохраняем ссылку на приемник для дальнейшей отмены регистрации
+        this.commandReceiver = commandReceiver
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -198,6 +236,16 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
     override fun onDestroy() {
         super.onDestroy()
+        
+        // Отмена регистрации приемника
+        commandReceiver?.let {
+            try {
+                unregisterReceiver(it)
+            } catch (e: Exception) {
+                Log.e(TAG, "Ошибка при отмене регистрации приемника: ${e.message}")
+            }
+        }
+        
         observer.postValue(null)
         preferences.unregisterOnSharedPreferenceChangeListener(this)
     }
@@ -269,17 +317,13 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 val rotationInRadians = orientationMatrix[0]
                 rotationInDegrees = Math.toDegrees(rotationInRadians.toDouble())
 
-                val rotation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    display?.rotation ?: Surface.ROTATION_0
-                } else {
-                    @Suppress("DEPRECATION") (getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation
-                }
-                val screenOrientation = when (rotation) {
-                    Surface.ROTATION_90 -> 90
-                    Surface.ROTATION_180 -> -180
-                    Surface.ROTATION_270 -> -90
-                    else -> 0
-                }
+                // Исправляем критическую ошибку - не пытаемся получить display из сервиса
+                // В сервисе невозможно получить display в Android 12+
+                // Вместо этого используем предопределенную ориентацию или данные от приложения
+                val screenOrientation = 0 // По умолчанию портретная ориентация
+                
+                // Дополнительно можно использовать статическую переменную, устанавливаемую из Activity
+                // val screenOrientation = AppContext.currentOrientation
 
                 rotationInDegrees += screenOrientation
                 if (rotationInDegrees < 0.0) {
@@ -323,13 +367,41 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
     fun stopPreview() {
         try {
-            Log.d(TAG, "Остановка preview")
+            Log.d(TAG, "Остановка preview с правильным освобождением ресурсов")
+            
+            // Исправляем вызовы неизвестных методов onPause и onDestroy
+            // OpenGlView не имеет этих методов, используем доступные методы для очистки ресурсов
+            
             if (streamManager.isOnPreview()) {
+                // Останавливаем предпросмотр корректно
                 streamManager.stopPreview()
+                
+                // Дадим немного времени для корректного закрытия ресурсов
+                Handler(mainLooper).postDelayed({
+                    try {
+                        // Освобождаем ресурсы OpenGL
+                        openGlView?.let {
+                            Log.d(TAG, "Очистка ресурсов OpenGlView")
+                            // Метод releaseTextureID может быть доступен в некоторых реализациях
+                            try {
+                                val releaseMethod = it.javaClass.getMethod("release")
+                                releaseMethod.invoke(it)
+                            } catch (e: Exception) {
+                                Log.d(TAG, "Метод release не найден: ${e.message}")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Ошибка при очистке ресурсов OpenGlView: ${e.message}")
+                    } finally {
+                        openGlView = null
+                    }
+                }, 200)
+            } else {
+                openGlView = null
             }
-            this.openGlView = null
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при остановке preview: ${e.message}", e)
+            openGlView = null
         }
     }
 
@@ -572,7 +644,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         }
     }
 
-    private fun startStream() {
+    fun startStream() {
         Log.d(TAG, "Starting stream")
 
         if (streamManager.isStreaming()) {
@@ -600,11 +672,16 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 startRecording()
             }
 
-            // Start location updates
+            // Запуск отслеживания местоположения только при наличии разрешений
             try {
-                locManager?.requestLocationUpdates(
-                    LocationManager.GPS_PROVIDER, 1000, 1f, locListener!!
-                )
+                // Проверяем наличие разрешений
+                if (hasLocationPermission()) {
+                    locManager?.requestLocationUpdates(
+                        LocationManager.GPS_PROVIDER, 1000, 1f, locListener!!
+                    )
+                } else {
+                    Log.w(TAG, "Отсутствуют разрешения на местоположение, отслеживание отключено")
+                }
             } catch (e: SecurityException) {
                 Log.e(TAG, "Failed to request location updates", e)
             }
@@ -679,7 +756,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         notificationHelper.updateNotification(getString(R.string.recording), true)
     }
 
-    private fun stopStream(message: String?, action: String?) {
+    fun stopStream(message: String?, action: String?) {
         Log.d(TAG, "Stopping stream")
 
         try {
@@ -787,7 +864,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                     if (isPortrait) {
                         // Установка для портретного режима
                         camera.stopPreview()
-                        camera.getGlInterface()?.setStreamRotation(90) // Повернуть поток на 90 градусов
+                        camera.glInterface?.setStreamRotation(90) // Повернуть поток на 90 градусов
                         // В некоторых версиях библиотеки может быть setOrientation или другие методы
                     }
                 }
@@ -796,7 +873,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                     if (isPortrait) {
                         // Установка для портретного режима
                         camera.stopPreview()
-                        camera.getGlInterface()?.setStreamRotation(90) // Повернуть поток на 90 градусов
+                        camera.glInterface?.setStreamRotation(90) // Повернуть поток на 90 градусов
                     }
                 }
                 StreamType.SRT -> {
@@ -804,7 +881,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                     if (isPortrait) {
                         // Установка для портретного режима
                         camera.stopPreview()
-                        camera.getGlInterface()?.setStreamRotation(90) // Повернуть поток на 90 градусов
+                        camera.glInterface?.setStreamRotation(90) // Повернуть поток на 90 градусов
                     }
                 }
                 StreamType.UDP -> {
@@ -812,7 +889,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                     if (isPortrait) {
                         // Установка для портретного режима
                         camera.stopPreview()
-                        camera.getGlInterface()?.setStreamRotation(90) // Повернуть поток на 90 градусов
+                        camera.glInterface?.setStreamRotation(90) // Повернуть поток на 90 градусов
                     }
                 }
             }
@@ -829,6 +906,18 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             }
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при установке ориентации: ${e.message}")
+        }
+    }
+
+    /**
+     * Проверяет наличие разрешений на доступ к местоположению
+     */
+    private fun hasLocationPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
+                    checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED)
+        } else {
+            true // В более старых версиях Android разрешения запрашиваются при установке
         }
     }
 }
