@@ -11,74 +11,74 @@ import net.emerlink.stream.model.StreamSettings
  * Класс для загрузки настроек из SharedPreferences
  */
 class PreferencesLoader(private val context: Context) {
-    
+
     companion object {
         private const val TAG = "PreferencesLoader"
     }
-    
+
     /**
      * Загружает все настройки из SharedPreferences и возвращает объект настроек
      */
     fun loadPreferences(preferences: SharedPreferences): StreamSettings {
         Log.d(TAG, "Загрузка настроек")
-        
+
         val settings = StreamSettings()
-        
+
         // UID
         settings.uid = preferences.getString(PreferenceKeys.UID, PreferenceKeys.UID_DEFAULT)
             ?: PreferenceKeys.UID_DEFAULT
-        
+
         // Stream protocol
         settings.protocol = preferences.getString(
             PreferenceKeys.STREAM_PROTOCOL,
             PreferenceKeys.STREAM_PROTOCOL_DEFAULT
         ) ?: PreferenceKeys.STREAM_PROTOCOL_DEFAULT
-        
+
         // Stream Preferences
         settings.stream = preferences.getBoolean(
             PreferenceKeys.STREAM_VIDEO,
             PreferenceKeys.STREAM_VIDEO_DEFAULT
         )
-        
+
         settings.address = preferences.getString(
             PreferenceKeys.STREAM_ADDRESS,
             PreferenceKeys.STREAM_ADDRESS_DEFAULT
         ) ?: PreferenceKeys.STREAM_ADDRESS_DEFAULT
-        
+
         settings.port = preferences
             .getString(PreferenceKeys.STREAM_PORT, PreferenceKeys.STREAM_PORT_DEFAULT)
             ?.toInt() ?: PreferenceKeys.STREAM_PORT_DEFAULT.toInt()
-        
+
         settings.path = preferences.getString(
             PreferenceKeys.STREAM_PATH,
             PreferenceKeys.STREAM_PATH_DEFAULT
         ) ?: PreferenceKeys.STREAM_PATH_DEFAULT
-        
+
         settings.tcp = preferences.getBoolean(
             PreferenceKeys.STREAM_USE_TCP,
             PreferenceKeys.STREAM_USE_TCP_DEFAULT
         )
-        
+
         settings.username = preferences.getString(
             PreferenceKeys.STREAM_USERNAME,
             PreferenceKeys.STREAM_USERNAME_DEFAULT
         ) ?: PreferenceKeys.STREAM_USERNAME_DEFAULT
-        
+
         settings.password = preferences.getString(
             PreferenceKeys.STREAM_PASSWORD,
             PreferenceKeys.STREAM_PASSWORD_DEFAULT
         ) ?: PreferenceKeys.STREAM_PASSWORD_DEFAULT
-        
+
         settings.streamSelfSignedCert = preferences.getBoolean(
             PreferenceKeys.STREAM_SELF_SIGNED_CERT,
             PreferenceKeys.STREAM_SELF_SIGNED_CERT_DEFAULT
         )
-        
+
         settings.certFile = preferences.getString(
             PreferenceKeys.STREAM_CERTIFICATE,
             PreferenceKeys.STREAM_CERTIFICATE_DEFAULT
         )
-        
+
         settings.certPassword = preferences.getString(
             PreferenceKeys.STREAM_CERTIFICATE_PASSWORD,
             PreferenceKeys.STREAM_CERTIFICATE_PASSWORD_DEFAULT
@@ -89,36 +89,36 @@ class PreferencesLoader(private val context: Context) {
             PreferenceKeys.ENABLE_AUDIO,
             PreferenceKeys.ENABLE_AUDIO_DEFAULT
         )
-        
+
         settings.echoCancel = preferences.getBoolean(
             PreferenceKeys.AUDIO_ECHO_CANCEL,
             PreferenceKeys.AUDIO_ECHO_CANCEL_DEFAULT
         )
-        
+
         settings.noiseReduction = preferences.getBoolean(
             PreferenceKeys.AUDIO_NOISE_REDUCTION,
             PreferenceKeys.AUDIO_NOISE_REDUCTION_DEFAULT
         )
-        
+
         settings.sampleRate = preferences
             .getString(
                 PreferenceKeys.AUDIO_SAMPLE_RATE,
                 PreferenceKeys.AUDIO_SAMPLE_RATE_DEFAULT
             )
             ?.toInt() ?: PreferenceKeys.AUDIO_SAMPLE_RATE_DEFAULT.toInt()
-        
+
         settings.stereo = preferences.getBoolean(
             PreferenceKeys.AUDIO_STEREO,
             PreferenceKeys.AUDIO_STEREO_DEFAULT
         )
-        
+
         settings.audioBitrate = preferences
             .getString(
                 PreferenceKeys.AUDIO_BITRATE,
                 PreferenceKeys.AUDIO_BITRATE_DEFAULT
             )
             ?.toInt() ?: PreferenceKeys.AUDIO_BITRATE_DEFAULT.toInt()
-        
+
         settings.audioCodec = preferences.getString(
             PreferenceKeys.AUDIO_CODEC,
             PreferenceKeys.AUDIO_CODEC_DEFAULT
@@ -128,24 +128,24 @@ class PreferencesLoader(private val context: Context) {
         settings.fps = preferences
             .getString(PreferenceKeys.VIDEO_FPS, PreferenceKeys.VIDEO_FPS_DEFAULT)
             ?.toInt() ?: PreferenceKeys.VIDEO_FPS_DEFAULT.toInt()
-        
+
         settings.record = preferences.getBoolean(
             PreferenceKeys.RECORD_VIDEO,
             PreferenceKeys.RECORD_VIDEO_DEFAULT
         )
-        
+
         settings.codec = preferences.getString(
             PreferenceKeys.VIDEO_CODEC,
             PreferenceKeys.VIDEO_CODEC_DEFAULT
         ) ?: PreferenceKeys.VIDEO_CODEC_DEFAULT
-        
+
         settings.bitrate = preferences
             .getString(
                 PreferenceKeys.VIDEO_BITRATE,
                 PreferenceKeys.VIDEO_BITRATE_DEFAULT
             )
             ?.toInt() ?: PreferenceKeys.VIDEO_BITRATE_DEFAULT.toInt()
-        
+
         settings.adaptiveBitrate = preferences.getBoolean(
             PreferenceKeys.VIDEO_ADAPTIVE_BITRATE,
             PreferenceKeys.VIDEO_ADAPTIVE_BITRATE_DEFAULT
@@ -254,7 +254,7 @@ class PreferencesLoader(private val context: Context) {
             PreferenceKeys.STABILITY_DYNAMIC_FPS,
             PreferenceKeys.STABILITY_DYNAMIC_FPS_DEFAULT
         )
-        
+
         return settings
     }
 } 

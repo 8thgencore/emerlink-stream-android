@@ -9,20 +9,20 @@ import org.koin.core.context.startKoin
 import org.koin.core.logger.Level
 
 class EmerlinkStreamApp : Application() {
-    
+
     override fun onCreate() {
         super.onCreate()
-        
+
         // Initialize Koin
         startKoin {
             androidLogger(Level.ERROR)
             androidContext(this@EmerlinkStreamApp)
             modules(appModule)
         }
-        
+
         Log.d(TAG, "Application started")
     }
-    
+
     companion object {
         private const val TAG = "EmerlinkStreamApp"
     }

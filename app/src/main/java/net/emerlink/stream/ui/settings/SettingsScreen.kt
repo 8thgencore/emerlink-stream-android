@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.edit
 import androidx.preference.PreferenceManager
 import net.emerlink.stream.R
 import net.emerlink.stream.data.preferences.PreferenceKeys
@@ -29,7 +30,6 @@ import net.emerlink.stream.ui.settings.components.DropdownPreference
 import net.emerlink.stream.ui.settings.components.InputPreference
 import net.emerlink.stream.ui.settings.components.PreferenceCategory
 import net.emerlink.stream.ui.settings.components.SwitchPreference
-import androidx.core.content.edit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -254,6 +254,30 @@ fun SettingsScreen(
                             preferences.edit { putBoolean(PreferenceKeys.RECORD_VIDEO, checked) }
                         }
                     )
+
+                    DropdownPreference(
+                        title = stringResource(id = R.string.screen_orientation),
+                        summary = stringResource(id = R.string.screen_orientation_summary),
+                        selectedValue = preferences.getString(
+                            PreferenceKeys.SCREEN_ORIENTATION,
+                            PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
+                        ) ?: PreferenceKeys.SCREEN_ORIENTATION_DEFAULT,
+                        options = listOf("landscape", "portrait", "auto"),
+                        onValueSelected = { value ->
+                            preferences.edit { putString(PreferenceKeys.SCREEN_ORIENTATION, value) }
+                            // Apply orientation change immediately
+                            when (value) {
+                                "landscape" -> (context as? android.app.Activity)?.requestedOrientation =
+                                    android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+
+                                "portrait" -> (context as? android.app.Activity)?.requestedOrientation =
+                                    android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+
+                                "auto" -> (context as? android.app.Activity)?.requestedOrientation =
+                                    android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR
+                            }
+                        }
+                    )
                 }
 
                 // Audio Settings
@@ -357,7 +381,7 @@ fun SettingsScreen(
                         }
                     )
                 }
-                
+
                 // Advanced Settings Button
                 Button(
                     onClick = onAdvancedSettingsClick,

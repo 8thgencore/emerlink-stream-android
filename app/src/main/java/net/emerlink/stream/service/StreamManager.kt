@@ -14,9 +14,9 @@ import net.emerlink.stream.model.StreamType
 import net.emerlink.stream.util.ErrorHandler
 
 class StreamManager(
-        private val context: Context,
-        private val connectChecker: ConnectChecker,
-        private val errorHandler: ErrorHandler
+    private val context: Context,
+    private val connectChecker: ConnectChecker,
+    private val errorHandler: ErrorHandler
 ) {
     companion object {
         private const val TAG = "StreamManager"
@@ -54,11 +54,11 @@ class StreamManager(
     }
 
     fun startStream(
-            url: String,
-            protocol: String,
-            username: String,
-            password: String,
-            tcp: Boolean
+        url: String,
+        protocol: String,
+        username: String,
+        password: String,
+        tcp: Boolean
     ) {
         try {
             when {
@@ -68,6 +68,7 @@ class StreamManager(
                     }
                     rtmpCamera.startStream(url)
                 }
+
                 protocol.startsWith("rtsp") -> {
                     if (username.isNotEmpty() && password.isNotEmpty()) {
                         rtspCamera.getStreamClient().setAuthorization(username, password)
@@ -79,9 +80,11 @@ class StreamManager(
                     }
                     rtspCamera.startStream(url)
                 }
+
                 protocol == "srt" -> {
                     srtCamera.startStream(url)
                 }
+
                 else -> {
                     udpCamera.startStream(url)
                 }
@@ -143,14 +146,17 @@ class StreamManager(
                         rtmpCamera.replaceView(openGlView)
                         rtmpCamera.startPreview(CameraHelper.Facing.BACK, 0)
                     }
+
                     StreamType.RTSP -> {
                         rtspCamera.replaceView(openGlView)
                         rtspCamera.startPreview(CameraHelper.Facing.BACK, 0)
                     }
+
                     StreamType.SRT -> {
                         srtCamera.replaceView(openGlView)
                         srtCamera.startPreview(CameraHelper.Facing.BACK, 0)
                     }
+
                     StreamType.UDP -> {
                         udpCamera.replaceView(openGlView)
                         udpCamera.startPreview(CameraHelper.Facing.BACK, 0)

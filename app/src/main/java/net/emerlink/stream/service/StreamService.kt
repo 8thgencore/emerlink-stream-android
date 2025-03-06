@@ -11,6 +11,7 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.location.LocationManager
+import android.media.MediaScannerConnection
 import android.os.Binder
 import android.os.Build
 import android.os.Handler
@@ -20,35 +21,24 @@ import android.util.Size
 import android.view.MotionEvent
 import android.view.Surface
 import android.view.WindowManager
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.MutableLiveData
 import androidx.preference.PreferenceManager
 import com.pedro.common.ConnectChecker
 import com.pedro.library.util.BitrateAdapter
 import com.pedro.library.view.OpenGlView
-import com.pedro.rtmp.rtmp.RtmpClient
-import com.pedro.rtsp.rtsp.RtspClient
-import com.pedro.srt.srt.SrtClient
-import com.pedro.udp.UdpClient
 import net.emerlink.stream.R
 import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.model.StreamType
 import net.emerlink.stream.util.ErrorHandler
 import net.emerlink.stream.util.NotificationHelper
 import net.emerlink.stream.util.PathUtils
+import net.emerlink.stream.util.PreferencesLoader
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import android.hardware.camera2.CameraManager as AndroidCameraManager
-import android.hardware.camera2.CameraCharacteristics
-import android.hardware.camera2.CameraAccessException
-import net.emerlink.stream.util.PreferencesLoader
 
-class StreamService :
-    Service(),
-    ConnectChecker,
-    SharedPreferences.OnSharedPreferenceChangeListener,
+class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPreferenceChangeListener,
     SensorEventListener {
 
     companion object {
@@ -156,12 +146,6 @@ class StreamService :
     private var hardwareRotation: Boolean = false
     private var dynamicFps: Boolean = false
 
-    // New stream clients
-    private lateinit var rtmpClient: RtmpClient
-    private lateinit var rtspClient: RtspClient
-    private lateinit var srtClient: SrtClient
-    private lateinit var udpClient: UdpClient
-
     // New variables
     private var currentCameraId = 0
     private var isFlashOn = false
@@ -180,13 +164,10 @@ class StreamService :
 
         folder = PathUtils.getRecordPath(this)
 
-        val notification =
-            notificationHelper.createNotification(getString(R.string.ready_to_stream), true)
+        val notification = notificationHelper.createNotification(getString(R.string.ready_to_stream), true)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val type =
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+            val type = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
             startForeground(NOTIFICATION_ID, notification, type)
         } else {
             startForeground(NOTIFICATION_ID, notification)
@@ -205,8 +186,7 @@ class StreamService :
 
         // Setup location and sensors
         locListener = StreamLocationListener(this)
-        locManager =
-            applicationContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        locManager = applicationContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         magnetometer = sensorManager.getDefaultSensor(android.hardware.Sensor.TYPE_MAGNETIC_FIELD)!!
@@ -302,13 +282,9 @@ class StreamService :
         if (hasGravityData && hasGeomagneticData) {
             val identityMatrix = FloatArray(9)
             val rotationMatrix = FloatArray(9)
-            val success =
-                SensorManager.getRotationMatrix(
-                    rotationMatrix,
-                    identityMatrix,
-                    gravityData,
-                    geomagneticData
-                )
+            val success = SensorManager.getRotationMatrix(
+                rotationMatrix, identityMatrix, gravityData, geomagneticData
+            )
 
             if (success) {
                 val orientationMatrix = FloatArray(3)
@@ -319,16 +295,14 @@ class StreamService :
                 val rotation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     display?.rotation ?: Surface.ROTATION_0
                 } else {
-                    @Suppress("DEPRECATION")
-                    (getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation
+                    @Suppress("DEPRECATION") (getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation
                 }
-                val screenOrientation =
-                    when (rotation) {
-                        Surface.ROTATION_90 -> 90
-                        Surface.ROTATION_180 -> -180
-                        Surface.ROTATION_270 -> -90
-                        else -> 0
-                    }
+                val screenOrientation = when (rotation) {
+                    Surface.ROTATION_90 -> 90
+                    Surface.ROTATION_180 -> -180
+                    Surface.ROTATION_270 -> -90
+                    else -> 0
+                }
 
                 rotationInDegrees += screenOrientation
                 if (rotationInDegrees < 0.0) {
@@ -357,13 +331,13 @@ class StreamService :
         try {
             Log.d(TAG, "Запуск preview")
             this.openGlView = openGlView
-            
+
             // Необходимо обеспечить корректное освобождение ресурсов перед запуском нового preview
             if (streamManager.isOnPreview()) {
                 Log.d(TAG, "Останавливаем существующий preview перед запуском нового")
                 streamManager.stopPreview()
             }
-            
+
             streamManager.startPreview(openGlView)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при запуске preview: ${e.message}", e)
@@ -385,7 +359,7 @@ class StreamService :
     fun toggleLantern(): Boolean {
         try {
             Log.d(TAG, "Вызов toggleLantern")
-            
+
             // Не можем использовать CameraManager напрямую, так как камера уже используется
             // Вместо этого воспользуемся методом streamManager
             return try {
@@ -400,6 +374,7 @@ class StreamService :
                         }
                         isFlashOn
                     }
+
                     StreamType.RTSP -> {
                         val camera = streamManager.getStream() as com.pedro.library.rtsp.RtspCamera2
                         isFlashOn = !isFlashOn
@@ -410,6 +385,7 @@ class StreamService :
                         }
                         isFlashOn
                     }
+
                     StreamType.SRT -> {
                         val camera = streamManager.getStream() as com.pedro.library.srt.SrtCamera2
                         isFlashOn = !isFlashOn
@@ -420,6 +396,7 @@ class StreamService :
                         }
                         isFlashOn
                     }
+
                     StreamType.UDP -> {
                         val camera = streamManager.getStream() as com.pedro.library.udp.UdpCamera2
                         isFlashOn = !isFlashOn
@@ -444,32 +421,35 @@ class StreamService :
     fun switchCamera() {
         try {
             Log.d(TAG, "Вызов метода switchCamera")
-            
+
             // Используем API библиотеки для переключения камеры
             val switchResult = when (getStreamTypeFromProtocol(protocol)) {
                 StreamType.RTMP -> {
                     val camera = streamManager.getStream() as com.pedro.library.rtmp.RtmpCamera2
                     camera.switchCamera()
                 }
+
                 StreamType.RTSP -> {
                     val camera = streamManager.getStream() as com.pedro.library.rtsp.RtspCamera2
                     camera.switchCamera()
                 }
+
                 StreamType.SRT -> {
                     val camera = streamManager.getStream() as com.pedro.library.srt.SrtCamera2
                     camera.switchCamera()
                 }
+
                 StreamType.UDP -> {
                     val camera = streamManager.getStream() as com.pedro.library.udp.UdpCamera2
                     camera.switchCamera()
                 }
             }
-            
+
             // Обновляем индекс текущей камеры после переключения
             currentCameraId = (currentCameraId + 1) % cameraIds.size
-            
+
             Log.d(TAG, "Камера переключена на ${cameraIds[currentCameraId]}, результат: $switchResult")
-            
+
             // Сбрасываем состояние фонарика при переключении камер
             isFlashOn = false
         } catch (e: ClassCastException) {
@@ -490,10 +470,10 @@ class StreamService :
     fun takePhoto() {
         try {
             Log.d(TAG, "Делаем снимок")
-            
+
             // Используем streamManager для получения glInterface
             val glInterface = streamManager.getGlInterface()
-            
+
             // Проверяем, что glInterface - это тот тип, который нам нужен
             if (glInterface is com.pedro.library.view.GlInterface) {
                 glInterface.takePhoto { bitmap ->
@@ -504,7 +484,7 @@ class StreamService :
                     }
                 }
             } else {
-                Log.e(TAG, "glInterface неправильного типа: ${glInterface?.javaClass?.name}")
+                Log.e(TAG, "glInterface неправильного типа: ${glInterface.javaClass.name}")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при создании снимка: ${e.message}", e)
@@ -517,22 +497,22 @@ class StreamService :
             val currentDateAndTime = dateFormat.format(Date())
             val filename = "EmerlinkStream_$currentDateAndTime.jpg"
             val filePath = "${folder.absolutePath}/$filename"
-            
+
             // Use ContentValues and MediaStore for modern API
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val contentValues = android.content.ContentValues().apply {
                     put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, filename)
                     put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-                    put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, 
-                        "Pictures/EmerlinkStream")
+                    put(
+                        android.provider.MediaStore.Images.Media.RELATIVE_PATH, "Pictures/EmerlinkStream"
+                    )
                 }
-                
+
                 val resolver = applicationContext.contentResolver
                 val uri = resolver.insert(
-                    android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, 
-                    contentValues
+                    android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues
                 )
-                
+
                 uri?.let {
                     resolver.openOutputStream(it)?.use { outputStream ->
                         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
@@ -549,20 +529,19 @@ class StreamService :
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos)
                 fos.flush()
                 fos.close()
-                
+
                 // Make the image visible in gallery
-                val mediaScanIntent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
-                mediaScanIntent.data = android.net.Uri.fromFile(file)
-                applicationContext.sendBroadcast(mediaScanIntent)
-                
+                MediaScannerConnection.scanFile(
+                    applicationContext, arrayOf(file.absolutePath), arrayOf("image/jpeg"), null
+                )
+
                 applicationContext.sendBroadcast(Intent(ACTION_TOOK_PICTURE))
                 notificationHelper.updateNotification(getString(R.string.saved_photo), true)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при сохранении фото: ${e.message}", e)
             notificationHelper.updateNotification(
-                getString(R.string.saved_photo_failed) + ": " + e.message,
-                false
+                getString(R.string.saved_photo_failed) + ": " + e.message, false
             )
         }
     }
@@ -582,13 +561,14 @@ class StreamService :
             try {
                 // Библиотека RTMP-RTSP использует класс CameraHelper для управления камерой
                 // Попробуем получить доступ к камерам через android.hardware.camera2.CameraManager
-                val cameraManager = applicationContext.getSystemService(Context.CAMERA_SERVICE) as android.hardware.camera2.CameraManager
+                val cameraManager =
+                    applicationContext.getSystemService(Context.CAMERA_SERVICE) as android.hardware.camera2.CameraManager
                 cameraIds.addAll(cameraManager.cameraIdList.toList())
-                
+
                 Log.d(TAG, "Получены идентификаторы камер через CameraManager: $cameraIds")
             } catch (e: Exception) {
                 Log.e(TAG, "Ошибка при получении списка камер", e)
-                
+
                 // Резервный вариант - добавляем стандартные идентификаторы "0" и "1"
                 // Обычно "0" - это задняя камера, "1" - фронтальная
                 if (cameraIds.isEmpty()) {
@@ -603,10 +583,10 @@ class StreamService :
     private fun loadPreferences() {
         val preferencesLoader = PreferencesLoader(applicationContext)
         val settings = preferencesLoader.loadPreferences(preferences)
-        
+
         // Сохраняем старый протокол для проверки изменений
         val oldProtocol = protocol
-        
+
         // Копируем все настройки из объекта settings в поля класса
         protocol = settings.protocol
         address = settings.address
@@ -618,7 +598,7 @@ class StreamService :
         streamSelfSignedCert = settings.streamSelfSignedCert
         certFile = settings.certFile
         certPassword = settings.certPassword
-        
+
         sampleRate = settings.sampleRate
         stereo = settings.stereo
         echoCancel = settings.echoCancel
@@ -626,7 +606,7 @@ class StreamService :
         enableAudio = settings.enableAudio
         audioBitrate = settings.audioBitrate
         audioCodec = settings.audioCodec
-        
+
         fps = settings.fps
         resolution = settings.resolution
         adaptiveBitrate = settings.adaptiveBitrate
@@ -635,25 +615,25 @@ class StreamService :
         bitrate = settings.bitrate
         codec = settings.codec
         uid = settings.uid
-        
+
         videoSource = settings.videoSource
-        
+
         keyframeInterval = settings.keyframeInterval
         videoProfile = settings.videoProfile
         videoLevel = settings.videoLevel
         bitrateMode = settings.bitrateMode
         encodingQuality = settings.encodingQuality
-        
+
         bufferSize = settings.bufferSize
         connectionTimeout = settings.connectionTimeout
         autoReconnect = settings.autoReconnect
         reconnectDelay = settings.reconnectDelay
         maxReconnectAttempts = settings.maxReconnectAttempts
-        
+
         lowLatencyMode = settings.lowLatencyMode
         hardwareRotation = settings.hardwareRotation
         dynamicFps = settings.dynamicFps
-        
+
         // Если протокол изменился, обновляем тип стрима
         if (protocol != oldProtocol && ::streamManager.isInitialized) {
             streamManager.setStreamType(getStreamTypeFromProtocol(protocol))
@@ -691,10 +671,7 @@ class StreamService :
             // Start location updates
             try {
                 locManager?.requestLocationUpdates(
-                    LocationManager.GPS_PROVIDER,
-                    1000,
-                    1f,
-                    locListener!!
+                    LocationManager.GPS_PROVIDER, 1000, 1f, locListener!!
                 )
             } catch (e: SecurityException) {
                 Log.e(TAG, "Failed to request location updates", e)
@@ -712,32 +689,31 @@ class StreamService :
     private fun startStreaming() {
         Log.d(TAG, "Starting streaming")
 
-        val url =
-            when {
-                protocol.startsWith("rtmp") -> {
-                    if (protocol == "rtmps") {
-                        "rtmps://$address:$port/$path"
-                    } else {
-                        "rtmp://$address:$port/$path"
-                    }
-                }
-
-                protocol.startsWith("rtsp") -> {
-                    if (protocol == "rtsps") {
-                        "rtsps://$address:$port/$path"
-                    } else {
-                        "rtsp://$address:$port/$path"
-                    }
-                }
-
-                protocol == "srt" -> {
-                    "srt://$address:$port"
-                }
-
-                else -> {
-                    "udp://$address:$port"
+        val url = when {
+            protocol.startsWith("rtmp") -> {
+                if (protocol == "rtmps") {
+                    "rtmps://$address:$port/$path"
+                } else {
+                    "rtmp://$address:$port/$path"
                 }
             }
+
+            protocol.startsWith("rtsp") -> {
+                if (protocol == "rtsps") {
+                    "rtsps://$address:$port/$path"
+                } else {
+                    "rtsp://$address:$port/$path"
+                }
+            }
+
+            protocol == "srt" -> {
+                "srt://$address:$port"
+            }
+
+            else -> {
+                "udp://$address:$port"
+            }
+        }
 
         Log.d(TAG, "Stream URL: $url")
 
@@ -818,7 +794,7 @@ class StreamService :
     fun toggleMute(muted: Boolean) {
         try {
             Log.d(TAG, "Setting mute state to: $muted")
-            
+
             when (getStreamTypeFromProtocol(protocol)) {
                 StreamType.RTMP -> {
                     val camera = streamManager.getStream() as com.pedro.library.rtmp.RtmpCamera2
@@ -828,6 +804,7 @@ class StreamService :
                         camera.enableAudio()
                     }
                 }
+
                 StreamType.RTSP -> {
                     val camera = streamManager.getStream() as com.pedro.library.rtsp.RtspCamera2
                     if (muted) {
@@ -836,6 +813,7 @@ class StreamService :
                         camera.enableAudio()
                     }
                 }
+
                 StreamType.SRT -> {
                     val camera = streamManager.getStream() as com.pedro.library.srt.SrtCamera2
                     if (muted) {
@@ -844,6 +822,7 @@ class StreamService :
                         camera.enableAudio()
                     }
                 }
+
                 StreamType.UDP -> {
                     val camera = streamManager.getStream() as com.pedro.library.udp.UdpCamera2
                     if (muted) {

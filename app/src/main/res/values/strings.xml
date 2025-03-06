@@ -132,4 +132,8 @@
     <string name="hardware_rotation_summary">Использовать аппаратный поворот вместо программного</string>
     <string name="dynamic_fps">Динамический FPS</string>
     <string name="dynamic_fps_summary">Автоматически регулировать частоту кадров в зависимости от нагрузки</string>
+    
+    <!-- Screen Orientation -->
+    <string name="screen_orientation">Screen Orientation</string>
+    <string name="screen_orientation_summary">Set the preferred screen orientation</string>
 </resources>

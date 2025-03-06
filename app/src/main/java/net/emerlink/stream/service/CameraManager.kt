@@ -9,11 +9,11 @@ class CameraManager(private val context: Context, private val streamManager: Str
     companion object {
         private const val TAG = "CameraManager"
     }
-    
+
     private val cameraIds = ArrayList<String>()
     private var currentCameraId = 0
     private var lanternEnabled = false
-    
+
     private fun getCameraIds() {
         if (streamManager.getVideoSource() is Camera2Source) {
             val camera2Source = streamManager.getVideoSource() as Camera2Source
@@ -22,25 +22,25 @@ class CameraManager(private val context: Context, private val streamManager: Str
             Log.d(TAG, "Got cameraIds $cameraIds")
         }
     }
-    
+
     fun switchCamera() {
         if (streamManager.getVideoSource() is Camera2Source) {
             Log.d(TAG, "Camera Changed")
             val camera2Source = streamManager.getVideoSource() as Camera2Source
-            
+
             if (cameraIds.isEmpty()) getCameraIds()
-            
+
             // Switch the camera
             currentCameraId++
             if (currentCameraId > cameraIds.size - 1) {
                 currentCameraId = 0
             }
-            
+
             Log.d(TAG, "Switching to camera ${cameraIds[currentCameraId]}")
             camera2Source.openCameraId(cameraIds[currentCameraId])
         }
     }
-    
+
     fun toggleLantern(): Boolean {
         if (streamManager.getVideoSource() is Camera2Source) {
             val camera2Source = streamManager.getVideoSource() as Camera2Source
@@ -66,21 +66,21 @@ class CameraManager(private val context: Context, private val streamManager: Str
             return lanternEnabled
         }
     }
-    
+
     fun setZoom(motionEvent: MotionEvent) {
         if (streamManager.getVideoSource() is Camera2Source) {
             val camera2Source = streamManager.getVideoSource() as Camera2Source
             camera2Source.setZoom(motionEvent)
         }
     }
-    
+
     fun tapToFocus(motionEvent: MotionEvent) {
         if (streamManager.getVideoSource() is Camera2Source) {
             val camera2Source = streamManager.getVideoSource() as Camera2Source
             camera2Source.tapToFocus(motionEvent)
         }
     }
-    
+
     fun getZoom(): Float {
         if (streamManager.getVideoSource() is Camera2Source) {
             val camera2Source = streamManager.getVideoSource() as Camera2Source

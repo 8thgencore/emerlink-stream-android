@@ -127,15 +127,11 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
         }
 
         context.registerReceiver(
-            streamStartReceiver,
-            IntentFilter(StreamService.ACTION_START_STREAM),
-            Context.RECEIVER_NOT_EXPORTED
+            streamStartReceiver, IntentFilter(StreamService.ACTION_START_STREAM), Context.RECEIVER_NOT_EXPORTED
         )
 
         context.registerReceiver(
-            streamStopReceiver,
-            IntentFilter(StreamService.ACTION_STOP_STREAM),
-            Context.RECEIVER_NOT_EXPORTED
+            streamStopReceiver, IntentFilter(StreamService.ACTION_STOP_STREAM), Context.RECEIVER_NOT_EXPORTED
         )
 
         onDispose {
@@ -148,8 +144,8 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
         // Camera Preview
         AndroidView(
             factory = { ctx ->
-            OpenGlView(ctx).apply { Log.d("CameraScreen", "Создание OpenGlView") }
-        }, modifier = Modifier
+                OpenGlView(ctx).apply { Log.d("CameraScreen", "Создание OpenGlView") }
+            }, modifier = Modifier
                 .fillMaxSize()
                 .pointerInteropFilter { event ->
                     when (event.action) {
@@ -166,12 +162,12 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
                         else -> false
                     }
                 }, update = { view ->
-            if (streamService != null && !previewStarted) {
-                Log.d("CameraScreen", "Запуск preview")
-                streamService?.startPreview(view)
-                previewStarted = true
-            }
-        })
+                if (streamService != null && !previewStarted) {
+                    Log.d("CameraScreen", "Запуск preview")
+                    streamService?.startPreview(view)
+                    previewStarted = true
+                }
+            })
 
         // Stream Status Indicator
         Box(
@@ -210,8 +206,7 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            contentAlignment = Alignment.BottomCenter
+                .padding(16.dp), contentAlignment = Alignment.BottomCenter
         ) {
             // Main Controls (Record button in center)
             FloatingActionButton(
@@ -323,8 +318,7 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
                     contentColor = MaterialTheme.colorScheme.onSecondary
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Cameraswitch,
-                        contentDescription = "Switch Camera"
+                        imageVector = Icons.Default.Cameraswitch, contentDescription = "Switch Camera"
                     )
                 }
             }

@@ -16,53 +16,60 @@ import java.security.cert.CertificateException
 import javax.net.ssl.SSLHandshakeException
 
 class ErrorHandler(private val context: Context) {
-    
+
     private val _errorState = MutableStateFlow<ErrorState>(ErrorState.None)
     val errorState: StateFlow<ErrorState> = _errorState.asStateFlow()
-    
+
     fun handleStreamError(throwable: Throwable) {
         Log.e(TAG, "Stream error: ${throwable.message}", throwable)
-        
+
         val errorState = when (throwable) {
-            is ConnectException, 
-            is SocketException, 
+            is ConnectException,
+            is SocketException,
             is SocketTimeoutException -> {
                 ErrorState.ConnectionError(context.getString(R.string.connection_failed))
             }
+
             is UnknownHostException -> {
                 ErrorState.ConnectionError(context.getString(R.string.unknown_host))
             }
-            is SSLHandshakeException, 
+
+            is SSLHandshakeException,
             is CertificateException -> {
                 ErrorState.SecurityError(context.getString(R.string.ssl_error))
             }
+
             is IOException -> {
                 ErrorState.IOError(context.getString(R.string.io_error))
             }
+
             is IllegalArgumentException -> {
                 ErrorState.ConfigurationError(context.getString(R.string.configuration_error))
             }
+
             is SecurityException -> {
                 ErrorState.PermissionError(context.getString(R.string.permission_error))
             }
+
             is OutOfMemoryError -> {
                 ErrorState.ResourceError(context.getString(R.string.memory_error))
             }
+
             else -> {
                 ErrorState.UnknownError(throwable.message ?: context.getString(R.string.unknown_error))
             }
         }
-        
+
         _errorState.value = errorState
-        
+
         // Показать сообщение пользователю
         Toast.makeText(context, errorState.message, Toast.LENGTH_LONG).show()
     }
-    
+
     fun clearError() {
         _errorState.value = ErrorState.None
     }
-    
+
     companion object {
         private const val TAG = "ErrorHandler"
     }
