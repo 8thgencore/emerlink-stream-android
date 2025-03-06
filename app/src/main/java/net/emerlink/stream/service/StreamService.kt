@@ -234,19 +234,31 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     }
 
     override fun onDestroy() {
-        super.onDestroy()
-        
-        // Отмена регистрации приемника
-        commandReceiver?.let {
-            try {
-                unregisterReceiver(it)
-            } catch (e: Exception) {
-                Log.e(TAG, "Ошибка при отмене регистрации приемника: ${e.message}")
+        try {
+            Log.d(TAG, "onDestroy")
+            
+            if (streamManager.isStreaming()) {
+                stopStream(null, null)
             }
+            
+            // Очищаем ресурсы StreamManager
+            streamManager.destroy()
+            
+            // Отменяем регистрацию для событий изменения настроек
+            preferences.unregisterOnSharedPreferenceChangeListener(this)
+            
+            // Отписываемся от BroadcastReceiver
+            if (commandReceiver != null) {
+                unregisterReceiver(commandReceiver)
+                commandReceiver = null
+            }
+            
+            observer.postValue(null)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при уничтожении сервиса: ${e.message}")
         }
         
-        observer.postValue(null)
-        preferences.unregisterOnSharedPreferenceChangeListener(this)
+        super.onDestroy()
     }
 
     // ConnectChecker implementation
@@ -344,20 +356,15 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         return streamManager.isOnPreview()
     }
 
+    /**
+     * Запускает предпросмотр камеры
+     */
     fun startPreview(view: OpenGlView) {
         try {
-            Log.d(TAG, "Запуск preview")
-            this.openGlView = view
-
-            // Необходимо обеспечить корректное освобождение ресурсов перед запуском нового preview
-            if (streamManager.isOnPreview()) {
-                Log.d(TAG, "Останавливаем существующий preview перед запуском нового")
-                streamManager.stopPreview()
-            }
-
-            streamManager.startPreview(view, resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT)
+            val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+            streamManager.startPreview(view, isPortrait)
         } catch (e: Exception) {
-            Log.e(TAG, "Ошибка при запуске preview: ${e.message}", e)
+            Log.e(TAG, "Ошибка при запуске предпросмотра: ${e.message}", e)
         }
     }
 

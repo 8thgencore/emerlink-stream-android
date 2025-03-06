@@ -12,14 +12,30 @@ import com.pedro.library.view.OpenGlView
 import com.pedro.rtsp.rtsp.Protocol
 import net.emerlink.stream.model.StreamType
 import net.emerlink.stream.util.ErrorHandler
+import androidx.preference.PreferenceManager
+import net.emerlink.stream.data.preferences.PreferenceKeys
+import java.util.*
+import android.content.SharedPreferences
+import android.os.Handler
+import android.os.Looper
 
 class StreamManager(
     private val context: Context,
     private val connectChecker: ConnectChecker,
     private val errorHandler: ErrorHandler
-) {
+) : SharedPreferences.OnSharedPreferenceChangeListener {
     companion object {
         private const val TAG = "StreamManager"
+        private const val DEFAULT_FPS = 30
+        private const val DEFAULT_I_FRAME_INTERVAL = 2
+        private const val DEFAULT_BITRATE = 2500000 // 2.5 Mbps
+    }
+
+    private var currentView: OpenGlView? = null
+    private var currentIsPortrait: Boolean = false
+
+    private val sharedPreferences: SharedPreferences by lazy {
+        PreferenceManager.getDefaultSharedPreferences(context)
     }
 
     private lateinit var rtmpCamera: RtmpCamera2
@@ -31,6 +47,56 @@ class StreamManager(
 
     init {
         initializeClients()
+        sharedPreferences.registerOnSharedPreferenceChangeListener(this)
+    }
+
+    fun destroy() {
+        sharedPreferences.unregisterOnSharedPreferenceChangeListener(this)
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences, key: String?) {
+        if (key == PreferenceKeys.VIDEO_RESOLUTION) {
+            Log.d(TAG, "Обнаружено изменение разрешения в настройках")
+            val currentView = this.currentView
+            if (currentView != null) {
+                Log.d(TAG, "Перезапуск превью с новым разрешением")
+                try {
+                    val (videoWidth, videoHeight) = parseResolution(sharedPreferences)
+                    
+                    switchStreamResolution(videoWidth, videoHeight)
+                    restartPreview(currentView, currentIsPortrait)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Ошибка при обновлении разрешения: ${e.message}", e)
+                }
+            }
+        }
+    }
+
+    private fun parseResolution(sharedPreferences: SharedPreferences): Pair<Int, Int> {
+        val videoResolution = sharedPreferences.getString(
+            PreferenceKeys.VIDEO_RESOLUTION,
+            PreferenceKeys.VIDEO_RESOLUTION_DEFAULT
+        ) ?: "1920x1080"
+        
+        val dimensions = videoResolution.lowercase(Locale.getDefault()).replace("х", "x").split("x")
+        val videoWidth = if (dimensions.isNotEmpty()) dimensions[0].toIntOrNull() ?: 1920 else 1920
+        val videoHeight = if (dimensions.size >= 2) dimensions[1].toIntOrNull() ?: 1080 else 1080
+        
+        return Pair(videoWidth, videoHeight)
+    }
+
+    private fun restartPreview(view: OpenGlView, isPortrait: Boolean) {
+        try {
+            Log.d(TAG, "Перезапуск превью")
+            stopPreview()
+            
+            Handler(Looper.getMainLooper()).postDelayed({
+                startPreview(view, isPortrait)
+                Log.d(TAG, "Превью перезапущено успешно")
+            }, 100)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при перезапуске превью: ${e.message}", e)
+        }
     }
 
     private fun initializeClients() {
@@ -73,11 +139,7 @@ class StreamManager(
                     if (username.isNotEmpty() && password.isNotEmpty()) {
                         rtspCamera.getStreamClient().setAuthorization(username, password)
                     }
-                    if (tcp) {
-                        rtspCamera.getStreamClient().setProtocol(Protocol.TCP)
-                    } else {
-                        rtspCamera.getStreamClient().setProtocol(Protocol.UDP)
-                    }
+                    rtspCamera.getStreamClient().setProtocol(if (tcp) Protocol.TCP else Protocol.UDP)
                     rtspCamera.startStream(url)
                 }
 
@@ -137,50 +199,72 @@ class StreamManager(
         }
     }
 
-    fun startPreview(view: OpenGlView, isPortrait: Boolean) {
+    fun startPreview(view: OpenGlView, isPortrait: Boolean = false) {
         try {
-            when (streamType) {
-                StreamType.RTMP -> {
-                    val camera = rtmpCamera
-                    configureAndStartPreview(camera, view, isPortrait)
-                }
-                StreamType.RTSP -> {
-                    val camera = rtspCamera
-                    configureAndStartPreview(camera, view, isPortrait)
-                }
-                StreamType.SRT -> {
-                    val camera = srtCamera
-                    configureAndStartPreview(camera, view, isPortrait)
-                }
-                StreamType.UDP -> {
-                    val camera = udpCamera
-                    configureAndStartPreview(camera, view, isPortrait)
-                }
+            Log.d(TAG, "Запуск превью")
+            currentView = view
+            currentIsPortrait = isPortrait
+            
+            val (videoWidth, videoHeight) = parseResolution(sharedPreferences)
+            
+            updateViewAspectRatio(view, videoWidth, videoHeight, isPortrait)
+            
+            Log.d(TAG, "Запуск превью с разрешением: ${videoWidth}x${videoHeight}, ориентация: ${if(isPortrait) "портретная" else "ландшафтная"}")
+            
+            val camera = when (streamType) {
+                StreamType.RTMP -> rtmpCamera
+                StreamType.RTSP -> rtspCamera
+                StreamType.SRT -> srtCamera
+                StreamType.UDP -> udpCamera
             }
+            
+            configureAndStartPreview(camera, view, isPortrait, videoWidth, videoHeight)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при запуске preview: ${e.message}")
             errorHandler.handleStreamError(e)
         }
     }
 
-    private fun <T> configureAndStartPreview(camera: T, view: OpenGlView, isPortrait: Boolean) where T : Any {
+    private fun <T> configureAndStartPreview(
+        camera: T, 
+        view: OpenGlView, 
+        isPortrait: Boolean,
+        width: Int,
+        height: Int
+    ) where T : Any {
         try {
-            // Единый блок для остановки preview
             stopCurrentPreview(camera)
-            
-            // Единый блок для замены view
             replaceViewForCamera(camera, view)
             
-            // Получаем интерфейс GL и настраиваем поворот
+            val bitrate = getBitrateFromCamera(camera) ?: DEFAULT_BITRATE
+            
+            when (camera) {
+                is RtmpCamera2 -> camera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
+                is RtspCamera2 -> camera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
+                is SrtCamera2 -> camera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
+                is UdpCamera2 -> camera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
+            }
+            
             if (isPortrait) {
                 configurePortraitMode(camera)
             }
             
-            // Запускаем preview с правильной ориентацией
             val rotation = if (isPortrait) 90 else 0
             startCameraPreview(camera, rotation)
+            
+            Log.d(TAG, "Превью успешно запущен с разрешением ${width}x${height}")
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при настройке и запуске preview: ${e.message}")
+        }
+    }
+
+    private fun <T> getBitrateFromCamera(camera: T): Int? where T : Any {
+        return when (camera) {
+            is RtmpCamera2 -> camera.bitrate
+            is RtspCamera2 -> camera.bitrate
+            is SrtCamera2 -> camera.bitrate 
+            is UdpCamera2 -> camera.bitrate
+            else -> null
         }
     }
 
@@ -205,23 +289,13 @@ class StreamManager(
     private fun <T> configurePortraitMode(camera: T) where T : Any {
         try {
             when (camera) {
-                is RtmpCamera2 -> camera.glInterface?.let { it.setStreamRotation(90) }
-                is RtspCamera2 -> camera.glInterface?.let { it.setStreamRotation(90) }
-                is SrtCamera2 -> camera.glInterface?.let { it.setStreamRotation(90) }
-                is UdpCamera2 -> camera.glInterface?.let { it.setStreamRotation(90) }
+                is RtmpCamera2 -> camera.glInterface?.setStreamRotation(90)
+                is RtspCamera2 -> camera.glInterface?.setStreamRotation(90)
+                is SrtCamera2 -> camera.glInterface?.setStreamRotation(90)
+                is UdpCamera2 -> camera.glInterface?.setStreamRotation(90)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Не удалось установить ориентацию потока: ${e.message}")
-        }
-    }
-
-    private fun <T> getGlInterfaceFromCamera(camera: T): Any? where T : Any {
-        return when (camera) {
-            is RtmpCamera2 -> camera.glInterface
-            is RtspCamera2 -> camera.glInterface
-            is SrtCamera2 -> camera.glInterface
-            is UdpCamera2 -> camera.glInterface
-            else -> null
         }
     }
 
@@ -296,12 +370,7 @@ class StreamManager(
     }
 
     fun getVideoSource(): Any {
-        return when (streamType) {
-            StreamType.RTMP -> rtmpCamera
-            StreamType.RTSP -> rtspCamera
-            StreamType.SRT -> srtCamera
-            StreamType.UDP -> udpCamera
-        }
+        return getStream()
     }
 
     fun getGlInterface(): Any {
@@ -331,26 +400,15 @@ class StreamManager(
         }
     }
 
-    /**
-     * Устанавливает ориентацию исходящего видеопотока
-     */
     fun setStreamOrientation(isPortrait: Boolean) {
         val rotation = if (isPortrait) 90 else 0
         
         try {
             when (streamType) {
-                StreamType.RTMP -> {
-                    rtmpCamera.glInterface?.setStreamRotation(rotation)
-                }
-                StreamType.RTSP -> {
-                    rtspCamera.glInterface?.setStreamRotation(rotation)
-                }
-                StreamType.SRT -> {
-                    srtCamera.glInterface?.setStreamRotation(rotation)
-                }
-                StreamType.UDP -> {
-                    udpCamera.glInterface?.setStreamRotation(rotation)
-                }
+                StreamType.RTMP -> rtmpCamera.glInterface?.setStreamRotation(rotation)
+                StreamType.RTSP -> rtspCamera.glInterface?.setStreamRotation(rotation)
+                StreamType.SRT -> srtCamera.glInterface?.setStreamRotation(rotation)
+                StreamType.UDP -> udpCamera.glInterface?.setStreamRotation(rotation)
             }
             Log.d(TAG, "Установлена ориентация потока: $rotation градусов")
         } catch (e: Exception) {
@@ -358,39 +416,36 @@ class StreamManager(
         }
     }
 
-    /**
-     * Изменяет разрешение стрима (ширина x высота)
-     */
     fun switchStreamResolution(width: Int, height: Int) {
         try {
-            val defaultFps = 30
-            val iFrameInterval = 2 // Стандартный интервал между ключевыми кадрами
+            val camera = getStream()
+            val bitrate = when (camera) {
+                is RtmpCamera2 -> camera.bitrate
+                is RtspCamera2 -> camera.bitrate
+                is SrtCamera2 -> camera.bitrate
+                is UdpCamera2 -> camera.bitrate
+                else -> DEFAULT_BITRATE
+            }
             
             when (streamType) {
                 StreamType.RTMP -> {
                     rtmpCamera.stopPreview()
-                    // Получаем текущий битрейт
-                    val bitrate = rtmpCamera.bitrate
-                    // Применяем новые настройки с исправленными параметрами
-                    rtmpCamera.prepareVideo(width, height, defaultFps, bitrate, iFrameInterval)
+                    rtmpCamera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
                     rtmpCamera.startPreview()
                 }
                 StreamType.RTSP -> {
                     rtspCamera.stopPreview()
-                    val bitrate = rtspCamera.bitrate
-                    rtspCamera.prepareVideo(width, height, defaultFps, bitrate, iFrameInterval)
+                    rtspCamera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
                     rtspCamera.startPreview()
                 }
                 StreamType.SRT -> {
                     srtCamera.stopPreview()
-                    val bitrate = srtCamera.bitrate
-                    srtCamera.prepareVideo(width, height, defaultFps, bitrate, iFrameInterval)
+                    srtCamera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
                     srtCamera.startPreview()
                 }
                 StreamType.UDP -> {
                     udpCamera.stopPreview()
-                    val bitrate = udpCamera.bitrate
-                    udpCamera.prepareVideo(width, height, defaultFps, bitrate, iFrameInterval)
+                    udpCamera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
                     udpCamera.startPreview()
                 }
             }
@@ -400,9 +455,6 @@ class StreamManager(
         }
     }
 
-    /**
-     * Общий метод для доступа к аудио-функциям стримеров
-     */
     fun enableAudio() {
         when (streamType) {
             StreamType.RTMP -> rtmpCamera.enableAudio()
@@ -412,15 +464,23 @@ class StreamManager(
         }
     }
 
-    /**
-     * Общий метод для отключения аудио
-     */
     fun disableAudio() {
         when (streamType) {
             StreamType.RTMP -> rtmpCamera.disableAudio()
             StreamType.RTSP -> rtspCamera.disableAudio()
             StreamType.SRT -> srtCamera.disableAudio()
             StreamType.UDP -> udpCamera.disableAudio()
+        }
+    }
+
+    private fun updateViewAspectRatio(view: OpenGlView, width: Int, height: Int, isPortrait: Boolean) {
+        try {
+            val method = view.javaClass.getMethod("setAspectRatioMode", Int::class.javaPrimitiveType)
+            val mode = if (isPortrait) 1 else 0
+            method.invoke(view, mode)
+            Log.d(TAG, "Соотношение сторон OpenGlView обновлено: режим $mode")
+        } catch (e: Exception) {
+            Log.d(TAG, "Метод setAspectRatioMode не найден, альтернативное обновление невозможно")
         }
     }
 }
