@@ -59,6 +59,12 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.service.StreamService
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @OptIn(ExperimentalComposeUiApi::class)
@@ -260,11 +266,17 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
         }
     }
 
+    // Перемещаем определение конфигурации на уровень Composable функции
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
     Box(modifier = Modifier.fillMaxSize()) {
-        // Camera Preview
+        // Camera Preview - без safeDrawing, чтобы видео занимало весь экран
         AndroidView(
             factory = { ctx ->
-                OpenGlView(ctx).apply { Log.d("CameraScreen", "Создание OpenGlView") }
+                OpenGlView(ctx).apply { 
+                    Log.d("CameraScreen", "Создание OpenGlView") 
+                }
             }, modifier = Modifier
                 .fillMaxSize()
                 .pointerInteropFilter { event ->
@@ -284,6 +296,18 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
                 }, update = { view ->
                 if (streamService != null && !previewStarted) {
                     Log.d("CameraScreen", "Запуск preview")
+                    
+                    // Исправляем проблему с поворотом и сжатием видео в портретном режиме
+                    if (!isLandscape) {
+                        // Поскольку setKeepAspectRatio недоступен, используем имеющиеся методы OpenGlView
+                        // Устанавливаем правильную ориентацию поверхности
+                        // Вместо прямой установки аспект-соотношения, используем streamService
+                        streamService?.setPortraitOrientation(view, true)
+                    } else {
+                        // В ландшафтном режиме используем обычную ориентацию
+                        streamService?.setPortraitOrientation(view, false)
+                    }
+                    
                     streamService?.startPreview(view)
                     previewStarted = true
                 }
@@ -293,7 +317,9 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp), contentAlignment = Alignment.TopStart
+                .then(if (!isLandscape) Modifier.windowInsetsPadding(WindowInsets.safeDrawing) else Modifier)
+                .padding(16.dp), 
+            contentAlignment = Alignment.TopStart
         ) {
             Surface(
                 shape = RoundedCornerShape(16.dp),
@@ -326,13 +352,10 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .then(if (!isLandscape) Modifier.windowInsetsPadding(WindowInsets.safeDrawing) else Modifier)
                 .padding(16.dp),
             contentAlignment = Alignment.BottomCenter
         ) {
-            // Detect orientation
-            val configuration = LocalConfiguration.current
-            val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-
             if (isLandscape) {
                 // Right side controls column
                 Box(

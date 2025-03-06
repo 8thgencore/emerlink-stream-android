@@ -774,4 +774,61 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             Log.e(TAG, "Error toggling mute state: ${e.message}", e)
         }
     }
+
+    /**
+     * Устанавливает правильную ориентацию камеры для портретного режима
+     */
+    fun setPortraitOrientation(view: OpenGlView, isPortrait: Boolean) {
+        try {
+            // Большинство библиотек RtmpCamera2/RtspCamera2 имеют методы для установки ориентации
+            when (getStreamTypeFromProtocol(streamSettings.protocol)) {
+                StreamType.RTMP -> {
+                    val camera = streamManager.getStream() as com.pedro.library.rtmp.RtmpCamera2
+                    if (isPortrait) {
+                        // Установка для портретного режима
+                        camera.stopPreview()
+                        camera.getGlInterface()?.setStreamRotation(90) // Повернуть поток на 90 градусов
+                        // В некоторых версиях библиотеки может быть setOrientation или другие методы
+                    }
+                }
+                StreamType.RTSP -> {
+                    val camera = streamManager.getStream() as com.pedro.library.rtsp.RtspCamera2
+                    if (isPortrait) {
+                        // Установка для портретного режима
+                        camera.stopPreview()
+                        camera.getGlInterface()?.setStreamRotation(90) // Повернуть поток на 90 градусов
+                    }
+                }
+                StreamType.SRT -> {
+                    val camera = streamManager.getStream() as com.pedro.library.srt.SrtCamera2
+                    if (isPortrait) {
+                        // Установка для портретного режима
+                        camera.stopPreview()
+                        camera.getGlInterface()?.setStreamRotation(90) // Повернуть поток на 90 градусов
+                    }
+                }
+                StreamType.UDP -> {
+                    val camera = streamManager.getStream() as com.pedro.library.udp.UdpCamera2
+                    if (isPortrait) {
+                        // Установка для портретного режима
+                        camera.stopPreview()
+                        camera.getGlInterface()?.setStreamRotation(90) // Повернуть поток на 90 градусов
+                    }
+                }
+            }
+            
+            // Дополнительно можно попробовать установить свойства непосредственно для OpenGlView
+            // Многие реализации OpenGlView поддерживают метод setKeepAspectRatio или похожие
+            try {
+                // Пробуем использовать метод force16To9() или другие доступные методы
+                val aspectRatioMethod = view.javaClass.getMethod("setAspectRatioMode", Int::class.java)
+                // Обычно 0 = fill parent, 1 = adjust parent, 2 = adjust view
+                aspectRatioMethod.invoke(view, 1) 
+            } catch (e: Exception) {
+                Log.e(TAG, "Ошибка при установке соотношения сторон: ${e.message}")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при установке ориентации: ${e.message}")
+        }
+    }
 }
