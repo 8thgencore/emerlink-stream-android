@@ -62,9 +62,6 @@ import net.emerlink.stream.service.StreamService
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.statusBars
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @OptIn(ExperimentalComposeUiApi::class)
@@ -294,17 +291,6 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
                 }, update = { view ->
                 if (streamService != null && !previewStarted) {
                     Log.d("CameraScreen", "Запуск preview")
-                    
-                    // Исправляем проблему с поворотом и сжатием видео в портретном режиме
-                    if (!isLandscape) {
-                        // Поскольку setKeepAspectRatio недоступен, используем имеющиеся методы OpenGlView
-                        // Устанавливаем правильную ориентацию поверхности
-                        // Вместо прямой установки аспект-соотношения, используем streamService
-                        streamService?.setPortraitOrientation(view, true)
-                    } else {
-                        // В ландшафтном режиме используем обычную ориентацию
-                        streamService?.setPortraitOrientation(view, false)
-                    }
                     
                     streamService?.startPreview(view)
                     previewStarted = true

@@ -37,7 +37,7 @@ object PreferenceKeys {
 
     // Video settings
     const val VIDEO_RESOLUTION = "video_resolution"
-    const val VIDEO_RESOLUTION_DEFAULT = "1280x720"
+    const val VIDEO_RESOLUTION_DEFAULT = "1920х1080"
 
     const val VIDEO_FPS = "video_fps"
     const val VIDEO_FPS_DEFAULT = "30"

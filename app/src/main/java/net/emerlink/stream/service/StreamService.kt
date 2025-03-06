@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -21,8 +22,6 @@ import android.os.Handler
 import android.os.IBinder
 import android.util.Log
 import android.view.MotionEvent
-import android.view.Surface
-import android.view.WindowManager
 import androidx.lifecycle.MutableLiveData
 import androidx.preference.PreferenceManager
 import com.pedro.common.ConnectChecker
@@ -322,9 +321,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 // Вместо этого используем предопределенную ориентацию или данные от приложения
                 val screenOrientation = 0 // По умолчанию портретная ориентация
                 
-                // Дополнительно можно использовать статическую переменную, устанавливаемую из Activity
-                // val screenOrientation = AppContext.currentOrientation
-
                 rotationInDegrees += screenOrientation
                 if (rotationInDegrees < 0.0) {
                     rotationInDegrees += 360.0
@@ -348,10 +344,10 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         return streamManager.isOnPreview()
     }
 
-    fun startPreview(openGlView: OpenGlView) {
+    fun startPreview(view: OpenGlView) {
         try {
             Log.d(TAG, "Запуск preview")
-            this.openGlView = openGlView
+            this.openGlView = view
 
             // Необходимо обеспечить корректное освобождение ресурсов перед запуском нового preview
             if (streamManager.isOnPreview()) {
@@ -359,7 +355,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 streamManager.stopPreview()
             }
 
-            streamManager.startPreview(openGlView)
+            streamManager.startPreview(view, resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при запуске preview: ${e.message}", e)
         }
@@ -696,44 +692,40 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     }
 
     private fun startStreaming() {
-        Log.d(TAG, "Starting streaming")
-
-        val url = when {
-            streamSettings.protocol.startsWith("rtmp") -> {
-                if (streamSettings.protocol == "rtmps") {
-                    "rtmps://${streamSettings.address}:${streamSettings.port}/${streamSettings.path}"
-                } else {
-                    "rtmp://${streamSettings.address}:${streamSettings.port}/${streamSettings.path}"
-                }
+        try {
+            Log.d(TAG, "Starting streaming")
+            
+            // Определяем текущую ориентацию и применяем к потоку
+            val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+            streamManager.setStreamOrientation(isPortrait)
+            
+            // Получаем URL из настроек
+            val url = buildStreamUrl()
+            
+            // Получаем разрешение из настроек
+            val (videoWidth, videoHeight) = parseVideoResolution()
+            
+            // Устанавливаем правильное соотношение сторон для видео в зависимости от ориентации
+            if (isPortrait) {
+                streamManager.switchStreamResolution(videoWidth, videoHeight)
+            } else {
+                streamManager.switchStreamResolution(videoWidth, videoHeight)
             }
-
-            streamSettings.protocol.startsWith("rtsp") -> {
-                if (streamSettings.protocol == "rtsps") {
-                    "rtsps://${streamSettings.address}:${streamSettings.port}/${streamSettings.path}"
-                } else {
-                    "rtsp://${streamSettings.address}:${streamSettings.port}/${streamSettings.path}"
-                }
-            }
-
-            streamSettings.protocol == "srt" -> {
-                "srt://${streamSettings.address}:${streamSettings.port}"
-            }
-
-            else -> {
-                "udp://${streamSettings.address}:${streamSettings.port}"
-            }
+            
+            // Запускаем стрим
+            streamManager.startStream(
+                url,
+                streamSettings.protocol,
+                streamSettings.username,
+                streamSettings.password,
+                streamSettings.tcp
+            )
+            
+            notificationHelper.updateNotification(getString(R.string.streaming), true)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting streaming: ${e.message}", e)
+            errorHandler.handleStreamError(e)
         }
-
-        Log.d(TAG, "Stream URL: $url")
-
-        streamManager.startStream(
-            url,
-            streamSettings.protocol,
-            streamSettings.username,
-            streamSettings.password,
-            streamSettings.tcp
-        )
-        notificationHelper.updateNotification(getString(R.string.streaming), true)
     }
 
     private fun startRecording() {
@@ -806,46 +798,16 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         fun getService(): StreamService = this@StreamService
     }
 
+        /**
+     * Переключает состояние аудио (вкл/выкл)
+     */
     fun toggleMute(muted: Boolean) {
         try {
             Log.d(TAG, "Setting mute state to: $muted")
 
-            when (getStreamTypeFromProtocol(streamSettings.protocol)) {
-                StreamType.RTMP -> {
-                    val camera = streamManager.getStream() as com.pedro.library.rtmp.RtmpCamera2
-                    if (muted) {
-                        camera.disableAudio()
-                    } else {
-                        camera.enableAudio()
-                    }
-                }
-
-                StreamType.RTSP -> {
-                    val camera = streamManager.getStream() as com.pedro.library.rtsp.RtspCamera2
-                    if (muted) {
-                        camera.disableAudio()
-                    } else {
-                        camera.enableAudio()
-                    }
-                }
-
-                StreamType.SRT -> {
-                    val camera = streamManager.getStream() as com.pedro.library.srt.SrtCamera2
-                    if (muted) {
-                        camera.disableAudio()
-                    } else {
-                        camera.enableAudio()
-                    }
-                }
-
-                StreamType.UDP -> {
-                    val camera = streamManager.getStream() as com.pedro.library.udp.UdpCamera2
-                    if (muted) {
-                        camera.disableAudio()
-                    } else {
-                        camera.enableAudio()
-                    }
-                }
+            when {
+                muted -> streamManager.disableAudio()
+                else -> streamManager.enableAudio()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error toggling mute state: ${e.message}", e)
@@ -853,59 +815,36 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     }
 
     /**
-     * Устанавливает правильную ориентацию камеры для портретного режима
+     * Парсит настройки разрешения видео
      */
-    fun setPortraitOrientation(view: OpenGlView, isPortrait: Boolean) {
-        try {
-            // Большинство библиотек RtmpCamera2/RtspCamera2 имеют методы для установки ориентации
-            when (getStreamTypeFromProtocol(streamSettings.protocol)) {
-                StreamType.RTMP -> {
-                    val camera = streamManager.getStream() as com.pedro.library.rtmp.RtmpCamera2
-                    if (isPortrait) {
-                        // Установка для портретного режима
-                        camera.stopPreview()
-                        camera.glInterface?.setStreamRotation(90) // Повернуть поток на 90 градусов
-                        // В некоторых версиях библиотеки может быть setOrientation или другие методы
-                    }
-                }
-                StreamType.RTSP -> {
-                    val camera = streamManager.getStream() as com.pedro.library.rtsp.RtspCamera2
-                    if (isPortrait) {
-                        // Установка для портретного режима
-                        camera.stopPreview()
-                        camera.glInterface?.setStreamRotation(90) // Повернуть поток на 90 градусов
-                    }
-                }
-                StreamType.SRT -> {
-                    val camera = streamManager.getStream() as com.pedro.library.srt.SrtCamera2
-                    if (isPortrait) {
-                        // Установка для портретного режима
-                        camera.stopPreview()
-                        camera.glInterface?.setStreamRotation(90) // Повернуть поток на 90 градусов
-                    }
-                }
-                StreamType.UDP -> {
-                    val camera = streamManager.getStream() as com.pedro.library.udp.UdpCamera2
-                    if (isPortrait) {
-                        // Установка для портретного режима
-                        camera.stopPreview()
-                        camera.glInterface?.setStreamRotation(90) // Повернуть поток на 90 градусов
-                    }
-                }
+    private fun parseVideoResolution(): Pair<Int, Int> {
+        val videoResolution = preferences.getString(PreferenceKeys.VIDEO_RESOLUTION, 
+                                                 PreferenceKeys.VIDEO_RESOLUTION_DEFAULT) ?: "1920x1080"
+        val dimensions = videoResolution.lowercase(Locale.getDefault()).replace("х", "x").split("x")
+        val videoWidth = if (dimensions.isNotEmpty()) dimensions[0].toIntOrNull() ?: 1920 else 1920
+        val videoHeight = if (dimensions.size >= 2) dimensions[1].toIntOrNull() ?: 1080 else 1080
+        return Pair(videoWidth, videoHeight)
+    }
+
+    /**
+     * Формирует URL стрима на основе настроек
+     */
+    private fun buildStreamUrl(): String {
+        return when {
+            streamSettings.protocol.startsWith("rtmp") -> {
+                val prefix = if (streamSettings.protocol == "rtmps") "rtmps" else "rtmp"
+                "$prefix://${streamSettings.address}:${streamSettings.port}/${streamSettings.path}"
             }
-            
-            // Дополнительно можно попробовать установить свойства непосредственно для OpenGlView
-            // Многие реализации OpenGlView поддерживают метод setKeepAspectRatio или похожие
-            try {
-                // Пробуем использовать метод force16To9() или другие доступные методы
-                val aspectRatioMethod = view.javaClass.getMethod("setAspectRatioMode", Int::class.java)
-                // Обычно 0 = fill parent, 1 = adjust parent, 2 = adjust view
-                aspectRatioMethod.invoke(view, 1) 
-            } catch (e: Exception) {
-                Log.e(TAG, "Ошибка при установке соотношения сторон: ${e.message}")
+            streamSettings.protocol.startsWith("rtsp") -> {
+                val prefix = if (streamSettings.protocol == "rtsps") "rtsps" else "rtsp"
+                "$prefix://${streamSettings.address}:${streamSettings.port}/${streamSettings.path}"
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка при установке ориентации: ${e.message}")
+            streamSettings.protocol == "srt" -> {
+                "srt://${streamSettings.address}:${streamSettings.port}"
+            }
+            else -> {
+                "udp://${streamSettings.address}:${streamSettings.port}"
+            }
         }
     }
 
@@ -913,11 +852,8 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
      * Проверяет наличие разрешений на доступ к местоположению
      */
     private fun hasLocationPermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
-                    checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED)
-        } else {
-            true // В более старых версиях Android разрешения запрашиваются при установке
-        }
+        return (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
+                checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED)
     }
 }
+

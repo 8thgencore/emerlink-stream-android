@@ -23,24 +23,37 @@ class CameraManager(private val context: Context, private val streamManager: Str
         }
     }
 
-    fun switchCamera() {
+    /**
+     * Выполняет действия с объектом Camera2Source, если он доступен
+     */
+    private fun <T> withCamera2Source(action: (Camera2Source) -> T, defaultValue: T): T {
         if (streamManager.getVideoSource() is Camera2Source) {
-            Log.d(TAG, "Camera Changed")
             val camera2Source = streamManager.getVideoSource() as Camera2Source
+            return action(camera2Source)
+        }
+        return defaultValue
+    }
 
+    /**
+     * Переключает камеру
+     */
+    fun switchCamera() {
+        withCamera2Source({ camera2Source ->
+            Log.d(TAG, "Camera Changed")
+            
             if (cameraIds.isEmpty()) getCameraIds()
 
             // Switch the camera
-            currentCameraId++
-            if (currentCameraId > cameraIds.size - 1) {
-                currentCameraId = 0
-            }
+            currentCameraId = (currentCameraId + 1) % cameraIds.size
 
             Log.d(TAG, "Switching to camera ${cameraIds[currentCameraId]}")
             camera2Source.openCameraId(cameraIds[currentCameraId])
-        }
+        }, Unit)
     }
 
+    /**
+     * Включает/выключает фонарик
+     */
     fun toggleLantern(): Boolean {
         if (streamManager.getVideoSource() is Camera2Source) {
             val camera2Source = streamManager.getVideoSource() as Camera2Source

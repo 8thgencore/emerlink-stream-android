@@ -137,36 +137,100 @@ class StreamManager(
         }
     }
 
-    fun startPreview(openGlView: OpenGlView) {
+    fun startPreview(view: OpenGlView, isPortrait: Boolean) {
         try {
-            if (!isOnPreview()) {
-                Log.d(TAG, "Starting Preview")
-                when (streamType) {
-                    StreamType.RTMP -> {
-                        rtmpCamera.replaceView(openGlView)
-                        rtmpCamera.startPreview(CameraHelper.Facing.BACK, 0)
-                    }
-
-                    StreamType.RTSP -> {
-                        rtspCamera.replaceView(openGlView)
-                        rtspCamera.startPreview(CameraHelper.Facing.BACK, 0)
-                    }
-
-                    StreamType.SRT -> {
-                        srtCamera.replaceView(openGlView)
-                        srtCamera.startPreview(CameraHelper.Facing.BACK, 0)
-                    }
-
-                    StreamType.UDP -> {
-                        udpCamera.replaceView(openGlView)
-                        udpCamera.startPreview(CameraHelper.Facing.BACK, 0)
-                    }
+            when (streamType) {
+                StreamType.RTMP -> {
+                    val camera = rtmpCamera
+                    configureAndStartPreview(camera, view, isPortrait)
                 }
-            } else {
-                Log.e(TAG, "Already on preview")
+                StreamType.RTSP -> {
+                    val camera = rtspCamera
+                    configureAndStartPreview(camera, view, isPortrait)
+                }
+                StreamType.SRT -> {
+                    val camera = srtCamera
+                    configureAndStartPreview(camera, view, isPortrait)
+                }
+                StreamType.UDP -> {
+                    val camera = udpCamera
+                    configureAndStartPreview(camera, view, isPortrait)
+                }
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при запуске preview: ${e.message}")
             errorHandler.handleStreamError(e)
+        }
+    }
+
+    private fun <T> configureAndStartPreview(camera: T, view: OpenGlView, isPortrait: Boolean) where T : Any {
+        try {
+            // Единый блок для остановки preview
+            stopCurrentPreview(camera)
+            
+            // Единый блок для замены view
+            replaceViewForCamera(camera, view)
+            
+            // Получаем интерфейс GL и настраиваем поворот
+            if (isPortrait) {
+                configurePortraitMode(camera)
+            }
+            
+            // Запускаем preview с правильной ориентацией
+            val rotation = if (isPortrait) 90 else 0
+            startCameraPreview(camera, rotation)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при настройке и запуске preview: ${e.message}")
+        }
+    }
+
+    private fun <T> stopCurrentPreview(camera: T) where T : Any {
+        when (camera) {
+            is RtmpCamera2 -> if (camera.isOnPreview) camera.stopPreview()
+            is RtspCamera2 -> if (camera.isOnPreview) camera.stopPreview()
+            is SrtCamera2 -> if (camera.isOnPreview) camera.stopPreview() 
+            is UdpCamera2 -> if (camera.isOnPreview) camera.stopPreview()
+        }
+    }
+
+    private fun <T> replaceViewForCamera(camera: T, view: OpenGlView) where T : Any {
+        when (camera) {
+            is RtmpCamera2 -> camera.replaceView(view)
+            is RtspCamera2 -> camera.replaceView(view)
+            is SrtCamera2 -> camera.replaceView(view)
+            is UdpCamera2 -> camera.replaceView(view)
+        }
+    }
+
+    private fun <T> configurePortraitMode(camera: T) where T : Any {
+        try {
+            when (camera) {
+                is RtmpCamera2 -> camera.glInterface?.let { it.setStreamRotation(90) }
+                is RtspCamera2 -> camera.glInterface?.let { it.setStreamRotation(90) }
+                is SrtCamera2 -> camera.glInterface?.let { it.setStreamRotation(90) }
+                is UdpCamera2 -> camera.glInterface?.let { it.setStreamRotation(90) }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Не удалось установить ориентацию потока: ${e.message}")
+        }
+    }
+
+    private fun <T> getGlInterfaceFromCamera(camera: T): Any? where T : Any {
+        return when (camera) {
+            is RtmpCamera2 -> camera.glInterface
+            is RtspCamera2 -> camera.glInterface
+            is SrtCamera2 -> camera.glInterface
+            is UdpCamera2 -> camera.glInterface
+            else -> null
+        }
+    }
+
+    private fun <T> startCameraPreview(camera: T, rotation: Int) where T : Any {
+        when (camera) {
+            is RtmpCamera2 -> camera.startPreview(CameraHelper.Facing.BACK, rotation)
+            is RtspCamera2 -> camera.startPreview(CameraHelper.Facing.BACK, rotation)
+            is SrtCamera2 -> camera.startPreview(CameraHelper.Facing.BACK, rotation)
+            is UdpCamera2 -> camera.startPreview(CameraHelper.Facing.BACK, rotation)
         }
     }
 
@@ -264,6 +328,99 @@ class StreamManager(
             StreamType.RTSP -> rtspCamera.getStreamClient().hasCongestion()
             StreamType.SRT -> srtCamera.getStreamClient().hasCongestion()
             StreamType.UDP -> udpCamera.getStreamClient().hasCongestion()
+        }
+    }
+
+    /**
+     * Устанавливает ориентацию исходящего видеопотока
+     */
+    fun setStreamOrientation(isPortrait: Boolean) {
+        val rotation = if (isPortrait) 90 else 0
+        
+        try {
+            when (streamType) {
+                StreamType.RTMP -> {
+                    rtmpCamera.glInterface?.setStreamRotation(rotation)
+                }
+                StreamType.RTSP -> {
+                    rtspCamera.glInterface?.setStreamRotation(rotation)
+                }
+                StreamType.SRT -> {
+                    srtCamera.glInterface?.setStreamRotation(rotation)
+                }
+                StreamType.UDP -> {
+                    udpCamera.glInterface?.setStreamRotation(rotation)
+                }
+            }
+            Log.d(TAG, "Установлена ориентация потока: $rotation градусов")
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при установке ориентации потока: ${e.message}")
+        }
+    }
+
+    /**
+     * Изменяет разрешение стрима (ширина x высота)
+     */
+    fun switchStreamResolution(width: Int, height: Int) {
+        try {
+            val defaultFps = 30
+            val iFrameInterval = 2 // Стандартный интервал между ключевыми кадрами
+            
+            when (streamType) {
+                StreamType.RTMP -> {
+                    rtmpCamera.stopPreview()
+                    // Получаем текущий битрейт
+                    val bitrate = rtmpCamera.bitrate
+                    // Применяем новые настройки с исправленными параметрами
+                    rtmpCamera.prepareVideo(width, height, defaultFps, bitrate, iFrameInterval)
+                    rtmpCamera.startPreview()
+                }
+                StreamType.RTSP -> {
+                    rtspCamera.stopPreview()
+                    val bitrate = rtspCamera.bitrate
+                    rtspCamera.prepareVideo(width, height, defaultFps, bitrate, iFrameInterval)
+                    rtspCamera.startPreview()
+                }
+                StreamType.SRT -> {
+                    srtCamera.stopPreview()
+                    val bitrate = srtCamera.bitrate
+                    srtCamera.prepareVideo(width, height, defaultFps, bitrate, iFrameInterval)
+                    srtCamera.startPreview()
+                }
+                StreamType.UDP -> {
+                    udpCamera.stopPreview()
+                    val bitrate = udpCamera.bitrate
+                    udpCamera.prepareVideo(width, height, defaultFps, bitrate, iFrameInterval)
+                    udpCamera.startPreview()
+                }
+            }
+            Log.d(TAG, "Установлено новое разрешение стрима: ${width}x${height}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при изменении разрешения стрима: ${e.message}")
+        }
+    }
+
+    /**
+     * Общий метод для доступа к аудио-функциям стримеров
+     */
+    fun enableAudio() {
+        when (streamType) {
+            StreamType.RTMP -> rtmpCamera.enableAudio()
+            StreamType.RTSP -> rtspCamera.enableAudio()
+            StreamType.SRT -> srtCamera.enableAudio()
+            StreamType.UDP -> udpCamera.enableAudio()
+        }
+    }
+
+    /**
+     * Общий метод для отключения аудио
+     */
+    fun disableAudio() {
+        when (streamType) {
+            StreamType.RTMP -> rtmpCamera.disableAudio()
+            StreamType.RTSP -> rtspCamera.disableAudio()
+            StreamType.SRT -> srtCamera.disableAudio()
+            StreamType.UDP -> udpCamera.disableAudio()
         }
     }
 }
