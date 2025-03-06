@@ -17,7 +17,6 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.util.Log
-import android.util.Size
 import android.view.MotionEvent
 import android.view.Surface
 import android.view.WindowManager
@@ -28,6 +27,7 @@ import com.pedro.library.util.BitrateAdapter
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.R
 import net.emerlink.stream.data.preferences.PreferenceKeys
+import net.emerlink.stream.model.StreamSettings
 import net.emerlink.stream.model.StreamType
 import net.emerlink.stream.util.ErrorHandler
 import net.emerlink.stream.util.NotificationHelper
@@ -64,45 +64,33 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     private lateinit var streamManager: StreamManager
     private lateinit var cameraManager: CameraManager
 
+    // Replace all individual settings variables with a single StreamSettings object
+    private lateinit var streamSettings: StreamSettings
+
     // Stream objects
     private var bitrateAdapter: BitrateAdapter? = null
 
-    // Stream settings
-    private var protocol: String = ""
-    private var address: String = ""
-    private var port: Int = 0
-    private var path: String = ""
-    private var tcp: Boolean = false
-    private var username: String = ""
-    private var password: String = ""
-    private var streamSelfSignedCert: Boolean = false
-    private var certFile: String? = null
-    private var certPassword: String = ""
+    // State
+    private var exiting = false
+    private val binder = LocalBinder()
 
-    // Audio settings
-    private var sampleRate: Int = 0
-    private var stereo: Boolean = false
-    private var echoCancel: Boolean = false
-    private var noiseReduction: Boolean = false
-    private var enableAudio: Boolean = false
-    private var audioBitrate: Int = 0
-    private var audioCodec: String = ""
+    // New variables
+    private var currentCameraId = 0
+    private var isFlashOn = false
 
-    // Video settings
-    private var fps: Int = 0
-    private var resolution: Size? = null
-    private var adaptiveBitrate: Boolean = false
-    private var record: Boolean = false
-    private var stream: Boolean = false
-    private var bitrate: Int = 0
-    private var codec: String = ""
-    private var uid: String = ""
+    // Recording
+    private lateinit var folder: File
+    private var currentDateAndTime: String = ""
+
+    // Location
+    private var locListener: StreamLocationListener? = null
+    private var locManager: LocationManager? = null
+
 
     // Camera
-    private var videoSource: String = ""
-    private var openGlView: OpenGlView? = null
     private var prepareAudio = false
     private var prepareVideo = false
+    private var openGlView: OpenGlView? = null
     private val cameraIds = ArrayList<String>()
 
     // Sensors
@@ -115,18 +103,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     private var hasGeomagneticData = false
     private var rotationInDegrees: Double = 0.0
 
-    // Recording
-    private lateinit var folder: File
-    private var currentDateAndTime: String = ""
-
-    // State
-    private var exiting = false
-    private val binder = LocalBinder()
-
-    // Location
-    private var locListener: StreamLocationListener? = null
-    private var locManager: LocationManager? = null
-
+    // TODO(8thgencore): Remove these
     // Advanced Video Settings
     private var keyframeInterval: Int = 0
     private var videoProfile: String = ""
@@ -145,10 +122,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     private var lowLatencyMode: Boolean = false
     private var hardwareRotation: Boolean = false
     private var dynamicFps: Boolean = false
-
-    // New variables
-    private var currentCameraId = 0
-    private var isFlashOn = false
 
     override fun onCreate() {
         super.onCreate()
@@ -173,11 +146,15 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             startForeground(NOTIFICATION_ID, notification)
         }
 
+        // Initialize with default settings
+        streamSettings = StreamSettings()
+
+        // Load actual settings from preferences
         loadPreferences()
 
         // Initialize stream manager
         streamManager = StreamManager(this, this, errorHandler)
-        streamManager.setStreamType(getStreamTypeFromProtocol(protocol))
+        streamManager.setStreamType(getStreamTypeFromProtocol(streamSettings.protocol))
 
         // Initialize camera manager
         cameraManager = CameraManager(this, streamManager)
@@ -243,12 +220,12 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     override fun onConnectionStarted(url: String) {}
 
     override fun onConnectionSuccess() {
-        if (adaptiveBitrate) {
+        if (streamSettings.adaptiveBitrate) {
             Log.d(TAG, "Setting adaptive bitrate")
             bitrateAdapter = BitrateAdapter { bitrate ->
                 streamManager.setVideoBitrateOnFly(bitrate)
             }
-            bitrateAdapter?.setMaxBitrate(bitrate * 1024)
+            bitrateAdapter?.setMaxBitrate(streamSettings.bitrate * 1024)
         } else {
             Log.d(TAG, "Not doing adaptive bitrate")
         }
@@ -363,7 +340,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             // Не можем использовать CameraManager напрямую, так как камера уже используется
             // Вместо этого воспользуемся методом streamManager
             return try {
-                when (getStreamTypeFromProtocol(protocol)) {
+                when (getStreamTypeFromProtocol(streamSettings.protocol)) {
                     StreamType.RTMP -> {
                         val camera = streamManager.getStream() as com.pedro.library.rtmp.RtmpCamera2
                         isFlashOn = !isFlashOn
@@ -423,7 +400,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             Log.d(TAG, "Вызов метода switchCamera")
 
             // Используем API библиотеки для переключения камеры
-            val switchResult = when (getStreamTypeFromProtocol(protocol)) {
+            val switchResult = when (getStreamTypeFromProtocol(streamSettings.protocol)) {
                 StreamType.RTMP -> {
                     val camera = streamManager.getStream() as com.pedro.library.rtmp.RtmpCamera2
                     camera.switchCamera()
@@ -557,7 +534,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     }
 
     private fun getCameraIds() {
-        if (videoSource == PreferenceKeys.VIDEO_SOURCE_DEFAULT) {
+        if (streamSettings.videoSource == PreferenceKeys.VIDEO_SOURCE_DEFAULT) {
             try {
                 // Библиотека RTMP-RTSP использует класс CameraHelper для управления камерой
                 // Попробуем получить доступ к камерам через android.hardware.camera2.CameraManager
@@ -582,61 +559,16 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
     private fun loadPreferences() {
         val preferencesLoader = PreferencesLoader(applicationContext)
-        val settings = preferencesLoader.loadPreferences(preferences)
 
-        // Сохраняем старый протокол для проверки изменений
-        val oldProtocol = protocol
+        // Save old protocol for checking changes
+        val oldProtocol = streamSettings.protocol
 
-        // Копируем все настройки из объекта settings в поля класса
-        protocol = settings.protocol
-        address = settings.address
-        port = settings.port
-        path = settings.path
-        tcp = settings.tcp
-        username = settings.username
-        password = settings.password
-        streamSelfSignedCert = settings.streamSelfSignedCert
-        certFile = settings.certFile
-        certPassword = settings.certPassword
+        // Load all settings at once into streamSettings
+        streamSettings = preferencesLoader.loadPreferences(preferences)
 
-        sampleRate = settings.sampleRate
-        stereo = settings.stereo
-        echoCancel = settings.echoCancel
-        noiseReduction = settings.noiseReduction
-        enableAudio = settings.enableAudio
-        audioBitrate = settings.audioBitrate
-        audioCodec = settings.audioCodec
-
-        fps = settings.fps
-        resolution = settings.resolution
-        adaptiveBitrate = settings.adaptiveBitrate
-        record = settings.record
-        stream = settings.stream
-        bitrate = settings.bitrate
-        codec = settings.codec
-        uid = settings.uid
-
-        videoSource = settings.videoSource
-
-        keyframeInterval = settings.keyframeInterval
-        videoProfile = settings.videoProfile
-        videoLevel = settings.videoLevel
-        bitrateMode = settings.bitrateMode
-        encodingQuality = settings.encodingQuality
-
-        bufferSize = settings.bufferSize
-        connectionTimeout = settings.connectionTimeout
-        autoReconnect = settings.autoReconnect
-        reconnectDelay = settings.reconnectDelay
-        maxReconnectAttempts = settings.maxReconnectAttempts
-
-        lowLatencyMode = settings.lowLatencyMode
-        hardwareRotation = settings.hardwareRotation
-        dynamicFps = settings.dynamicFps
-
-        // Если протокол изменился, обновляем тип стрима
-        if (protocol != oldProtocol && ::streamManager.isInitialized) {
-            streamManager.setStreamType(getStreamTypeFromProtocol(protocol))
+        // If protocol changed, update stream type
+        if (streamSettings.protocol != oldProtocol && ::streamManager.isInitialized) {
+            streamManager.setStreamType(getStreamTypeFromProtocol(streamSettings.protocol))
         }
     }
 
@@ -660,11 +592,11 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             val dateFormat = SimpleDateFormat("yyyy-MM-dd_HH:mm:ss", Locale.getDefault())
             currentDateAndTime = dateFormat.format(Date())
 
-            if (stream) {
+            if (streamSettings.stream) {
                 startStreaming()
             }
 
-            if (record) {
+            if (streamSettings.record) {
                 startRecording()
             }
 
@@ -690,34 +622,40 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         Log.d(TAG, "Starting streaming")
 
         val url = when {
-            protocol.startsWith("rtmp") -> {
-                if (protocol == "rtmps") {
-                    "rtmps://$address:$port/$path"
+            streamSettings.protocol.startsWith("rtmp") -> {
+                if (streamSettings.protocol == "rtmps") {
+                    "rtmps://${streamSettings.address}:${streamSettings.port}/${streamSettings.path}"
                 } else {
-                    "rtmp://$address:$port/$path"
+                    "rtmp://${streamSettings.address}:${streamSettings.port}/${streamSettings.path}"
                 }
             }
 
-            protocol.startsWith("rtsp") -> {
-                if (protocol == "rtsps") {
-                    "rtsps://$address:$port/$path"
+            streamSettings.protocol.startsWith("rtsp") -> {
+                if (streamSettings.protocol == "rtsps") {
+                    "rtsps://${streamSettings.address}:${streamSettings.port}/${streamSettings.path}"
                 } else {
-                    "rtsp://$address:$port/$path"
+                    "rtsp://${streamSettings.address}:${streamSettings.port}/${streamSettings.path}"
                 }
             }
 
-            protocol == "srt" -> {
-                "srt://$address:$port"
+            streamSettings.protocol == "srt" -> {
+                "srt://${streamSettings.address}:${streamSettings.port}"
             }
 
             else -> {
-                "udp://$address:$port"
+                "udp://${streamSettings.address}:${streamSettings.port}"
             }
         }
 
         Log.d(TAG, "Stream URL: $url")
 
-        streamManager.startStream(url, protocol, username, password, tcp)
+        streamManager.startStream(
+            url,
+            streamSettings.protocol,
+            streamSettings.username,
+            streamSettings.password,
+            streamSettings.tcp
+        )
         notificationHelper.updateNotification(getString(R.string.streaming), true)
     }
 
@@ -781,7 +719,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
     private fun initializeStream() {
         // Используем streamManager для инициализации, это более безопасно
-        streamManager.setStreamType(getStreamTypeFromProtocol(protocol))
+        streamManager.setStreamType(getStreamTypeFromProtocol(streamSettings.protocol))
         // Получаем доступные камеры
         getCameraIds()
     }
@@ -795,7 +733,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         try {
             Log.d(TAG, "Setting mute state to: $muted")
 
-            when (getStreamTypeFromProtocol(protocol)) {
+            when (getStreamTypeFromProtocol(streamSettings.protocol)) {
                 StreamType.RTMP -> {
                     val camera = streamManager.getStream() as com.pedro.library.rtmp.RtmpCamera2
                     if (muted) {
