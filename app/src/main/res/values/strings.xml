@@ -6,6 +6,8 @@
     <string name="settings">Настройки</string>
     <string name="stop">Стоп</string>
     <string name="exit">Выход</string>
+    <string name="yes">Да</string>
+    <string name="cancel">Отмена</string>
     
     <!-- Notifications -->
     <string name="ready_to_stream">Готов к стримингу</string>
@@ -136,4 +138,9 @@
     <!-- Screen Orientation -->
     <string name="screen_orientation">Ориентация экрана</string>
     <string name="screen_orientation_summary">Установите предпочтительную ориентацию экрана</string>
+
+    <!-- Camera -->
+    <string name="screenshot_saved">Скриншот сохранен</string>
+    <string name="stop_streaming">Остановить стриминг</string>
+    <string name="stop_streaming_confirmation">Остановить стриминг и перейти в настройки?</string>
 </resources>

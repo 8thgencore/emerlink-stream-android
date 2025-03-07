@@ -57,6 +57,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         const val ACTION_LOCATION_CHANGE = "net.emerlink.stream.LOCATION_CHANGE"
 
         val observer = MutableLiveData<StreamService?>()
+        val screenshotTaken = MutableLiveData<Boolean>()
     }
 
     private lateinit var preferences: SharedPreferences
@@ -430,7 +431,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         try {
             Log.d(TAG, "Service: Switching camera")
             val result = streamManager.switchCamera()
-            
+
             // Update the current camera ID if switch was successful
             if (result) {
                 currentCameraId = if (currentCameraId == 0) 1 else 0
@@ -438,7 +439,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             } else {
                 Log.e(TAG, "Failed to switch camera")
             }
-            
+
             return result
         } catch (e: Exception) {
             Log.e(TAG, "Error in service when switching camera: ${e.message}", e)
@@ -466,7 +467,9 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 glInterface.takePhoto { bitmap ->
                     val handlerThread = android.os.HandlerThread("HandlerThread")
                     handlerThread.start()
-                    Handler(handlerThread.looper).post { saveBitmapToGallery(bitmap) }
+                    Handler(handlerThread.looper).post {
+                        saveBitmapToGallery(bitmap)
+                    }
                 }
             } else {
                 Log.e(TAG, "glInterface неправильного типа: ${glInterface.javaClass.name}")
@@ -501,6 +504,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 uri?.let {
                     resolver.openOutputStream(it)?.use { outputStream ->
                         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+                        Log.d(TAG, "Отправка бродкаста ACTION_TOOK_PICTURE")
                         applicationContext.sendBroadcast(Intent(ACTION_TOOK_PICTURE))
                         notificationHelper.updateNotification(getString(R.string.saved_photo), true)
                     } ?: run {
@@ -522,8 +526,15 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                     applicationContext, arrayOf(file.absolutePath), arrayOf("image/jpeg"), null
                 )
 
+                Log.d(TAG, "Отправка бродкаста ACTION_TOOK_PICTURE")
                 applicationContext.sendBroadcast(Intent(ACTION_TOOK_PICTURE))
                 notificationHelper.updateNotification(getString(R.string.saved_photo), true)
+            }
+
+            // Используем LiveData вместо бродкаста
+            Handler(android.os.Looper.getMainLooper()).post {
+                Log.d(TAG, "Уведомление через LiveData о скриншоте")
+                screenshotTaken.value = true
             }
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при сохранении фото: ${e.message}", e)
