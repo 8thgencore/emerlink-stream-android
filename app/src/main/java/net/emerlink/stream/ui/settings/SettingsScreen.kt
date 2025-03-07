@@ -1,5 +1,6 @@
 package net.emerlink.stream.ui.settings
 
+import android.content.Context
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,7 +19,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -26,6 +29,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
+import android.util.Size
 import androidx.core.content.edit
 import androidx.preference.PreferenceManager
 import net.emerlink.stream.R
@@ -43,6 +49,54 @@ fun SettingsScreen(
     val context = LocalContext.current
     val preferences = PreferenceManager.getDefaultSharedPreferences(context)
     val scrollState = rememberScrollState()
+
+    // List to store available camera resolutions
+    val availableResolutions = remember { mutableStateListOf<String>() }
+
+    // Get available camera resolutions when the screen is first composed
+    LaunchedEffect(Unit) {
+        try {
+            val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+            val cameraId = cameraManager.cameraIdList.firstOrNull { id ->
+                val characteristics = cameraManager.getCameraCharacteristics(id)
+                val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
+                facing == CameraCharacteristics.LENS_FACING_BACK
+            }
+            
+            cameraId?.let { id ->
+                val characteristics = cameraManager.getCameraCharacteristics(id)
+                val configs = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+                
+                configs?.let { config ->
+                    val sizes = config.getOutputSizes(android.graphics.ImageFormat.JPEG)
+                    sizes?.let { 
+                        // Sort resolutions by area (width * height) in descending order
+                        val sortedSizes = sizes.sortedByDescending { it.width * it.height }
+                        
+                        // Add resolutions to the list
+                        availableResolutions.clear()
+                        sortedSizes.forEach { size ->
+                            availableResolutions.add("${size.width}x${size.height}")
+                        }
+                        
+                        // If no resolutions were found, add default ones
+                        if (availableResolutions.isEmpty()) {
+                            availableResolutions.addAll(listOf("1920x1080", "1280x720", "854x480", "640x360"))
+                        }
+                    }
+                }
+            }
+            
+            // If we couldn't get camera resolutions, use default ones
+            if (availableResolutions.isEmpty()) {
+                availableResolutions.addAll(listOf("1920x1080", "1280x720", "854x480", "640x360"))
+            }
+        } catch (e: Exception) {
+            // Fallback to default resolutions if there's an error
+            availableResolutions.clear()
+            availableResolutions.addAll(listOf("1920x1080", "1280x720", "854x480", "640x360"))
+        }
+    }
 
     // Состояния для отслеживания изменений настроек
     // Stream Settings
@@ -314,7 +368,7 @@ fun SettingsScreen(
                         title = stringResource(id = R.string.video_resolution),
                         summary = stringResource(id = R.string.video_resolution_summary),
                         selectedValue = videoResolution,
-                        options = listOf("1920x1080", "1280x720", "854x480", "640x360"),
+                        options = availableResolutions.toList(),
                         onValueSelected = { value ->
                             videoResolution = value
                             preferences.edit { putString(PreferenceKeys.VIDEO_RESOLUTION, value) }
