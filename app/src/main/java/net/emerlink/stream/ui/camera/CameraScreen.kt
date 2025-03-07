@@ -1,8 +1,10 @@
 package net.emerlink.stream.ui.camera
 
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.ServiceConnection
 import android.content.res.Configuration
 import android.os.Build
@@ -59,7 +61,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -93,6 +94,9 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
 
     // Состояние для контроля предпросмотра - важно!
     var openGlView by remember { mutableStateOf<OpenGlView?>(null) }
+    
+    // Добавляем состояние для отслеживания экрана
+    var screenWasOff by remember { mutableStateOf(false) }
 
     val serviceConnection = remember {
         object : ServiceConnection {
@@ -104,7 +108,22 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
                 // Инициализируем предпросмотр если OpenGlView уже создан
                 openGlView?.let { view ->
                     try {
-                        streamService?.startPreview(view)
+                        // Если экран был заблокирован, нужно пересоздать поверхность
+                        if (screenWasOff) {
+                            Log.d("CameraScreen", "Перезапуск после блокировки экрана")
+                            // Небольшая задержка для корректной инициализации поверхности
+                            Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                try {
+                                    streamService?.stopPreview()
+                                    streamService?.startPreview(view)
+                                    screenWasOff = false
+                                } catch (e: Exception) {
+                                    Log.e("CameraScreen", "Ошибка перезапуска предпросмотра: ${e.message}", e)
+                                }
+                            }, 500)
+                        } else {
+                            streamService?.startPreview(view)
+                        }
                     } catch (e: Exception) {
                         Log.e("CameraScreen", "Ошибка при запуске предпросмотра: ${e.message}", e)
                     }
@@ -124,13 +143,95 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
         context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
     }
 
+    // Регистрируем приемник событий экрана
+    DisposableEffect(Unit) {
+        val screenStateReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                when (intent.action) {
+                    Intent.ACTION_SCREEN_OFF -> {
+                        Log.d("CameraScreen", "Экран выключен")
+                        screenWasOff = true
+                        
+                        // При выключении экрана полностью освобождаем ресурсы камеры
+                        streamService?.releaseCamera()
+                    }
+                    Intent.ACTION_SCREEN_ON -> {
+                        Log.d("CameraScreen", "Экран включен")
+                        // Перезапуск камеры будет происходить в ACTION_USER_PRESENT
+                    }
+                    Intent.ACTION_USER_PRESENT -> {
+                        Log.d("CameraScreen", "Пользователь разблокировал экран")
+                        if (screenWasOff && openGlView != null && streamService != null) {
+                            // Перезапускаем камеру с задержкой, чтобы система успела подготовиться
+                            Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                try {
+                                    // Полный перезапуск камеры с предпросмотром
+                                    openGlView?.let { view ->
+                                        // Используем новый метод для полного перезапуска
+                                        streamService?.restartPreview(view)
+                                    }
+                                    screenWasOff = false
+                                } catch (e: Exception) {
+                                    Log.e("CameraScreen", "Ошибка перезапуска предпросмотра: ${e.message}", e)
+                                    
+                                    // При ошибке пытаемся повторить еще раз с большей задержкой
+                                    Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                        try {
+                                            openGlView?.let { view ->
+                                                streamService?.restartPreview(view)
+                                            }
+                                            screenWasOff = false
+                                        } catch (e: Exception) {
+                                            Log.e("CameraScreen", "Повторная ошибка перезапуска: ${e.message}", e)
+                                        }
+                                    }, 1000)
+                                }
+                            }, 500)
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Регистрируем приемник для отслеживания состояния экрана
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_USER_PRESENT)
+        }
+        context.registerReceiver(screenStateReceiver, filter)
+        
+        onDispose {
+            try {
+                context.unregisterReceiver(screenStateReceiver)
+            } catch (e: Exception) {
+                Log.e("CameraScreen", "Ошибка при отмене регистрации приемника: ${e.message}", e)
+            }
+        }
+    }
+
     // Отслеживаем жизненный цикл
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_STOP -> {
-                    // Останавливаем предпросмотр при уходе с экрана
-                    streamService?.stopPreview()
+                    // При уходе с экрана полностью освобождаем ресурсы камеры
+                    streamService?.releaseCamera()
+                }
+                Lifecycle.Event.ON_RESUME -> {
+                    // Проверяем, нужно ли перезапустить предпросмотр
+                    if (screenWasOff && openGlView != null && streamService != null) {
+                        Handler(android.os.Looper.getMainLooper()).postDelayed({
+                            try {
+                                openGlView?.let { view ->
+                                    streamService?.restartPreview(view)
+                                }
+                                screenWasOff = false
+                            } catch (e: Exception) {
+                                Log.e("CameraScreen", "Ошибка перезапуска предпросмотра: ${e.message}", e)
+                            }
+                        }, 500)
+                    }
                 }
                 else -> {}
             }
@@ -140,8 +241,8 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
 
         onDispose { 
             try {
-                // Останавливаем предпросмотр при удалении компонента
-                streamService?.stopPreview()
+                // Освобождаем все ресурсы при удалении компонента
+                streamService?.releaseCamera()
                 // Отключаемся от сервиса
                 context.unbindService(serviceConnection)
                 lifecycleOwner.lifecycle.removeObserver(observer)
@@ -497,7 +598,7 @@ private fun LandscapeCameraControls(
                 })
             FlashButton(
                 isFlashOn = isFlashOn, onClick = {
-                    val newState = streamService?.toggleLantern() ?: false
+                    val newState = streamService?.toggleLantern() == true
                     onFlashToggle(newState)
                 })
         }
@@ -545,7 +646,7 @@ private fun PortraitCameraControls(
     ) {
         FlashButton(
             isFlashOn = isFlashOn, onClick = {
-                val newState = streamService?.toggleLantern() ?: false
+                val newState = streamService?.toggleLantern() == true
                 onFlashToggle(newState)
             })
         Spacer(modifier = Modifier.width(16.dp))

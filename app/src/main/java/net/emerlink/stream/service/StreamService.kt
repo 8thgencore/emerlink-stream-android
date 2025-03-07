@@ -359,27 +359,34 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     /** Запускает предпросмотр камеры */
     fun startPreview(view: OpenGlView) {
         try {
+            Log.d(TAG, "Запуск предпросмотра камеры")
+            
+            // Сохраняем ссылку на OpenGlView
+            openGlView = view
+            
+            // Запускаем предпросмотр
             val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
             streamManager.startPreview(view, isPortrait)
+            
+            Log.d(TAG, "Предпросмотр успешно запущен")
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при запуске предпросмотра: ${e.message}", e)
         }
     }
 
+    /** Останавливает предпросмотр камеры */
     fun stopPreview() {
         try {
-            Log.d(TAG, "Остановка preview")
-
+            Log.d(TAG, "Остановка предпросмотра")
+            
             if (streamManager.isOnPreview()) {
                 streamManager.stopPreview()
             }
             
-            // Просто сбрасываем ссылку без всяких отложенных действий
+            // Обнуляем ссылку на OpenGlView 
             openGlView = null
-            
         } catch (e: Exception) {
-            Log.e(TAG, "Ошибка при остановке preview: ${e.message}", e)
-            openGlView = null
+            Log.e(TAG, "Ошибка при остановке предпросмотра: ${e.message}", e)
         }
     }
 
@@ -766,5 +773,68 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         return (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED || checkSelfPermission(
             android.Manifest.permission.ACCESS_COARSE_LOCATION
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED)
+    }
+
+    /** Полностью останавливает камеру и освобождает все ресурсы */
+    fun releaseCamera() {
+        try {
+            Log.d(TAG, "Полное освобождение ресурсов камеры")
+            
+            // Остановка предпросмотра
+            if (streamManager.isOnPreview()) {
+                streamManager.stopPreview()
+            }
+            
+            // Освобождение камеры
+            try {
+                streamManager.releaseCamera()
+                Log.d(TAG, "Ресурсы камеры успешно освобождены")
+            } catch (e: Exception) {
+                Log.e(TAG, "Ошибка при освобождении камеры: ${e.message}", e)
+            }
+            
+            // Обнуление ссылки на OpenGlView
+            openGlView = null
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при освобождении ресурсов камеры: ${e.message}", e)
+        }
+    }
+
+    /** Запускает предпросмотр камеры с полной перезагрузкой ресурсов */
+    fun restartPreview(view: OpenGlView) {
+        try {
+            Log.d(TAG, "Полный перезапуск предпросмотра с пересозданием камеры")
+            
+            // Сначала полностью освобождаем ресурсы
+            if (streamManager.isOnPreview()) {
+                streamManager.stopPreview()
+            }
+            
+            // Небольшая задержка, чтобы система успела обработать освобождение ресурсов
+            Thread.sleep(50)
+            
+            // Сохраняем новую ссылку на OpenGlView
+            openGlView = view
+            
+            // Перезапускаем предпросмотр
+            val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+            
+            // Гарантируем, что камера будет переинициализирована
+            streamManager.prepareVideo()
+            
+            // Запускаем предпросмотр
+            streamManager.startPreview(view, isPortrait)
+            
+            Log.d(TAG, "Предпросмотр успешно перезапущен")
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при перезапуске предпросмотра: ${e.message}", e)
+            try {
+                // В случае ошибки пытаемся освободить все ресурсы
+                streamManager.stopPreview()
+                streamManager.releaseCamera()
+            } catch (e2: Exception) {
+                Log.e(TAG, "Ошибка при очистке после сбоя: ${e2.message}", e2)
+            }
+        }
     }
 }

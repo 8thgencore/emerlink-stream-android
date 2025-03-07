@@ -306,22 +306,50 @@ class StreamManager(
     }
 
     fun prepareAudio(): Boolean {
-        return when (streamType) {
-            StreamType.RTMP -> rtmpCamera.prepareAudio()
-            StreamType.RTSP -> rtspCamera.prepareAudio()
-            StreamType.SRT -> srtCamera.prepareAudio()
-            StreamType.UDP -> udpCamera.prepareAudio()
+        try {
+            Log.d(TAG, "Подготовка аудио")
+            // Используем getStream() для получения активной камеры
+            getStream().let { camera ->
+                when (camera) {
+                    is RtmpCamera2 -> camera.prepareAudio()
+                    is RtspCamera2 -> camera.prepareAudio()
+                    is SrtCamera2 -> camera.prepareAudio()
+                    is UdpCamera2 -> camera.prepareAudio()
+                }
+            }
+            return true
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка подготовки аудио: ${e.message}", e)
+            return false
         }
     }
 
     fun prepareVideo(): Boolean {
-        return when (streamType) {
-            StreamType.RTMP -> rtmpCamera.prepareVideo()
-            StreamType.RTSP -> rtspCamera.prepareVideo()
-            StreamType.SRT -> srtCamera.prepareVideo()
-            StreamType.UDP -> udpCamera.prepareVideo()
+        try {
+            val (videoWidth, videoHeight) = parseResolution(sharedPreferences)
+            val fps = sharedPreferences.getString(PreferenceKeys.VIDEO_FPS, PreferenceKeys.VIDEO_FPS_DEFAULT)?.toIntOrNull() ?: 30
+            val videoBitrate = sharedPreferences.getString(PreferenceKeys.VIDEO_BITRATE, PreferenceKeys.VIDEO_BITRATE_DEFAULT)?.toIntOrNull() ?: 2500
+            
+            Log.d(TAG, "Подготовка видео: ${videoWidth}x${videoHeight}, FPS=$fps, битрейт=${videoBitrate}k")
+            
+            // Используем лямбду для уменьшения дублирования кода
+            getStream().let { camera ->
+                when (camera) {
+                    is RtmpCamera2 -> camera.prepareVideo(videoWidth, videoHeight, fps, videoBitrate * 1000, 2)
+                    is RtspCamera2 -> camera.prepareVideo(videoWidth, videoHeight, fps, videoBitrate * 1000, 2)
+                    is SrtCamera2 -> camera.prepareVideo(videoWidth, videoHeight, fps, videoBitrate * 1000, 2)
+                    is UdpCamera2 -> camera.prepareVideo(videoWidth, videoHeight, fps, videoBitrate * 1000, 2)
+                }
+            }
+            
+            return true
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка подготовки видео: ${e.message}", e)
+            return false
         }
     }
+
+
 
     fun isStreaming(): Boolean {
         return when (streamType) {
@@ -470,6 +498,25 @@ class StreamManager(
         } catch (e: Exception) {
             Log.e(TAG, "Error switching camera: ${e.message}", e)
             return false
+        }
+    }
+
+    fun releaseCamera() {
+        try {
+            Log.d(TAG, "Освобождение ресурсов камеры")
+            
+            // Остановка всех активных процессов
+            if (isOnPreview()) stopPreview()
+            if (isStreaming()) stopStream()
+            if (isRecording()) stopRecord()
+            
+            // Пересоздаем объекты камер для полного обновления ресурсов
+            initializeClients()
+            currentView = null
+            
+            Log.d(TAG, "Ресурсы камеры освобождены")
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка освобождения камеры: ${e.message}", e)
         }
     }
 }
