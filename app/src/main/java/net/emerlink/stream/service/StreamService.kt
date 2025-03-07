@@ -68,7 +68,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     private lateinit var cameraManager: CameraManager
 
     // Replace all individual settings variables with a single StreamSettings object
-    private lateinit var streamSettings: StreamSettings
+    lateinit var streamSettings: StreamSettings
 
     // Stream objects
     private var bitrateAdapter: BitrateAdapter? = null

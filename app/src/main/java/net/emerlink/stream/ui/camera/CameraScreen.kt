@@ -12,6 +12,7 @@ import android.util.Log
 import android.view.MotionEvent
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -31,6 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.PhotoCamera
@@ -62,6 +65,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.R
+import net.emerlink.stream.model.StreamInfo
 import net.emerlink.stream.service.StreamService
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
@@ -80,6 +84,12 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
     var showScreenshotNotification by remember { mutableStateOf(false) }
 
     var previewStarted by remember { mutableStateOf(false) }
+
+    // Добавляем состояние для отображения информационной панели
+    var showStreamInfo by remember { mutableStateOf(false) }
+
+    // Добавляем состояние для хранения информации о стриме
+    var streamInfo by remember { mutableStateOf(StreamInfo()) }
 
     val serviceConnection = remember {
         object : ServiceConnection {
@@ -145,6 +155,21 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
         }
     }
 
+    // Обновляем информацию о стриме при подключении к сервису
+    DisposableEffect(streamService) {
+        streamService?.let { service ->
+            // Получаем информацию из сервиса
+            val settings = service.streamSettings
+            streamInfo = StreamInfo(
+                protocol = settings.protocol,
+                resolution = settings.resolution.toString(),
+                bitrate = "${settings.bitrate} kbps",
+                fps = "${settings.fps} fps"
+            )
+        }
+        onDispose { }
+    }
+
     // Перемещаем определение конфигурации на уровень Composable функции
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -157,7 +182,15 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
             onPreviewStarted = { previewStarted = true })
 
         // Stream Status Indicator
-        StreamStatusIndicator(isStreaming = isStreaming, isLandscape = isLandscape)
+        StreamStatusIndicator(
+            isStreaming = isStreaming, isLandscape = isLandscape, onInfoClick = { showStreamInfo = !showStreamInfo })
+
+        // Stream Info Panel (отображается по нажатию на индикатор статуса)
+        if (showStreamInfo) {
+            StreamInfoPanel(
+                streamInfo = streamInfo, isLandscape = isLandscape
+            )
+        }
 
         // Screenshot notification
         if (showScreenshotNotification) {
@@ -204,25 +237,26 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
 private fun CameraPreview(
     streamService: StreamService?, previewStarted: Boolean, onPreviewStarted: () -> Unit
 ) {
-    AndroidView(factory = { ctx ->
+    AndroidView(
+        factory = { ctx ->
         OpenGlView(ctx).apply { Log.d("CameraScreen", "Создание OpenGlView") }
     }, modifier = Modifier
-        .fillMaxSize()
-        .pointerInteropFilter { event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    streamService?.tapToFocus(event)
-                    true
-                }
+            .fillMaxSize()
+            .pointerInteropFilter { event ->
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        streamService?.tapToFocus(event)
+                        true
+                    }
 
-                MotionEvent.ACTION_MOVE -> {
-                    streamService?.setZoom(event)
-                    true
-                }
+                    MotionEvent.ACTION_MOVE -> {
+                        streamService?.setZoom(event)
+                        true
+                    }
 
-                else -> false
-            }
-        }, update = { view ->
+                    else -> false
+                }
+            }, update = { view ->
         if (streamService != null && !previewStarted) {
             Log.d("CameraScreen", "Запуск preview")
             streamService.startPreview(view)
@@ -232,7 +266,9 @@ private fun CameraPreview(
 }
 
 @Composable
-private fun StreamStatusIndicator(isStreaming: Boolean, isLandscape: Boolean) {
+private fun StreamStatusIndicator(
+    isStreaming: Boolean, isLandscape: Boolean, onInfoClick: () -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -245,8 +281,9 @@ private fun StreamStatusIndicator(isStreaming: Boolean, isLandscape: Boolean) {
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-            modifier = Modifier.padding(top = 8.dp)
-        ) {
+            modifier = Modifier
+                .padding(top = 8.dp)
+                .clickable { onInfoClick() }) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
@@ -264,6 +301,14 @@ private fun StreamStatusIndicator(isStreaming: Boolean, isLandscape: Boolean) {
                     text = if (isStreaming) "LIVE" else "OFF",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurface
+                )
+                // Добавляем иконку для подсказки, что можно нажать
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "Stream Info",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             }
         }
@@ -594,4 +639,50 @@ private fun SettingsConfirmationDialog(
                 Text(context.getString(R.string.cancel))
             }
         })
+}
+
+@Composable
+private fun StreamInfoPanel(
+    streamInfo: StreamInfo, isLandscape: Boolean
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (!isLandscape) Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
+                else Modifier
+            )
+            .padding(16.dp), contentAlignment = Alignment.TopStart
+    ) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+            modifier = Modifier.padding(top = 48.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                InfoRow(label = "Protocol", value = streamInfo.protocol)
+                InfoRow(label = "Resolution", value = streamInfo.resolution)
+                InfoRow(label = "Bitrate", value = streamInfo.bitrate)
+                InfoRow(label = "FPS", value = streamInfo.fps)
+            }
+        }
+    }
+}
+
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+        )
+        Text(
+            text = value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface
+        )
+    }
 }
