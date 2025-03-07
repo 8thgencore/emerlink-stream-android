@@ -143,4 +143,5 @@
     <string name="screenshot_saved">Скриншот сохранен</string>
     <string name="stop_streaming">Остановить стриминг</string>
     <string name="stop_streaming_confirmation">Остановить стриминг и перейти в настройки?</string>
+    <string name="loading_camera">Загрузка камеры...</string>
 </resources>

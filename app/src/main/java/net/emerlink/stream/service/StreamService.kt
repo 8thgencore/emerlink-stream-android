@@ -368,38 +368,15 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
     fun stopPreview() {
         try {
-            Log.d(TAG, "Остановка preview с правильным освобождением ресурсов")
+            Log.d(TAG, "Остановка preview")
 
             if (streamManager.isOnPreview()) {
                 streamManager.stopPreview()
-
-                Handler(mainLooper).postDelayed(
-                    {
-                        try {
-                            // Освобождаем ресурсы OpenGL
-                            openGlView?.let {
-                                Log.d(TAG, "Очистка ресурсов OpenGlView")
-                                // Метод releaseTextureID может быть доступен в
-                                // некоторых реализациях
-                                try {
-                                    val releaseMethod = it.javaClass.getMethod("release")
-                                    releaseMethod.invoke(it)
-                                } catch (e: Exception) {
-                                    Log.d(TAG, "Метод release не найден: ${e.message}")
-                                }
-                            }
-                        } catch (e: Exception) {
-                            Log.e(
-                                TAG, "Ошибка при очистке ресурсов OpenGlView: ${e.message}"
-                            )
-                        } finally {
-                            openGlView = null
-                        }
-                    }, 200
-                )
-            } else {
-                openGlView = null
             }
+            
+            // Просто сбрасываем ссылку без всяких отложенных действий
+            openGlView = null
+            
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при остановке preview: ${e.message}", e)
             openGlView = null

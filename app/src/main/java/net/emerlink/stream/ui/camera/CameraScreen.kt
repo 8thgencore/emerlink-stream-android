@@ -48,6 +48,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,6 +59,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -83,13 +85,14 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
     var showSettingsConfirmDialog by remember { mutableStateOf(false) }
     var showScreenshotNotification by remember { mutableStateOf(false) }
 
-    var previewStarted by remember { mutableStateOf(false) }
-
     // Добавляем состояние для отображения информационной панели
     var showStreamInfo by remember { mutableStateOf(false) }
 
     // Добавляем состояние для хранения информации о стриме
     var streamInfo by remember { mutableStateOf(StreamInfo()) }
+
+    // Состояние для контроля предпросмотра - важно!
+    var openGlView by remember { mutableStateOf<OpenGlView?>(null) }
 
     val serviceConnection = remember {
         object : ServiceConnection {
@@ -97,43 +100,58 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
                 val binder = service as StreamService.LocalBinder
                 streamService = binder.getService()
                 Log.d("CameraScreen", "Service connected")
+                
+                // Инициализируем предпросмотр если OpenGlView уже создан
+                openGlView?.let { view ->
+                    try {
+                        streamService?.startPreview(view)
+                    } catch (e: Exception) {
+                        Log.e("CameraScreen", "Ошибка при запуске предпросмотра: ${e.message}", e)
+                    }
+                }
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
-                streamService = null
                 Log.d("CameraScreen", "Service disconnected")
+                streamService = null
             }
         }
     }
 
+    // Подключаемся к сервису при создании экрана
+    LaunchedEffect(Unit) {
+        val intent = Intent(context, StreamService::class.java)
+        context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+    }
+
+    // Отслеживаем жизненный цикл
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> {
-                    val intent = Intent(context, StreamService::class.java)
-                    context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
-                }
-
                 Lifecycle.Event.ON_STOP -> {
+                    // Останавливаем предпросмотр при уходе с экрана
                     streamService?.stopPreview()
-                    previewStarted = false
-                    context.unbindService(serviceConnection)
                 }
-
-                Lifecycle.Event.ON_RESUME -> {
-                    previewStarted = false
-                }
-
                 else -> {}
             }
         }
 
         lifecycleOwner.lifecycle.addObserver(observer)
 
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        onDispose { 
+            try {
+                // Останавливаем предпросмотр при удалении компонента
+                streamService?.stopPreview()
+                // Отключаемся от сервиса
+                context.unbindService(serviceConnection)
+                lifecycleOwner.lifecycle.removeObserver(observer)
+            } catch (e: Exception) {
+                Log.e("CameraScreen", "Ошибка при очистке ресурсов: ${e.message}", e)
+            }
+        }
     }
 
-    // Наблюдаем за LiveData
+    // Наблюдаем за LiveData для скриншотов
     DisposableEffect(Unit) {
         val observer = androidx.lifecycle.Observer<Boolean> { taken ->
             if (taken) {
@@ -178,8 +196,20 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
         // Camera Preview
         CameraPreview(
             streamService = streamService,
-            previewStarted = previewStarted,
-            onPreviewStarted = { previewStarted = true })
+            onOpenGlViewCreated = { view -> 
+                // Сохраняем ссылку на OpenGlView
+                openGlView = view 
+                
+                // Запускаем предпросмотр если сервис уже подключен
+                if (streamService != null) {
+                    try {
+                        streamService?.startPreview(view)
+                    } catch (e: Exception) {
+                        Log.e("CameraScreen", "Ошибка при запуске предпросмотра: ${e.message}", e)
+                    }
+                }
+            }
+        )
 
         // Stream Status Indicator
         StreamStatusIndicator(
@@ -211,7 +241,14 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
                 if (isStreaming) {
                     showSettingsConfirmDialog = true
                 } else {
-                    onSettingsClick()
+                    try {
+                        // Обязательно останавливаем предпросмотр перед переходом на экран настроек
+                        streamService?.stopPreview()
+                        openGlView = null
+                        onSettingsClick()
+                    } catch (e: Exception) {
+                        Log.e("CameraScreen", "Ошибка при остановке предпросмотра: ${e.message}", e)
+                    }
                 }
             },
             onShowScreenshotNotification = {
@@ -224,23 +261,39 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
 
     // Settings confirmation dialog
     if (showSettingsConfirmDialog) {
-        SettingsConfirmationDialog(onDismiss = { showSettingsConfirmDialog = false }, onConfirm = {
-            showSettingsConfirmDialog = false
-            streamService?.stopStream(null, null)
-            onSettingsClick()
-        })
+        SettingsConfirmationDialog(
+            onDismiss = { showSettingsConfirmDialog = false }, 
+            onConfirm = {
+                showSettingsConfirmDialog = false
+                try {
+                    streamService?.stopStream(null, null)
+                    // Обязательно останавливаем предпросмотр перед переходом на экран настроек
+                    streamService?.stopPreview()
+                    openGlView = null
+                    onSettingsClick()
+                } catch (e: Exception) {
+                    Log.e("CameraScreen", "Ошибка при переходе в настройки: ${e.message}", e)
+                }
+            }
+        )
     }
 }
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun CameraPreview(
-    streamService: StreamService?, previewStarted: Boolean, onPreviewStarted: () -> Unit
+    streamService: StreamService?,
+    onOpenGlViewCreated: (OpenGlView) -> Unit
 ) {
     AndroidView(
         factory = { ctx ->
-        OpenGlView(ctx).apply { Log.d("CameraScreen", "Создание OpenGlView") }
-    }, modifier = Modifier
+            OpenGlView(ctx).apply { 
+                Log.d("CameraScreen", "Создание OpenGlView")
+                // Сохраняем ссылку на созданный OpenGlView
+                onOpenGlViewCreated(this)
+            }
+        }, 
+        modifier = Modifier
             .fillMaxSize()
             .pointerInteropFilter { event ->
                 when (event.action) {
@@ -248,21 +301,14 @@ private fun CameraPreview(
                         streamService?.tapToFocus(event)
                         true
                     }
-
                     MotionEvent.ACTION_MOVE -> {
                         streamService?.setZoom(event)
                         true
                     }
-
                     else -> false
                 }
-            }, update = { view ->
-        if (streamService != null && !previewStarted) {
-            Log.d("CameraScreen", "Запуск preview")
-            streamService.startPreview(view)
-            onPreviewStarted()
-        }
-    })
+            }
+    )
 }
 
 @Composable
