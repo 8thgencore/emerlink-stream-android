@@ -67,6 +67,10 @@
             android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
             tools:ignore="DiscouragedApi" />
 
+        <activity
+            android:name=".ui.settings.SettingsActivity"
+            android:screenOrientation="portrait" />
+
         <service
             android:name=".service.StreamService"
             android:enabled="true"

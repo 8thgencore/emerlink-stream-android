@@ -1,6 +1,7 @@
 package net.emerlink.stream.ui.settings
 
 import android.content.Context
+import android.content.pm.ActivityInfo
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -49,7 +51,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val preferences = PreferenceManager.getDefaultSharedPreferences(context)
     val scrollState = rememberScrollState()
-
+    
     // List to store available camera resolutions
     val availableResolutions = remember { mutableStateListOf<String>() }
 

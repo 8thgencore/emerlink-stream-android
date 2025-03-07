@@ -68,16 +68,16 @@ class OnboardingActivity : AppIntro() {
 
         askForPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 2)
 
-        addSlide(
-            AppIntroFragment.createInstance(
-                title = getString(R.string.location_permission),
-                description = getString(R.string.location_permission_description),
-                imageDrawable = R.drawable.ic_location,
-                backgroundColorRes = R.color.primary
-            )
-        )
-
-        askForPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 3)
+//        addSlide(
+//            AppIntroFragment.createInstance(
+//                title = getString(R.string.location_permission),
+//                description = getString(R.string.location_permission_description),
+//                imageDrawable = R.drawable.ic_location,
+//                backgroundColorRes = R.color.primary
+//            )
+//        )
+//
+//        askForPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 3)
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             addSlide(
@@ -119,6 +119,14 @@ class OnboardingActivity : AppIntro() {
     override fun onDonePressed(currentFragment: Fragment?) {
         super.onDonePressed(currentFragment)
         finishOnboarding()
+    }
+
+    override fun onUserDeniedPermission(permissionName: String) {
+        goToNextSlide()
+    }
+    
+    override fun onUserDisabledPermission(permissionName: String) {
+        goToNextSlide()
     }
 
     private fun finishOnboarding() {

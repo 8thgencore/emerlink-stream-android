@@ -156,8 +156,14 @@ fun AppNavigation() {
                 }
             }
 
+            "settings", "advanced_settings" -> {
+                // Для экранов настроек всегда принудительно устанавливаем портретную ориентацию
+                // SENSOR_PORTRAIT вместо PORTRAIT для поддержки обратной ориентации
+                activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+            }
+
             else -> {
-                // For all other screens, force portrait
+                // For all other screens
                 activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             }
         }
@@ -184,7 +190,6 @@ fun AppNavigation() {
         }
     }
 }
-
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Preview(showBackground = true)
