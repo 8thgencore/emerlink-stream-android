@@ -243,10 +243,6 @@ class StreamManager(
                 is UdpCamera2 -> camera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
             }
 
-            if (isPortrait) {
-                configurePortraitMode(camera)
-            }
-
             val rotation = if (isPortrait) 90 else 0
             startCameraPreview(camera, rotation)
 
@@ -281,19 +277,6 @@ class StreamManager(
             is RtspCamera2 -> camera.replaceView(view)
             is SrtCamera2 -> camera.replaceView(view)
             is UdpCamera2 -> camera.replaceView(view)
-        }
-    }
-
-    private fun <T> configurePortraitMode(camera: T) where T : Any {
-        try {
-            when (camera) {
-                is RtmpCamera2 -> camera.glInterface?.setStreamRotation(90)
-                is RtspCamera2 -> camera.glInterface?.setStreamRotation(90)
-                is SrtCamera2 -> camera.glInterface?.setStreamRotation(90)
-                is UdpCamera2 -> camera.glInterface?.setStreamRotation(90)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Не удалось установить ориентацию потока: ${e.message}")
         }
     }
 
@@ -398,26 +381,9 @@ class StreamManager(
         }
     }
 
-    fun setStreamOrientation(isPortrait: Boolean) {
-        val rotation = if (isPortrait) 90 else 0
-
-        try {
-            when (streamType) {
-                StreamType.RTMP -> rtmpCamera.glInterface?.setStreamRotation(rotation)
-                StreamType.RTSP -> rtspCamera.glInterface?.setStreamRotation(rotation)
-                StreamType.SRT -> srtCamera.glInterface?.setStreamRotation(rotation)
-                StreamType.UDP -> udpCamera.glInterface?.setStreamRotation(rotation)
-            }
-            Log.d(TAG, "Установлена ориентация потока: $rotation градусов")
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка при установке ориентации потока: ${e.message}")
-        }
-    }
-
     fun switchStreamResolution(width: Int, height: Int) {
         try {
-            val camera = getStream()
-            val bitrate = when (camera) {
+            val bitrate = when (val camera = getStream()) {
                 is RtmpCamera2 -> camera.bitrate
                 is RtspCamera2 -> camera.bitrate
                 is SrtCamera2 -> camera.bitrate
@@ -450,19 +416,6 @@ class StreamManager(
                     udpCamera.startPreview()
                 }
             }
-
-            val rotation = if (currentIsPortrait) 90 else 0
-            try {
-                when (streamType) {
-                    StreamType.RTMP -> rtmpCamera.glInterface?.setStreamRotation(rotation)
-                    StreamType.RTSP -> rtspCamera.glInterface?.setStreamRotation(rotation)
-                    StreamType.SRT -> srtCamera.glInterface?.setStreamRotation(rotation)
-                    StreamType.UDP -> udpCamera.glInterface?.setStreamRotation(rotation)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Ошибка при установке ориентации потока: ${e.message}")
-            }
-
             Log.d(TAG, "Установлено новое разрешение стрима: ${width}x${height}")
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при изменении разрешения стрима: ${e.message}")

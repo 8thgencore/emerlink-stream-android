@@ -27,10 +27,6 @@ import androidx.preference.PreferenceManager
 import com.pedro.common.ConnectChecker
 import com.pedro.library.util.BitrateAdapter
 import com.pedro.library.view.OpenGlView
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import net.emerlink.stream.R
 import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.model.StreamSettings
@@ -39,6 +35,10 @@ import net.emerlink.stream.util.ErrorHandler
 import net.emerlink.stream.util.NotificationHelper
 import net.emerlink.stream.util.PathUtils
 import net.emerlink.stream.util.PreferencesLoader
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPreferenceChangeListener,
     SensorEventListener {
@@ -373,29 +373,29 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 streamManager.stopPreview()
 
                 Handler(mainLooper).postDelayed(
-                        {
-                            try {
-                                // Освобождаем ресурсы OpenGL
-                                openGlView?.let {
-                                    Log.d(TAG, "Очистка ресурсов OpenGlView")
-                                    // Метод releaseTextureID может быть доступен в
-                                    // некоторых реализациях
-                                    try {
-                                        val releaseMethod = it.javaClass.getMethod("release")
-                                        releaseMethod.invoke(it)
-                                    } catch (e: Exception) {
-                                        Log.d(TAG, "Метод release не найден: ${e.message}")
-                                    }
+                    {
+                        try {
+                            // Освобождаем ресурсы OpenGL
+                            openGlView?.let {
+                                Log.d(TAG, "Очистка ресурсов OpenGlView")
+                                // Метод releaseTextureID может быть доступен в
+                                // некоторых реализациях
+                                try {
+                                    val releaseMethod = it.javaClass.getMethod("release")
+                                    releaseMethod.invoke(it)
+                                } catch (e: Exception) {
+                                    Log.d(TAG, "Метод release не найден: ${e.message}")
                                 }
-                            } catch (e: Exception) {
-                                Log.e(
-                                    TAG, "Ошибка при очистке ресурсов OpenGlView: ${e.message}"
-                                )
-                            } finally {
-                                openGlView = null
                             }
-                        }, 200
-                    )
+                        } catch (e: Exception) {
+                            Log.e(
+                                TAG, "Ошибка при очистке ресурсов OpenGlView: ${e.message}"
+                            )
+                        } finally {
+                            openGlView = null
+                        }
+                    }, 200
+                )
             } else {
                 openGlView = null
             }
@@ -636,9 +636,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         try {
             Log.d(TAG, "Starting streaming")
 
-            // Определяем текущую ориентацию и применяем к потоку
-            val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-
             // Получаем URL из настроек
             val url = buildStreamUrl()
 
@@ -646,8 +643,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             val (videoWidth, videoHeight) = parseVideoResolution()
 
             streamManager.switchStreamResolution(videoWidth, videoHeight)
-
-            streamManager.setStreamOrientation(isPortrait)
 
             // Запускаем стрим
             streamManager.startStream(
