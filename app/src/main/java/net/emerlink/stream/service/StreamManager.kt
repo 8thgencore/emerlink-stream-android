@@ -1,7 +1,11 @@
 package net.emerlink.stream.service
 
 import android.content.Context
+import android.content.SharedPreferences
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import androidx.preference.PreferenceManager
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.video.CameraHelper
 import com.pedro.library.rtmp.RtmpCamera2
@@ -10,14 +14,10 @@ import com.pedro.library.srt.SrtCamera2
 import com.pedro.library.udp.UdpCamera2
 import com.pedro.library.view.OpenGlView
 import com.pedro.rtsp.rtsp.Protocol
+import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.model.StreamType
 import net.emerlink.stream.util.ErrorHandler
-import androidx.preference.PreferenceManager
-import net.emerlink.stream.data.preferences.PreferenceKeys
-import java.util.*
-import android.content.SharedPreferences
-import android.os.Handler
-import android.os.Looper
+import java.util.Locale
 
 class StreamManager(
     private val context: Context,
@@ -62,7 +62,7 @@ class StreamManager(
                 Log.d(TAG, "Перезапуск превью с новым разрешением")
                 try {
                     val (videoWidth, videoHeight) = parseResolution(sharedPreferences)
-                    
+
                     switchStreamResolution(videoWidth, videoHeight)
                     restartPreview(currentView, currentIsPortrait)
                 } catch (e: Exception) {
@@ -77,11 +77,11 @@ class StreamManager(
             PreferenceKeys.VIDEO_RESOLUTION,
             PreferenceKeys.VIDEO_RESOLUTION_DEFAULT
         ) ?: "1920x1080"
-        
+
         val dimensions = videoResolution.lowercase(Locale.getDefault()).replace("х", "x").split("x")
         val videoWidth = if (dimensions.isNotEmpty()) dimensions[0].toIntOrNull() ?: 1920 else 1920
         val videoHeight = if (dimensions.size >= 2) dimensions[1].toIntOrNull() ?: 1080 else 1080
-        
+
         return Pair(videoWidth, videoHeight)
     }
 
@@ -89,7 +89,7 @@ class StreamManager(
         try {
             Log.d(TAG, "Перезапуск превью")
             stopPreview()
-            
+
             Handler(Looper.getMainLooper()).postDelayed({
                 startPreview(view, isPortrait)
                 Log.d(TAG, "Превью перезапущено успешно")
@@ -204,20 +204,18 @@ class StreamManager(
             Log.d(TAG, "Запуск превью")
             currentView = view
             currentIsPortrait = isPortrait
-            
+
             val (videoWidth, videoHeight) = parseResolution(sharedPreferences)
-            
+
             updateViewAspectRatio(view, videoWidth, videoHeight, isPortrait)
-            
-            Log.d(TAG, "Запуск превью с разрешением: ${videoWidth}x${videoHeight}, ориентация: ${if(isPortrait) "портретная" else "ландшафтная"}")
-            
+
             val camera = when (streamType) {
                 StreamType.RTMP -> rtmpCamera
                 StreamType.RTSP -> rtspCamera
                 StreamType.SRT -> srtCamera
                 StreamType.UDP -> udpCamera
             }
-            
+
             configureAndStartPreview(camera, view, isPortrait, videoWidth, videoHeight)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при запуске preview: ${e.message}")
@@ -226,8 +224,8 @@ class StreamManager(
     }
 
     private fun <T> configureAndStartPreview(
-        camera: T, 
-        view: OpenGlView, 
+        camera: T,
+        view: OpenGlView,
         isPortrait: Boolean,
         width: Int,
         height: Int
@@ -235,23 +233,23 @@ class StreamManager(
         try {
             stopCurrentPreview(camera)
             replaceViewForCamera(camera, view)
-            
+
             val bitrate = getBitrateFromCamera(camera) ?: DEFAULT_BITRATE
-            
+
             when (camera) {
                 is RtmpCamera2 -> camera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
                 is RtspCamera2 -> camera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
                 is SrtCamera2 -> camera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
                 is UdpCamera2 -> camera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
             }
-            
+
             if (isPortrait) {
                 configurePortraitMode(camera)
             }
-            
+
             val rotation = if (isPortrait) 90 else 0
             startCameraPreview(camera, rotation)
-            
+
             Log.d(TAG, "Превью успешно запущен с разрешением ${width}x${height}")
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при настройке и запуске preview: ${e.message}")
@@ -262,7 +260,7 @@ class StreamManager(
         return when (camera) {
             is RtmpCamera2 -> camera.bitrate
             is RtspCamera2 -> camera.bitrate
-            is SrtCamera2 -> camera.bitrate 
+            is SrtCamera2 -> camera.bitrate
             is UdpCamera2 -> camera.bitrate
             else -> null
         }
@@ -272,7 +270,7 @@ class StreamManager(
         when (camera) {
             is RtmpCamera2 -> if (camera.isOnPreview) camera.stopPreview()
             is RtspCamera2 -> if (camera.isOnPreview) camera.stopPreview()
-            is SrtCamera2 -> if (camera.isOnPreview) camera.stopPreview() 
+            is SrtCamera2 -> if (camera.isOnPreview) camera.stopPreview()
             is UdpCamera2 -> if (camera.isOnPreview) camera.stopPreview()
         }
     }
@@ -402,7 +400,7 @@ class StreamManager(
 
     fun setStreamOrientation(isPortrait: Boolean) {
         val rotation = if (isPortrait) 90 else 0
-        
+
         try {
             when (streamType) {
                 StreamType.RTMP -> rtmpCamera.glInterface?.setStreamRotation(rotation)
@@ -426,29 +424,45 @@ class StreamManager(
                 is UdpCamera2 -> camera.bitrate
                 else -> DEFAULT_BITRATE
             }
-            
+
             when (streamType) {
                 StreamType.RTMP -> {
                     rtmpCamera.stopPreview()
                     rtmpCamera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
                     rtmpCamera.startPreview()
                 }
+
                 StreamType.RTSP -> {
                     rtspCamera.stopPreview()
                     rtspCamera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
                     rtspCamera.startPreview()
                 }
+
                 StreamType.SRT -> {
                     srtCamera.stopPreview()
                     srtCamera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
                     srtCamera.startPreview()
                 }
+
                 StreamType.UDP -> {
                     udpCamera.stopPreview()
                     udpCamera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
                     udpCamera.startPreview()
                 }
             }
+
+            val rotation = if (currentIsPortrait) 90 else 0
+            try {
+                when (streamType) {
+                    StreamType.RTMP -> rtmpCamera.glInterface?.setStreamRotation(rotation)
+                    StreamType.RTSP -> rtspCamera.glInterface?.setStreamRotation(rotation)
+                    StreamType.SRT -> srtCamera.glInterface?.setStreamRotation(rotation)
+                    StreamType.UDP -> udpCamera.glInterface?.setStreamRotation(rotation)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Ошибка при установке ориентации потока: ${e.message}")
+            }
+
             Log.d(TAG, "Установлено новое разрешение стрима: ${width}x${height}")
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при изменении разрешения стрима: ${e.message}")

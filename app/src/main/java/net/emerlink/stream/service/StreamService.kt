@@ -27,6 +27,10 @@ import androidx.preference.PreferenceManager
 import com.pedro.common.ConnectChecker
 import com.pedro.library.util.BitrateAdapter
 import com.pedro.library.view.OpenGlView
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import net.emerlink.stream.R
 import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.model.StreamSettings
@@ -35,10 +39,6 @@ import net.emerlink.stream.util.ErrorHandler
 import net.emerlink.stream.util.NotificationHelper
 import net.emerlink.stream.util.PathUtils
 import net.emerlink.stream.util.PreferencesLoader
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPreferenceChangeListener,
     SensorEventListener {
@@ -87,7 +87,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     // Location
     private var locListener: StreamLocationListener? = null
     private var locManager: LocationManager? = null
-
 
     // Camera
     private var prepareAudio = false
@@ -356,9 +355,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         return streamManager.isOnPreview()
     }
 
-    /**
-     * Запускает предпросмотр камеры
-     */
+    /** Запускает предпросмотр камеры */
     fun startPreview(view: OpenGlView) {
         try {
             val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
@@ -375,25 +372,30 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             if (streamManager.isOnPreview()) {
                 streamManager.stopPreview()
 
-                Handler(mainLooper).postDelayed({
-                    try {
-                        // Освобождаем ресурсы OpenGL
-                        openGlView?.let {
-                            Log.d(TAG, "Очистка ресурсов OpenGlView")
-                            // Метод releaseTextureID может быть доступен в некоторых реализациях
+                Handler(mainLooper).postDelayed(
+                        {
                             try {
-                                val releaseMethod = it.javaClass.getMethod("release")
-                                releaseMethod.invoke(it)
+                                // Освобождаем ресурсы OpenGL
+                                openGlView?.let {
+                                    Log.d(TAG, "Очистка ресурсов OpenGlView")
+                                    // Метод releaseTextureID может быть доступен в
+                                    // некоторых реализациях
+                                    try {
+                                        val releaseMethod = it.javaClass.getMethod("release")
+                                        releaseMethod.invoke(it)
+                                    } catch (e: Exception) {
+                                        Log.d(TAG, "Метод release не найден: ${e.message}")
+                                    }
+                                }
                             } catch (e: Exception) {
-                                Log.d(TAG, "Метод release не найден: ${e.message}")
+                                Log.e(
+                                    TAG, "Ошибка при очистке ресурсов OpenGlView: ${e.message}"
+                                )
+                            } finally {
+                                openGlView = null
                             }
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Ошибка при очистке ресурсов OpenGlView: ${e.message}")
-                    } finally {
-                        openGlView = null
-                    }
-                }, 200)
+                        }, 200
+                    )
             } else {
                 openGlView = null
             }
@@ -418,7 +420,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             Log.e(TAG, "Ошибка приведения типа при управлении фонариком", e)
             false
         }
-
     }
 
     fun switchCamera() {
@@ -430,10 +431,11 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 camera.switchCamera()
             }
 
-
             currentCameraId = (currentCameraId + 1) % cameraIds.size
 
-            Log.d(TAG, "Камера переключена на ${cameraIds[currentCameraId]}, результат: $switchResult")
+            Log.d(
+                TAG, "Камера переключена на ${cameraIds[currentCameraId]}, результат: $switchResult"
+            )
 
             isFlashOn = false
         } catch (e: ClassCastException) {
@@ -463,9 +465,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 glInterface.takePhoto { bitmap ->
                     val handlerThread = android.os.HandlerThread("HandlerThread")
                     handlerThread.start()
-                    Handler(handlerThread.looper).post {
-                        saveBitmapToGallery(bitmap)
-                    }
+                    Handler(handlerThread.looper).post { saveBitmapToGallery(bitmap) }
                 }
             } else {
                 Log.e(TAG, "glInterface неправильного типа: ${glInterface.javaClass.name}")
@@ -503,7 +503,9 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                         applicationContext.sendBroadcast(Intent(ACTION_TOOK_PICTURE))
                         notificationHelper.updateNotification(getString(R.string.saved_photo), true)
                     } ?: run {
-                        notificationHelper.updateNotification(getString(R.string.saved_photo_failed), false)
+                        notificationHelper.updateNotification(
+                            getString(R.string.saved_photo_failed), false
+                        )
                     }
                 }
             } else {
@@ -636,7 +638,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
             // Определяем текущую ориентацию и применяем к потоку
             val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-            streamManager.setStreamOrientation(isPortrait)
 
             // Получаем URL из настроек
             val url = buildStreamUrl()
@@ -644,20 +645,13 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             // Получаем разрешение из настроек
             val (videoWidth, videoHeight) = parseVideoResolution()
 
-            // Устанавливаем правильное соотношение сторон для видео в зависимости от ориентации
-            if (isPortrait) {
-                streamManager.switchStreamResolution(videoWidth, videoHeight)
-            } else {
-                streamManager.switchStreamResolution(videoWidth, videoHeight)
-            }
+            streamManager.switchStreamResolution(videoWidth, videoHeight)
+
+            streamManager.setStreamOrientation(isPortrait)
 
             // Запускаем стрим
             streamManager.startStream(
-                url,
-                streamSettings.protocol,
-                streamSettings.username,
-                streamSettings.password,
-                streamSettings.tcp
+                url, streamSettings.protocol, streamSettings.username, streamSettings.password, streamSettings.tcp
             )
 
             notificationHelper.updateNotification(getString(R.string.streaming), true)
@@ -726,9 +720,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     }
 
     private fun initializeStream() {
-        // Используем streamManager для инициализации, это более безопасно
         streamManager.setStreamType(getStreamTypeFromProtocol(streamSettings.protocol))
-        // Получаем доступные камеры
         getCameraIds()
     }
 
@@ -737,9 +729,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         fun getService(): StreamService = this@StreamService
     }
 
-    /**
-     * Переключает состояние аудио (вкл/выкл)
-     */
+    /** Переключает состояние аудио (вкл/выкл) */
     fun toggleMute(muted: Boolean) {
         try {
             Log.d(TAG, "Setting mute state to: $muted")
@@ -753,13 +743,10 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         }
     }
 
-    /**
-     * Парсит настройки разрешения видео
-     */
+    /** Парсит настройки разрешения видео */
     private fun parseVideoResolution(): Pair<Int, Int> {
         val videoResolution = preferences.getString(
-            PreferenceKeys.VIDEO_RESOLUTION,
-            PreferenceKeys.VIDEO_RESOLUTION_DEFAULT
+            PreferenceKeys.VIDEO_RESOLUTION, PreferenceKeys.VIDEO_RESOLUTION_DEFAULT
         ) ?: "1920x1080"
         val dimensions = videoResolution.lowercase(Locale.getDefault()).replace("х", "x").split("x")
         val videoWidth = if (dimensions.isNotEmpty()) dimensions[0].toIntOrNull() ?: 1920 else 1920
@@ -767,9 +754,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         return Pair(videoWidth, videoHeight)
     }
 
-    /**
-     * Формирует URL стрима на основе настроек
-     */
+    /** Формирует URL стрима на основе настроек */
     private fun buildStreamUrl(): String {
         return when {
             streamSettings.protocol.startsWith("rtmp") -> {
@@ -792,12 +777,10 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         }
     }
 
-    /**
-     * Проверяет наличие разрешений на доступ к местоположению
-     */
+    /** Проверяет наличие разрешений на доступ к местоположению */
     private fun hasLocationPermission(): Boolean {
-        return (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
-                checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED)
+        return (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED || checkSelfPermission(
+            android.Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED)
     }
 }
-
