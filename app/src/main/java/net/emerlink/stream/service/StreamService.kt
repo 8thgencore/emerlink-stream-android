@@ -186,7 +186,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             addAction(ACTION_STOP_STREAM)
             addAction(ACTION_EXIT_APP)
         }
-        
+
         val commandReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 Log.d(TAG, "Получен интент: ${intent.action}")
@@ -201,13 +201,13 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 }
             }
         }
-        
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(commandReceiver, intentFilter, Context.RECEIVER_NOT_EXPORTED)
         } else {
             registerReceiver(commandReceiver, intentFilter)
         }
-        
+
         // Сохраняем ссылку на приемник для дальнейшей отмены регистрации
         this.commandReceiver = commandReceiver
     }
@@ -236,28 +236,28 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     override fun onDestroy() {
         try {
             Log.d(TAG, "onDestroy")
-            
+
             if (streamManager.isStreaming()) {
                 stopStream(null, null)
             }
-            
+
             // Очищаем ресурсы StreamManager
             streamManager.destroy()
-            
+
             // Отменяем регистрацию для событий изменения настроек
             preferences.unregisterOnSharedPreferenceChangeListener(this)
-            
+
             // Отписываемся от BroadcastReceiver
             if (commandReceiver != null) {
                 unregisterReceiver(commandReceiver)
                 commandReceiver = null
             }
-            
+
             observer.postValue(null)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при уничтожении сервиса: ${e.message}")
         }
-        
+
         super.onDestroy()
     }
 
@@ -332,7 +332,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 // В сервисе невозможно получить display в Android 12+
                 // Вместо этого используем предопределенную ориентацию или данные от приложения
                 val screenOrientation = 0 // По умолчанию портретная ориентация
-                
+
                 rotationInDegrees += screenOrientation
                 if (rotationInDegrees < 0.0) {
                     rotationInDegrees += 360.0
@@ -371,15 +371,10 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     fun stopPreview() {
         try {
             Log.d(TAG, "Остановка preview с правильным освобождением ресурсов")
-            
-            // Исправляем вызовы неизвестных методов onPause и onDestroy
-            // OpenGlView не имеет этих методов, используем доступные методы для очистки ресурсов
-            
+
             if (streamManager.isOnPreview()) {
-                // Останавливаем предпросмотр корректно
                 streamManager.stopPreview()
-                
-                // Дадим немного времени для корректного закрытия ресурсов
+
                 Handler(mainLooper).postDelayed({
                     try {
                         // Освобождаем ресурсы OpenGL
@@ -409,100 +404,37 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     }
 
     fun toggleLantern(): Boolean {
-        try {
-            Log.d(TAG, "Вызов toggleLantern")
-
-            // Не можем использовать CameraManager напрямую, так как камера уже используется
-            // Вместо этого воспользуемся методом streamManager
-            return try {
-                when (getStreamTypeFromProtocol(streamSettings.protocol)) {
-                    StreamType.RTMP -> {
-                        val camera = streamManager.getStream() as com.pedro.library.rtmp.RtmpCamera2
-                        isFlashOn = !isFlashOn
-                        if (isFlashOn) {
-                            camera.enableLantern()
-                        } else {
-                            camera.disableLantern()
-                        }
-                        isFlashOn
-                    }
-
-                    StreamType.RTSP -> {
-                        val camera = streamManager.getStream() as com.pedro.library.rtsp.RtspCamera2
-                        isFlashOn = !isFlashOn
-                        if (isFlashOn) {
-                            camera.enableLantern()
-                        } else {
-                            camera.disableLantern()
-                        }
-                        isFlashOn
-                    }
-
-                    StreamType.SRT -> {
-                        val camera = streamManager.getStream() as com.pedro.library.srt.SrtCamera2
-                        isFlashOn = !isFlashOn
-                        if (isFlashOn) {
-                            camera.enableLantern()
-                        } else {
-                            camera.disableLantern()
-                        }
-                        isFlashOn
-                    }
-
-                    StreamType.UDP -> {
-                        val camera = streamManager.getStream() as com.pedro.library.udp.UdpCamera2
-                        isFlashOn = !isFlashOn
-                        if (isFlashOn) {
-                            camera.enableLantern()
-                        } else {
-                            camera.disableLantern()
-                        }
-                        isFlashOn
-                    }
-                }
-            } catch (e: ClassCastException) {
-                Log.e(TAG, "Ошибка приведения типа при управлении фонариком", e)
-                false
+        Log.d(TAG, "Вызов toggleLantern")
+        return try {
+            val camera = streamManager.getStream() as com.pedro.library.base.Camera2Base
+            isFlashOn = !isFlashOn
+            if (isFlashOn) {
+                camera.enableLantern()
+            } else {
+                camera.disableLantern()
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка при toggleLantern: ${e.message}", e)
-            return false
+            isFlashOn
+        } catch (e: ClassCastException) {
+            Log.e(TAG, "Ошибка приведения типа при управлении фонариком", e)
+            false
         }
+
     }
 
     fun switchCamera() {
         try {
             Log.d(TAG, "Вызов метода switchCamera")
 
-            // Используем API библиотеки для переключения камеры
-            val switchResult = when (getStreamTypeFromProtocol(streamSettings.protocol)) {
-                StreamType.RTMP -> {
-                    val camera = streamManager.getStream() as com.pedro.library.rtmp.RtmpCamera2
-                    camera.switchCamera()
-                }
-
-                StreamType.RTSP -> {
-                    val camera = streamManager.getStream() as com.pedro.library.rtsp.RtspCamera2
-                    camera.switchCamera()
-                }
-
-                StreamType.SRT -> {
-                    val camera = streamManager.getStream() as com.pedro.library.srt.SrtCamera2
-                    camera.switchCamera()
-                }
-
-                StreamType.UDP -> {
-                    val camera = streamManager.getStream() as com.pedro.library.udp.UdpCamera2
-                    camera.switchCamera()
-                }
+            val switchResult = {
+                val camera = streamManager.getStream() as com.pedro.library.base.Camera2Base
+                camera.switchCamera()
             }
 
-            // Обновляем индекс текущей камеры после переключения
+
             currentCameraId = (currentCameraId + 1) % cameraIds.size
 
             Log.d(TAG, "Камера переключена на ${cameraIds[currentCameraId]}, результат: $switchResult")
 
-            // Сбрасываем состояние фонарика при переключении камер
             isFlashOn = false
         } catch (e: ClassCastException) {
             Log.e(TAG, "Ошибка приведения типа при переключении камеры", e)
@@ -701,24 +633,24 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     private fun startStreaming() {
         try {
             Log.d(TAG, "Starting streaming")
-            
+
             // Определяем текущую ориентацию и применяем к потоку
             val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
             streamManager.setStreamOrientation(isPortrait)
-            
+
             // Получаем URL из настроек
             val url = buildStreamUrl()
-            
+
             // Получаем разрешение из настроек
             val (videoWidth, videoHeight) = parseVideoResolution()
-            
+
             // Устанавливаем правильное соотношение сторон для видео в зависимости от ориентации
             if (isPortrait) {
                 streamManager.switchStreamResolution(videoWidth, videoHeight)
             } else {
                 streamManager.switchStreamResolution(videoWidth, videoHeight)
             }
-            
+
             // Запускаем стрим
             streamManager.startStream(
                 url,
@@ -727,7 +659,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 streamSettings.password,
                 streamSettings.tcp
             )
-            
+
             notificationHelper.updateNotification(getString(R.string.streaming), true)
         } catch (e: Exception) {
             Log.e(TAG, "Error starting streaming: ${e.message}", e)
@@ -805,7 +737,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         fun getService(): StreamService = this@StreamService
     }
 
-        /**
+    /**
      * Переключает состояние аудио (вкл/выкл)
      */
     fun toggleMute(muted: Boolean) {
@@ -825,8 +757,10 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
      * Парсит настройки разрешения видео
      */
     private fun parseVideoResolution(): Pair<Int, Int> {
-        val videoResolution = preferences.getString(PreferenceKeys.VIDEO_RESOLUTION, 
-                                                 PreferenceKeys.VIDEO_RESOLUTION_DEFAULT) ?: "1920x1080"
+        val videoResolution = preferences.getString(
+            PreferenceKeys.VIDEO_RESOLUTION,
+            PreferenceKeys.VIDEO_RESOLUTION_DEFAULT
+        ) ?: "1920x1080"
         val dimensions = videoResolution.lowercase(Locale.getDefault()).replace("х", "x").split("x")
         val videoWidth = if (dimensions.isNotEmpty()) dimensions[0].toIntOrNull() ?: 1920 else 1920
         val videoHeight = if (dimensions.size >= 2) dimensions[1].toIntOrNull() ?: 1080 else 1080
@@ -842,13 +776,16 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 val prefix = if (streamSettings.protocol == "rtmps") "rtmps" else "rtmp"
                 "$prefix://${streamSettings.address}:${streamSettings.port}/${streamSettings.path}"
             }
+
             streamSettings.protocol.startsWith("rtsp") -> {
                 val prefix = if (streamSettings.protocol == "rtsps") "rtsps" else "rtsp"
                 "$prefix://${streamSettings.address}:${streamSettings.port}/${streamSettings.path}"
             }
+
             streamSettings.protocol == "srt" -> {
                 "srt://${streamSettings.address}:${streamSettings.port}"
             }
+
             else -> {
                 "udp://${streamSettings.address}:${streamSettings.port}"
             }
