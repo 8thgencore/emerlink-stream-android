@@ -450,4 +450,26 @@ class StreamManager(
             Log.d(TAG, "Метод setAspectRatioMode не найден, альтернативное обновление невозможно")
         }
     }
+
+    /**
+     * Switches between front and back cameras
+     * @return true if camera switched successfully, false otherwise
+     */
+    fun switchCamera(): Boolean {
+        try {
+            Log.d(TAG, "Switching camera")
+            val result = when (streamType) {
+                StreamType.RTMP -> rtmpCamera.switchCamera()
+                StreamType.RTSP -> rtspCamera.switchCamera()
+                StreamType.SRT -> srtCamera.switchCamera()
+                StreamType.UDP -> udpCamera.switchCamera()
+            }
+
+            Log.d(TAG, "Camera switched successfully: $result")
+            return true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error switching camera: ${e.message}", e)
+            return false
+        }
+    }
 }

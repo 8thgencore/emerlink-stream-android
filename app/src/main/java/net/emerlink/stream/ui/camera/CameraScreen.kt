@@ -17,11 +17,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -59,9 +62,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.service.StreamService
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @OptIn(ExperimentalComposeUiApi::class)
@@ -162,9 +162,7 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
                     isStreaming = true
                 }
                 // isStreaming = !isStreaming // Это будет установлено через BroadcastReceiver
-            },
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary
+            }, containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary
         ) {
             Icon(
                 imageVector = if (isStreaming) Icons.Default.VideocamOff else Icons.Default.Videocam,
@@ -203,9 +201,7 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
             },
             containerColor = MaterialTheme.colorScheme.secondary,
             contentColor = MaterialTheme.colorScheme.onSecondary
-        ) {
-            Icon(imageVector = Icons.Default.PhotoCamera, contentDescription = "Take Photo")
-        }
+        ) { Icon(imageVector = Icons.Default.PhotoCamera, contentDescription = "Take Photo") }
     }
 
     @Composable
@@ -231,20 +227,10 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
     @Composable
     fun SwitchCameraButton() {
         SmallFloatingActionButton(
-            onClick = {
-                streamService?.let {
-                    Log.d("CameraScreen", "Попытка переключить камеру")
-                    it.switchCamera()
-                }
-            },
+            onClick = { streamService?.switchCamera() },
             containerColor = MaterialTheme.colorScheme.secondary,
             contentColor = MaterialTheme.colorScheme.onSecondary
-        ) {
-            Icon(
-                imageVector = Icons.Default.Cameraswitch,
-                contentDescription = "Switch Camera"
-            )
-        }
+        ) { Icon(imageVector = Icons.Default.Cameraswitch, contentDescription = "Switch Camera") }
     }
 
     @Composable
@@ -253,12 +239,7 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
             onClick = onSettingsClick,
             containerColor = MaterialTheme.colorScheme.secondary,
             contentColor = MaterialTheme.colorScheme.onSecondary
-        ) {
-            Icon(
-                imageVector = Icons.Default.Settings,
-                contentDescription = "Settings"
-            )
-        }
+        ) { Icon(imageVector = Icons.Default.Settings, contentDescription = "Settings") }
     }
 
     // Перемещаем определение конфигурации на уровень Composable функции
@@ -269,9 +250,7 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
         // Camera Preview - без safeDrawing, чтобы видео занимало весь экран
         AndroidView(
             factory = { ctx ->
-                OpenGlView(ctx).apply { 
-                    Log.d("CameraScreen", "Создание OpenGlView") 
-                }
+                OpenGlView(ctx).apply { Log.d("CameraScreen", "Создание OpenGlView") }
             }, modifier = Modifier
                 .fillMaxSize()
                 .pointerInteropFilter { event ->
@@ -291,7 +270,7 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
                 }, update = { view ->
                 if (streamService != null && !previewStarted) {
                     Log.d("CameraScreen", "Запуск preview")
-                    
+
                     streamService?.startPreview(view)
                     previewStarted = true
                 }
@@ -301,9 +280,13 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .then(if (!isLandscape) Modifier.windowInsetsPadding(WindowInsets.safeDrawing) else Modifier)
-                .padding(16.dp), 
-            contentAlignment = Alignment.TopStart
+                .then(
+                    if (!isLandscape) Modifier.windowInsetsPadding(
+                        WindowInsets.safeDrawing
+                    )
+                    else Modifier
+                )
+                .padding(16.dp), contentAlignment = Alignment.TopStart
         ) {
             Surface(
                 shape = RoundedCornerShape(16.dp),
@@ -336,19 +319,19 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .then(if (!isLandscape) Modifier.windowInsetsPadding(WindowInsets.safeDrawing) else Modifier)
-                .padding(16.dp),
-            contentAlignment = Alignment.BottomCenter
+                .then(
+                    if (!isLandscape) Modifier.windowInsetsPadding(
+                        WindowInsets.safeDrawing
+                    )
+                    else Modifier
+                )
+                .padding(16.dp), contentAlignment = Alignment.BottomCenter
         ) {
             if (isLandscape) {
                 // Right side controls column
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.CenterEnd
-                ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterEnd) {
                     Column(
-                        modifier = Modifier
-                            .padding(end = 16.dp),
+                        modifier = Modifier.padding(end = 16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
@@ -368,15 +351,8 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
                 }
 
                 // Left side - camera switch button
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Box(
-                        modifier = Modifier.padding(start = 16.dp)
-                    ) {
-                        SwitchCameraButton()
-                    }
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
+                    Box(modifier = Modifier.padding(start = 16.dp)) { SwitchCameraButton() }
                 }
             } else {
                 // Portrait mode
@@ -396,7 +372,6 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
                     PhotoButton()
                 }
 
-
                 // Right Controls
                 Row(
                     modifier = Modifier
@@ -410,16 +385,13 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
                     SettingsButton()
                 }
 
-
                 // Center Left - Camera Switch
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(bottom = 16.dp, start = 0.dp),
                     contentAlignment = Alignment.CenterStart
-                ) {
-                    SwitchCameraButton()
-                }
+                ) { SwitchCameraButton() }
             }
         }
     }

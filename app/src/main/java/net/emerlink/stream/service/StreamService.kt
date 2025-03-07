@@ -422,26 +422,27 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         }
     }
 
-    fun switchCamera() {
+    /**
+     * Switches between front and back cameras
+     * @return true if camera switched successfully, false otherwise
+     */
+    fun switchCamera(): Boolean {
         try {
-            Log.d(TAG, "Вызов метода switchCamera")
-
-            val switchResult = {
-                val camera = streamManager.getStream() as com.pedro.library.base.Camera2Base
-                camera.switchCamera()
+            Log.d(TAG, "Service: Switching camera")
+            val result = streamManager.switchCamera()
+            
+            // Update the current camera ID if switch was successful
+            if (result) {
+                currentCameraId = if (currentCameraId == 0) 1 else 0
+                Log.d(TAG, "Camera switched to ID: $currentCameraId")
+            } else {
+                Log.e(TAG, "Failed to switch camera")
             }
-
-            currentCameraId = (currentCameraId + 1) % cameraIds.size
-
-            Log.d(
-                TAG, "Камера переключена на ${cameraIds[currentCameraId]}, результат: $switchResult"
-            )
-
-            isFlashOn = false
-        } catch (e: ClassCastException) {
-            Log.e(TAG, "Ошибка приведения типа при переключении камеры", e)
+            
+            return result
         } catch (e: Exception) {
-            Log.e(TAG, "Ошибка при переключении камеры: ${e.message}", e)
+            Log.e(TAG, "Error in service when switching camera: ${e.message}", e)
+            return false
         }
     }
 
