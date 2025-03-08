@@ -128,6 +128,9 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     // Добавление поля для хранения ссылки на BroadcastReceiver
     private var commandReceiver: BroadcastReceiver? = null
 
+    // Добавьте флаг для отслеживания состояния превью
+    private var isPreviewActive = false
+
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onCreate() {
         super.onCreate()
@@ -358,6 +361,11 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
     /** Запускает предпросмотр камеры */
     fun startPreview(view: OpenGlView) {
+        if (isPreviewActive) {
+            Log.d(TAG, "Предпросмотр уже активен, игнорируем запрос")
+            return
+        }
+        
         try {
             Log.d(TAG, "Запуск предпросмотра камеры")
             
@@ -368,6 +376,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
             streamManager.startPreview(view, isPortrait)
             
+            isPreviewActive = true
             Log.d(TAG, "Предпросмотр успешно запущен")
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при запуске предпросмотра: ${e.message}", e)
@@ -376,6 +385,11 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
     /** Останавливает предпросмотр камеры */
     fun stopPreview() {
+        if (!isPreviewActive) {
+            Log.d(TAG, "Предпросмотр не активен, игнорируем запрос остановки")
+            return
+        }
+        
         try {
             Log.d(TAG, "Остановка предпросмотра")
             
@@ -385,6 +399,9 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             
             // Обнуляем ссылку на OpenGlView 
             openGlView = null
+
+            isPreviewActive = false
+            Log.d(TAG, "Предпросмотр успешно остановлен")
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при остановке предпросмотра: ${e.message}", e)
         }
@@ -544,7 +561,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 // Библиотека RTMP-RTSP использует класс CameraHelper для управления камерой
                 // Попробуем получить доступ к камерам через android.hardware.camera2.CameraManager
                 val cameraManager =
-                    applicationContext.getSystemService(Context.CAMERA_SERVICE) as android.hardware.camera2.CameraManager
+                    applicationContext.getSystemService(CAMERA_SERVICE) as android.hardware.camera2.CameraManager
                 cameraIds.addAll(cameraManager.cameraIdList.toList())
 
                 Log.d(TAG, "Получены идентификаторы камер через CameraManager: $cameraIds")

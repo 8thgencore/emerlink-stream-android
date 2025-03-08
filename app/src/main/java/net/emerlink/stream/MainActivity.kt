@@ -2,9 +2,9 @@ package net.emerlink.stream
 
 import android.Manifest
 import android.content.Intent
-import android.content.pm.ActivityInfo
 import android.os.Build
 import android.os.Bundle
+import android.content.pm.ActivityInfo
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -108,14 +108,10 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AppNavigation()
+                    // Получаем сервис из Application
+                    AppNavigation(EmerlinkStreamApp.getStreamService())
                 }
             }
-        }
-
-        // Start the streaming service
-        Intent(this, StreamService::class.java).also { intent ->
-            startForegroundService(intent)
         }
     }
 
@@ -128,7 +124,7 @@ class MainActivity : ComponentActivity() {
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
-fun AppNavigation() {
+fun AppNavigation(streamService: StreamService?) {
     val navController = rememberNavController()
     val context = LocalContext.current
 
@@ -159,7 +155,7 @@ fun AppNavigation() {
             "settings", "advanced_settings" -> {
                 // Для экранов настроек всегда принудительно устанавливаем портретную ориентацию
                 // SENSOR_PORTRAIT вместо PORTRAIT для поддержки обратной ориентации
-                activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             }
 
             else -> {
@@ -174,7 +170,8 @@ fun AppNavigation() {
     NavHost(navController = navController, startDestination = "camera") {
         composable("camera") {
             CameraScreen(
-                onSettingsClick = { navController.navigate("settings") }
+                onSettingsClick = { navController.navigate("settings") },
+                streamService = streamService
             )
         }
         composable("settings") {
@@ -200,7 +197,7 @@ fun DefaultPreview() {
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
-            AppNavigation()
+            AppNavigation(null)
         }
     }
 }

@@ -63,13 +63,15 @@
         <activity
             android:name=".ui.onboarding.OnboardingActivity"
             android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:screenOrientation="fullSensor"
             android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
             tools:ignore="DiscouragedApi" />
 
         <activity
             android:name=".ui.settings.SettingsActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="fullSensor"
+            tools:ignore="DiscouragedApi"/>
 
         <service
             android:name=".service.StreamService"

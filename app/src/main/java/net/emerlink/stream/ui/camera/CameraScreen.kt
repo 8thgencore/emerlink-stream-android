@@ -1,17 +1,15 @@
 package net.emerlink.stream.ui.camera
 
 import android.content.BroadcastReceiver
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.ServiceConnection
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Handler
-import android.os.IBinder
 import android.util.Log
 import android.view.MotionEvent
+import android.view.SurfaceHolder
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -50,7 +48,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -73,78 +70,26 @@ import net.emerlink.stream.service.StreamService
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
-fun CameraScreen(onSettingsClick: () -> Unit) {
+fun CameraScreen(
+    streamService: StreamService?,
+    onSettingsClick: () -> Unit
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    var streamService by remember { mutableStateOf<StreamService?>(null) }
     var isStreaming by remember { mutableStateOf(false) }
     var isFlashOn by remember { mutableStateOf(false) }
     var isMuted by remember { mutableStateOf(false) }
-
-    // New state variables for dialogs and notifications
     var showSettingsConfirmDialog by remember { mutableStateOf(false) }
     var showScreenshotNotification by remember { mutableStateOf(false) }
-
-    // Добавляем состояние для отображения информационной панели
     var showStreamInfo by remember { mutableStateOf(false) }
-
-    // Добавляем состояние для хранения информации о стриме
     var streamInfo by remember { mutableStateOf(StreamInfo()) }
-
-    // Состояние для контроля предпросмотра - важно!
     var openGlView by remember { mutableStateOf<OpenGlView?>(null) }
-    
-    // Добавляем состояние для отслеживания экрана
     var screenWasOff by remember { mutableStateOf(false) }
-
-    val serviceConnection = remember {
-        object : ServiceConnection {
-            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-                val binder = service as StreamService.LocalBinder
-                streamService = binder.getService()
-                Log.d("CameraScreen", "Service connected")
-                
-                // Инициализируем предпросмотр если OpenGlView уже создан
-                openGlView?.let { view ->
-                    try {
-                        // Если экран был заблокирован, нужно пересоздать поверхность
-                        if (screenWasOff) {
-                            Log.d("CameraScreen", "Перезапуск после блокировки экрана")
-                            // Небольшая задержка для корректной инициализации поверхности
-                            Handler(android.os.Looper.getMainLooper()).postDelayed({
-                                try {
-                                    streamService?.stopPreview()
-                                    streamService?.startPreview(view)
-                                    screenWasOff = false
-                                } catch (e: Exception) {
-                                    Log.e("CameraScreen", "Ошибка перезапуска предпросмотра: ${e.message}", e)
-                                }
-                            }, 500)
-                        } else {
-                            streamService?.startPreview(view)
-                        }
-                    } catch (e: Exception) {
-                        Log.e("CameraScreen", "Ошибка при запуске предпросмотра: ${e.message}", e)
-                    }
-                }
-            }
-
-            override fun onServiceDisconnected(name: ComponentName?) {
-                Log.d("CameraScreen", "Service disconnected")
-                streamService = null
-            }
-        }
-    }
-
-    // Подключаемся к сервису при создании экрана
-    LaunchedEffect(Unit) {
-        val intent = Intent(context, StreamService::class.java)
-        context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
-    }
+    var isPreviewActive by remember { mutableStateOf(false) }
 
     // Регистрируем приемник событий экрана
-    DisposableEffect(Unit) {
+    DisposableEffect(key1 = Unit) {
         val screenStateReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 when (intent.action) {
@@ -168,7 +113,7 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
                                     // Полный перезапуск камеры с предпросмотром
                                     openGlView?.let { view ->
                                         // Используем новый метод для полного перезапуска
-                                        streamService?.restartPreview(view)
+                                        streamService.restartPreview(view)
                                     }
                                     screenWasOff = false
                                 } catch (e: Exception) {
@@ -178,7 +123,7 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
                                     Handler(android.os.Looper.getMainLooper()).postDelayed({
                                         try {
                                             openGlView?.let { view ->
-                                                streamService?.restartPreview(view)
+                                                streamService.restartPreview(view)
                                             }
                                             screenWasOff = false
                                         } catch (e: Exception) {
@@ -193,7 +138,6 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
             }
         }
         
-        // Регистрируем приемник для отслеживания состояния экрана
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_SCREEN_ON)
@@ -210,27 +154,42 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
         }
     }
 
-    // Отслеживаем жизненный цикл
-    DisposableEffect(lifecycleOwner) {
+    // Отслеживаем жизненный цикл для управления камерой
+    DisposableEffect(key1 = lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
+                Lifecycle.Event.ON_PAUSE -> {
+                    Log.d("CameraScreen", "Lifecycle.Event.ON_PAUSE")
+                    if (isPreviewActive) {
+                        streamService?.stopPreview()
+                        isPreviewActive = false
+                    }
+                }
                 Lifecycle.Event.ON_STOP -> {
-                    // При уходе с экрана полностью освобождаем ресурсы камеры
-                    streamService?.releaseCamera()
+                    Log.d("CameraScreen", "Lifecycle.Event.ON_STOP")
+                    if (isPreviewActive) {
+                        streamService?.releaseCamera()
+                        isPreviewActive = false
+                    }
                 }
                 Lifecycle.Event.ON_RESUME -> {
-                    // Проверяем, нужно ли перезапустить предпросмотр
-                    if (screenWasOff && openGlView != null && streamService != null) {
-                        Handler(android.os.Looper.getMainLooper()).postDelayed({
-                            try {
-                                openGlView?.let { view ->
-                                    streamService?.restartPreview(view)
-                                }
-                                screenWasOff = false
-                            } catch (e: Exception) {
-                                Log.e("CameraScreen", "Ошибка перезапуска предпросмотра: ${e.message}", e)
+                    Log.d("CameraScreen", "Lifecycle.Event.ON_RESUME")
+                    // Запускаем камеру только если предпросмотр не активен и OpenGlView готов
+                    if (!isPreviewActive && openGlView != null) {
+                        openGlView?.let { view ->
+                            if (view.holder.surface?.isValid == true) {
+                                Log.d("CameraScreen", "Запуск камеры из ON_RESUME")
+                                Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                    try {
+                                        streamService?.restartPreview(view)
+                                        screenWasOff = false
+                                        isPreviewActive = true
+                                    } catch (e: Exception) {
+                                        Log.e("CameraScreen", "Ошибка перезапуска предпросмотра: ${e.message}", e)
+                                    }
+                                }, 500)
                             }
-                        }, 500)
+                        }
                     }
                 }
                 else -> {}
@@ -240,15 +199,7 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
         lifecycleOwner.lifecycle.addObserver(observer)
 
         onDispose { 
-            try {
-                // Освобождаем все ресурсы при удалении компонента
-                streamService?.releaseCamera()
-                // Отключаемся от сервиса
-                context.unbindService(serviceConnection)
-                lifecycleOwner.lifecycle.removeObserver(observer)
-            } catch (e: Exception) {
-                Log.e("CameraScreen", "Ошибка при очистке ресурсов: ${e.message}", e)
-            }
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
@@ -301,10 +252,12 @@ fun CameraScreen(onSettingsClick: () -> Unit) {
                 // Сохраняем ссылку на OpenGlView
                 openGlView = view 
                 
-                // Запускаем предпросмотр если сервис уже подключен
-                if (streamService != null) {
+                // Запускаем предпросмотр если сервис уже подключен и предпросмотр не активен
+                if (streamService != null && !isPreviewActive) {
                     try {
-                        streamService?.startPreview(view)
+                        Log.d("CameraScreen", "Запуск камеры из onOpenGlViewCreated")
+                        streamService.startPreview(view)
+                        isPreviewActive = true
                     } catch (e: Exception) {
                         Log.e("CameraScreen", "Ошибка при запуске предпросмотра: ${e.message}", e)
                     }
@@ -388,10 +341,28 @@ private fun CameraPreview(
 ) {
     AndroidView(
         factory = { ctx ->
+            Log.d("CameraScreen", "Создание OpenGlView")
             OpenGlView(ctx).apply { 
-                Log.d("CameraScreen", "Создание OpenGlView")
-                // Сохраняем ссылку на созданный OpenGlView
-                onOpenGlViewCreated(this)
+                // Создаем именованный объект для колбека SurfaceHolder
+                val surfaceCallback = object : SurfaceHolder.Callback {
+                    override fun surfaceCreated(holder: SurfaceHolder) {
+                        Log.d("CameraScreen", "Surface создан")
+                        // Сохраняем ссылку на созданный OpenGlView только когда surface готов
+                        onOpenGlViewCreated(this@apply)
+                    }
+                    
+                    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+                        Log.d("CameraScreen", "Surface изменен: $width x $height")
+                        // Не запускаем камеру повторно при изменении размера
+                    }
+                    
+                    override fun surfaceDestroyed(holder: SurfaceHolder) {
+                        Log.d("CameraScreen", "Surface уничтожен")
+                    }
+                }
+                
+                // Добавляем колбек к SurfaceHolder
+                holder.addCallback(surfaceCallback)
             }
         }, 
         modifier = Modifier
