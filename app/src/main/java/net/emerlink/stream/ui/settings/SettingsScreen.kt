@@ -1,7 +1,6 @@
 package net.emerlink.stream.ui.settings
 
 import android.content.Context
-import android.content.pm.ActivityInfo
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,7 +20,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -33,7 +31,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
-import android.util.Size
 import androidx.core.content.edit
 import androidx.preference.PreferenceManager
 import net.emerlink.stream.R
@@ -93,7 +90,7 @@ fun SettingsScreen(
             if (availableResolutions.isEmpty()) {
                 availableResolutions.addAll(listOf("1920x1080", "1280x720", "854x480", "640x360"))
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // Fallback to default resolutions if there's an error
             availableResolutions.clear()
             availableResolutions.addAll(listOf("1920x1080", "1280x720", "854x480", "640x360"))
@@ -430,7 +427,7 @@ fun SettingsScreen(
                         title = stringResource(id = R.string.screen_orientation),
                         summary = stringResource(id = R.string.screen_orientation_summary),
                         selectedValue = screenOrientation,
-                        options = listOf("landscape", "portrait", "auto"),
+                        options = listOf("landscape", "portrait"),
                         onValueSelected = { value ->
                             screenOrientation = value
                             preferences.edit { putString(PreferenceKeys.SCREEN_ORIENTATION, value) }

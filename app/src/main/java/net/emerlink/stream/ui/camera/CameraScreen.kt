@@ -86,7 +86,23 @@ fun CameraScreen(
     var streamInfo by remember { mutableStateOf(StreamInfo()) }
     var openGlView by remember { mutableStateOf<OpenGlView?>(null) }
     var screenWasOff by remember { mutableStateOf(false) }
-    var isPreviewActive by remember { mutableStateOf(false) }
+    var isPreviewActive by remember { mutableStateOf(streamService?.isPreviewRunning() == true) }
+    
+    // Единая точка запуска превью камеры - перемещаем объявление ПЕРЕД использованием
+    fun initializeCamera(view: OpenGlView) {
+        // Запускаем предпросмотр только если сервис подключен и превью не активно
+        if (streamService != null && !isPreviewActive && !streamService.isPreviewRunning()) {
+            try {
+                Log.d("CameraScreen", "Запуск камеры из единой точки инициализации")
+                streamService.startPreview(view)
+                isPreviewActive = true
+            } catch (e: Exception) {
+                Log.e("CameraScreen", "Ошибка при запуске предпросмотра: ${e.message}", e)
+            }
+        } else {
+            Log.d("CameraScreen", "Предпросмотр уже активен или сервис не готов")
+        }
+    }
 
     // Регистрируем приемник событий экрана
     DisposableEffect(key1 = Unit) {
@@ -160,28 +176,24 @@ fun CameraScreen(
             when (event) {
                 Lifecycle.Event.ON_PAUSE -> {
                     Log.d("CameraScreen", "Lifecycle.Event.ON_PAUSE")
-                    if (isPreviewActive) {
-                        streamService?.stopPreview()
-                        isPreviewActive = false
-                    }
+                    streamService?.stopPreview()
+                    isPreviewActive = false
                 }
                 Lifecycle.Event.ON_STOP -> {
                     Log.d("CameraScreen", "Lifecycle.Event.ON_STOP")
-                    if (isPreviewActive) {
-                        streamService?.releaseCamera()
-                        isPreviewActive = false
-                    }
+                    streamService?.releaseCamera()
+                    isPreviewActive = false
                 }
                 Lifecycle.Event.ON_RESUME -> {
                     Log.d("CameraScreen", "Lifecycle.Event.ON_RESUME")
                     // Запускаем камеру только если предпросмотр не активен и OpenGlView готов
-                    if (!isPreviewActive && openGlView != null) {
+                    if (!isPreviewActive && openGlView != null && streamService != null && streamService.isPreviewRunning() == false) {
                         openGlView?.let { view ->
                             if (view.holder.surface?.isValid == true) {
                                 Log.d("CameraScreen", "Запуск камеры из ON_RESUME")
                                 Handler(android.os.Looper.getMainLooper()).postDelayed({
                                     try {
-                                        streamService?.restartPreview(view)
+                                        streamService.restartPreview(view)
                                         screenWasOff = false
                                         isPreviewActive = true
                                     } catch (e: Exception) {
@@ -249,19 +261,8 @@ fun CameraScreen(
         CameraPreview(
             streamService = streamService,
             onOpenGlViewCreated = { view -> 
-                // Сохраняем ссылку на OpenGlView
-                openGlView = view 
-                
-                // Запускаем предпросмотр если сервис уже подключен и предпросмотр не активен
-                if (streamService != null && !isPreviewActive) {
-                    try {
-                        Log.d("CameraScreen", "Запуск камеры из onOpenGlViewCreated")
-                        streamService.startPreview(view)
-                        isPreviewActive = true
-                    } catch (e: Exception) {
-                        Log.e("CameraScreen", "Ошибка при запуске предпросмотра: ${e.message}", e)
-                    }
-                }
+                openGlView = view
+                initializeCamera(view)
             }
         )
 

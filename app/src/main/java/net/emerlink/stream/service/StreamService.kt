@@ -142,7 +142,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         preferences = PreferenceManager.getDefaultSharedPreferences(this)
         preferences.registerOnSharedPreferenceChangeListener(this)
 
-        notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
         folder = PathUtils.getRecordPath(this)
 
@@ -172,9 +172,9 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
         // Setup location and sensors
         locListener = StreamLocationListener(this)
-        locManager = applicationContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        locManager = applicationContext.getSystemService(LOCATION_SERVICE) as LocationManager
 
-        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         magnetometer = sensorManager.getDefaultSensor(android.hardware.Sensor.TYPE_MAGNETIC_FIELD)!!
         accelerometer = sensorManager.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER)!!
 
@@ -206,7 +206,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(commandReceiver, intentFilter, Context.RECEIVER_NOT_EXPORTED)
+            registerReceiver(commandReceiver, intentFilter, RECEIVER_NOT_EXPORTED)
         } else {
             registerReceiver(commandReceiver, intentFilter)
         }
@@ -354,11 +354,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         }
     }
 
-    // Public methods
-    fun isPreviewActive(): Boolean {
-        return streamManager.isOnPreview()
-    }
-
     /** Запускает предпросмотр камеры */
     fun startPreview(view: OpenGlView) {
         if (isPreviewActive) {
@@ -367,13 +362,16 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         }
         
         try {
-            Log.d(TAG, "Запуск предпросмотра камеры")
-            
             // Сохраняем ссылку на OpenGlView
             openGlView = view
             
             // Запускаем предпросмотр
             val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+            
+            // Настраиваем видео
+            streamManager.prepareVideo()
+            
+            // Запускаем предпросмотр
             streamManager.startPreview(view, isPortrait)
             
             isPreviewActive = true
@@ -392,14 +390,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         
         try {
             Log.d(TAG, "Остановка предпросмотра")
-            
-            if (streamManager.isOnPreview()) {
-                streamManager.stopPreview()
-            }
-            
-            // Обнуляем ссылку на OpenGlView 
-            openGlView = null
-
+            streamManager.stopPreview()
             isPreviewActive = false
             Log.d(TAG, "Предпросмотр успешно остановлен")
         } catch (e: Exception) {
@@ -853,5 +844,10 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 Log.e(TAG, "Ошибка при очистке после сбоя: ${e2.message}", e2)
             }
         }
+    }
+
+    // В StreamService добавим метод проверки состояния предпросмотра
+    fun isPreviewRunning(): Boolean {
+        return isPreviewActive
     }
 }

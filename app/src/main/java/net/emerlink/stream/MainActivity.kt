@@ -76,7 +76,7 @@ class MainActivity : ComponentActivity() {
         requestedOrientation = when (orientation) {
             "landscape" -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
             "portrait" -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-            "auto" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR
+//            "auto" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR
             else -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         }
 
@@ -147,19 +147,12 @@ fun AppNavigation(streamService: StreamService?) {
                 activity?.requestedOrientation = when (orientation) {
                     "landscape" -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
                     "portrait" -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                    "auto" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR
                     else -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
                 }
             }
 
             "settings", "advanced_settings" -> {
-                // Для экранов настроек всегда принудительно устанавливаем портретную ориентацию
-                // SENSOR_PORTRAIT вместо PORTRAIT для поддержки обратной ориентации
-                activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-            }
-
-            else -> {
-                // For all other screens
+                // Для экранов настроек устанавливаем портретную ориентацию
                 activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             }
         }
