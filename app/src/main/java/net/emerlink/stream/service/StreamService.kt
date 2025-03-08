@@ -1,14 +1,12 @@
 package net.emerlink.stream.service
 
 import android.annotation.SuppressLint
-import android.app.NotificationManager
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
-import android.content.pm.ServiceInfo
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.hardware.SensorEvent
@@ -20,6 +18,7 @@ import android.os.Binder
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
 import android.view.MotionEvent
 import androidx.lifecycle.MutableLiveData
@@ -32,7 +31,7 @@ import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.model.StreamSettings
 import net.emerlink.stream.model.StreamType
 import net.emerlink.stream.util.ErrorHandler
-import net.emerlink.stream.util.NotificationHelper
+import net.emerlink.stream.notification.NotificationManager
 import net.emerlink.stream.util.PathUtils
 import net.emerlink.stream.util.PreferencesLoader
 import java.io.File
@@ -45,7 +44,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
     companion object {
         private const val TAG = "StreamService"
-        private const val NOTIFICATION_ID = 3425
 
         const val ACTION_START_STREAM = "net.emerlink.stream.START_STREAM"
         const val ACTION_STOP_STREAM = "net.emerlink.stream.STOP_STREAM"
@@ -55,6 +53,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         const val ACTION_TOOK_PICTURE = "net.emerlink.stream.TOOK_PICTURE"
         const val ACTION_NEW_BITRATE = "net.emerlink.stream.NEW_BITRATE"
         const val ACTION_LOCATION_CHANGE = "net.emerlink.stream.LOCATION_CHANGE"
+        const val ACTION_DISMISS_ERROR = "net.emerlink.stream.DISMISS_ERROR"
 
         val observer = MutableLiveData<StreamService?>()
         val screenshotTaken = MutableLiveData<Boolean>()
@@ -63,7 +62,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     private lateinit var preferences: SharedPreferences
     private lateinit var notificationManager: NotificationManager
     private lateinit var errorHandler: ErrorHandler
-    private lateinit var notificationHelper: NotificationHelper
     private lateinit var streamManager: StreamManager
     private lateinit var cameraManager: CameraManager
 
@@ -137,23 +135,12 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         Log.d(TAG, "onCreate")
 
         errorHandler = ErrorHandler(this)
-        notificationHelper = NotificationHelper(this)
+        notificationManager = NotificationManager.getInstance(this)
 
         preferences = PreferenceManager.getDefaultSharedPreferences(this)
         preferences.registerOnSharedPreferenceChangeListener(this)
 
-        notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-
         folder = PathUtils.getRecordPath(this)
-
-        val notification = notificationHelper.createNotification(getString(R.string.ready_to_stream), true)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val type = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
-            startForeground(NOTIFICATION_ID, notification, type)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
-        }
 
         // Initialize with default settings
         streamSettings = StreamSettings()
@@ -188,19 +175,35 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             addAction(ACTION_START_STREAM)
             addAction(ACTION_STOP_STREAM)
             addAction(ACTION_EXIT_APP)
+            addAction(ACTION_DISMISS_ERROR)
         }
 
         val commandReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 Log.d(TAG, "Получен интент: ${intent.action}")
-                when (intent.action) {
-                    ACTION_START_STREAM -> startStream()
-                    ACTION_STOP_STREAM -> stopStream(null, null)
-                    ACTION_EXIT_APP -> {
-                        exiting = true
-                        stopStream(null, null)
-                        stopSelf()
+                try {
+                    when (intent.action) {
+                        ACTION_START_STREAM -> startStream()
+                        ACTION_STOP_STREAM -> {
+                            Log.d(TAG, "Обработка команды остановки стрима из BroadcastReceiver")
+                            // Сначала очищаем уведомление
+                            notificationManager.clearAllNotifications()
+                            stopStream(null, null)
+                        }
+                        ACTION_EXIT_APP -> {
+                            Log.d(TAG, "Обработка команды выхода из приложения из BroadcastReceiver")
+                            exiting = true
+                            notificationManager.clearAllNotifications()
+                            stopStream(null, null)
+                            stopSelf()
+                        }
+                        ACTION_DISMISS_ERROR -> {
+                            Log.d(TAG, "Обработка команды скрытия ошибки из BroadcastReceiver")
+                            notificationManager.clearAllNotifications()
+                        }
                     }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Ошибка при обработке интента в BroadcastReceiver: ${e.message}", e)
                 }
             }
         }
@@ -216,16 +219,37 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        intent?.action?.let { action ->
-            when (action) {
-                ACTION_START_STREAM -> startStream()
-                ACTION_STOP_STREAM -> stopStream(null, null)
-                ACTION_EXIT_APP -> {
-                    exiting = true
-                    stopStream(null, null)
-                    stopSelf()
+        Log.d(TAG, "onStartCommand: ${intent?.action}")
+        
+        try {
+            intent?.action?.let { action ->
+                Log.d(TAG, "Обработка действия: $action")
+                
+                when (action) {
+                    ACTION_START_STREAM -> {
+                        startStream()
+                    }
+                    ACTION_STOP_STREAM -> {
+                        Log.d(TAG, "Обработка команды остановки стрима")
+                        // При остановке через уведомление закрываем само уведомление
+                        notificationManager.clearAllNotifications()
+                        stopStream(null, null)
+                    }
+                    ACTION_EXIT_APP -> {
+                        Log.d(TAG, "Обработка команды выхода из приложения")
+                        exiting = true
+                        notificationManager.clearAllNotifications()
+                        stopStream(null, null)
+                        stopSelf()
+                    }
+                    ACTION_DISMISS_ERROR -> {
+                        Log.d(TAG, "Обработка команды скрытия ошибки")
+                        notificationManager.clearAllNotifications()
+                    }
                 }
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при обработке команды: ${e.message}", e)
         }
 
         return START_STICKY
@@ -276,7 +300,48 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
     override fun onConnectionFailed(reason: String) {
         Log.e(TAG, "Connection failed: $reason")
-        stopStream(getString(R.string.connection_failed) + ": " + reason, ACTION_CONNECTION_FAILED)
+        
+        try {
+            // Принудительно останавливаем стрим сначала
+            if (streamManager.isStreaming()) {
+                Log.d(TAG, "Принудительная остановка стрима из-за ошибки подключения")
+                streamManager.stopStream()
+            }
+            
+            // Предотвращаем автоматические повторные попытки подключения
+            prepareAudio = false
+            prepareVideo = false
+            
+            // Создаем текст ошибки
+            val errorText = getString(R.string.connection_failed) + ": " + reason
+            Log.d(TAG, "Создание уведомления об ошибке: $errorText")
+            
+            // Очищаем все существующие уведомления
+            notificationManager.clearAllNotifications()
+            
+            // Показываем уведомление об ошибке
+            notificationManager.showErrorNotification(errorText)
+            
+            // Отправляем бродкаст о проблеме подключения
+            val intent = Intent(ACTION_CONNECTION_FAILED)
+            applicationContext.sendBroadcast(intent)
+            
+            // После отображения уведомления вызываем полную остановку стрима
+            Handler(Looper.getMainLooper()).postDelayed({
+                stopStream(null, null, NotificationManager.ACTION_NONE, false)
+            }, 500)
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при обработке сбоя подключения: ${e.message}", e)
+            // Аварийный случай - пытаемся остановить все, что можно
+            try {
+                streamManager.stopStream()
+                notificationManager.clearAllNotifications()
+                notificationManager.showErrorNotification("Критическая ошибка: ${e.message}")
+            } catch (e2: Exception) {
+                Log.e(TAG, "Двойная ошибка: ${e2.message}", e2)
+            }
+        }
     }
 
     override fun onConnectionStarted(url: String) {}
@@ -498,11 +563,9 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
                         Log.d(TAG, "Отправка бродкаста ACTION_TOOK_PICTURE")
                         applicationContext.sendBroadcast(Intent(ACTION_TOOK_PICTURE))
-                        notificationHelper.updateNotification(getString(R.string.saved_photo), true)
+                        notificationManager.showPhotoNotification(getString(R.string.saved_photo))
                     } ?: run {
-                        notificationHelper.updateNotification(
-                            getString(R.string.saved_photo_failed), false
-                        )
+                        notificationManager.showErrorNotification(getString(R.string.saved_photo_failed))
                     }
                 }
             } else {
@@ -520,18 +583,18 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
                 Log.d(TAG, "Отправка бродкаста ACTION_TOOK_PICTURE")
                 applicationContext.sendBroadcast(Intent(ACTION_TOOK_PICTURE))
-                notificationHelper.updateNotification(getString(R.string.saved_photo), true)
+                notificationManager.showPhotoNotification(getString(R.string.saved_photo))
             }
 
             // Используем LiveData вместо бродкаста
-            Handler(android.os.Looper.getMainLooper()).post {
+            Handler(Looper.getMainLooper()).post {
                 Log.d(TAG, "Уведомление через LiveData о скриншоте")
                 screenshotTaken.value = true
             }
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при сохранении фото: ${e.message}", e)
-            notificationHelper.updateNotification(
-                getString(R.string.saved_photo_failed) + ": " + e.message, false
+            notificationManager.showErrorNotification(
+                getString(R.string.saved_photo_failed) + ": " + e.message
             )
         }
     }
@@ -632,7 +695,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_NORMAL)
         } else {
             Log.e(TAG, "Failed to prepare audio or video")
-            notificationHelper.updateNotification(getString(R.string.failed_to_prepare), false)
+            notificationManager.showErrorNotification(getString(R.string.failed_to_prepare))
         }
     }
 
@@ -653,7 +716,12 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 url, streamSettings.protocol, streamSettings.username, streamSettings.password, streamSettings.tcp
             )
 
-            notificationHelper.updateNotification(getString(R.string.streaming), true)
+            // Только кнопка "Стоп" для стрима
+            notificationManager.showStreamingNotification(
+                getString(R.string.streaming), 
+                true,
+                NotificationManager.ACTION_STOP_ONLY
+            )
         } catch (e: Exception) {
             Log.e(TAG, "Error starting streaming: ${e.message}", e)
             errorHandler.handleStreamError(e)
@@ -666,7 +734,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         if (!folder.exists()) {
             if (!folder.mkdirs()) {
                 Log.e(TAG, "Failed to create folder: ${folder.absolutePath}")
-                notificationHelper.updateNotification(getString(R.string.failed_to_record), false)
+                notificationManager.showErrorNotification(getString(R.string.failed_to_record))
                 return
             }
         }
@@ -677,16 +745,31 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         Log.d(TAG, "Recording to: $filePath")
 
         streamManager.startRecord(filePath)
-        notificationHelper.updateNotification(getString(R.string.recording), true)
+        notificationManager.showStreamingNotification(
+            getString(R.string.recording), 
+            true,
+            NotificationManager.ACTION_STOP_ONLY
+        )
     }
 
-    fun stopStream(message: String?, action: String?) {
-        Log.d(TAG, "Stopping stream")
+    fun stopStream(message: String?, action: String?, actionType: Int = NotificationManager.ACTION_ALL, isError: Boolean = false) {
+        Log.d(TAG, "Stopping stream with message: $message, isError: $isError")
 
         try {
-            streamManager.stopStream()
+            // Очищаем ВСЕ существующие уведомления перед отображением нового,
+            // особенно важно для ошибок
+            if (isError) {
+                notificationManager.clearAllNotifications()
+            }
+
+            // Убедимся, что стрим действительно останавливается
+            if (streamManager.isStreaming()) {
+                Log.d(TAG, "Stopping active stream")
+                streamManager.stopStream()
+            }
 
             if (streamManager.isRecording()) {
+                Log.d(TAG, "Stopping active recording")
                 streamManager.stopRecord()
             }
 
@@ -694,15 +777,29 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             prepareVideo = false
 
             // Stop location updates
-            locManager?.removeUpdates(locListener!!)
+            try {
+                if (locListener != null) {
+                    locManager?.removeUpdates(locListener!!)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error stopping location updates", e)
+            }
 
             // Stop sensor updates
-            sensorManager.unregisterListener(this)
+            try {
+                sensorManager.unregisterListener(this)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error unregistering sensor listener", e)
+            }
 
+            // Показываем сообщение, если оно есть
             if (message != null) {
-                notificationHelper.updateNotification(message, false)
-            } else {
-                notificationHelper.updateNotification(getString(R.string.ready_to_stream), true)
+                Log.d(TAG, "Отображение уведомления: $message, тип действия: $actionType, isError: $isError")
+                if (isError) {
+                    notificationManager.showErrorNotification(message, actionType)
+                } else {
+                    notificationManager.showStreamingNotification(message, false, actionType)
+                }
             }
 
             if (action != null) {
@@ -714,7 +811,15 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 stopSelf()
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Error in stopStream: ${e.message}", e)
             errorHandler.handleStreamError(e)
+            
+            // Даже при ошибке в stopStream, пытаемся показать уведомление
+            if (message != null) {
+                // Обязательно очищаем все уведомления перед показом ошибки
+                notificationManager.clearAllNotifications()
+                notificationManager.showErrorNotification(message + " (${e.message})")
+            }
         }
     }
 

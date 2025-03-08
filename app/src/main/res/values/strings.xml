@@ -11,7 +11,7 @@
     
     <!-- Notifications -->
     <string name="ready_to_stream">Готов к стримингу</string>
-    <string name="streaming">Стриминг</string>
+    <string name="streaming">Стрим начался</string>
     <string name="recording">Запись</string>
     <string name="failed_to_prepare">Не удалось подготовить аудио или видео</string>
     <string name="failed_to_record">Не удалось начать запись</string>
@@ -86,6 +86,11 @@
     <string name="audio_codec_summary">Кодек для сжатия аудио</string>
     
     <!-- Error messages -->
+    <string name="error_wrong_address">Неверный адрес сервера</string>
+    <string name="error_connection_timeout">Превышено время ожидания подключения</string>
+    <string name="error_unauthorized">Ошибка авторизации</string>
+    <string name="error_permission_denied">Отказано в доступе</string>
+    <string name="error_unknown">Неизвестная ошибка</string>
     <string name="unknown_error">Неизвестная ошибка</string>
     <string name="unknown_host">Не удалось найти сервер</string>
     <string name="ssl_error">Ошибка SSL-соединения</string>
@@ -144,4 +149,12 @@
     <string name="stop_streaming">Остановить стриминг</string>
     <string name="stop_streaming_confirmation">Остановить стриминг и перейти в настройки?</string>
     <string name="loading_camera">Загрузка камеры...</string>
+
+    <!-- Notification Channels -->
+    <string name="notification_channel_stream_service">Сервис стриминга</string>
+    <string name="notification_channel_stream_service_description">Уведомления о состоянии стриминга</string>
+    <string name="notification_channel_errors">Ошибки</string>
+    <string name="notification_channel_errors_description">Уведомления об ошибках стриминга</string>
+    <string name="notification_channel_photos">Фотографии</string>
+    <string name="notification_channel_photos_description">Уведомления о сделанных фотографиях</string>
 </resources>

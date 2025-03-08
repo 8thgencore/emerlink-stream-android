@@ -81,7 +81,6 @@ fun CameraScreen(
     var isFlashOn by remember { mutableStateOf(false) }
     var isMuted by remember { mutableStateOf(false) }
     var showSettingsConfirmDialog by remember { mutableStateOf(false) }
-    var showScreenshotNotification by remember { mutableStateOf(false) }
     var showStreamInfo by remember { mutableStateOf(false) }
     var streamInfo by remember { mutableStateOf(StreamInfo()) }
     var openGlView by remember { mutableStateOf<OpenGlView?>(null) }
@@ -220,11 +219,7 @@ fun CameraScreen(
         val observer = androidx.lifecycle.Observer<Boolean> { taken ->
             if (taken) {
                 Log.d("CameraScreen", "Получено уведомление о скриншоте через LiveData")
-                showScreenshotNotification = true
-                // Auto-hide notification after 3 seconds
                 Handler(android.os.Looper.getMainLooper()).postDelayed({
-                    showScreenshotNotification = false
-                    // Сбрасываем значение
                     StreamService.screenshotTaken.value = false
                 }, 3000)
             }
@@ -277,11 +272,6 @@ fun CameraScreen(
             )
         }
 
-        // Screenshot notification
-        if (showScreenshotNotification) {
-            ScreenshotNotification(isLandscape = isLandscape)
-        }
-
         // Camera Controls
         CameraControls(
             isLandscape = isLandscape,
@@ -305,12 +295,6 @@ fun CameraScreen(
                         Log.e("CameraScreen", "Ошибка при остановке предпросмотра: ${e.message}", e)
                     }
                 }
-            },
-            onShowScreenshotNotification = {
-                showScreenshotNotification = true
-                Handler(android.os.Looper.getMainLooper()).postDelayed({
-                    showScreenshotNotification = false
-                }, 3000)
             })
     }
 
@@ -435,43 +419,6 @@ private fun StreamStatusIndicator(
 }
 
 @Composable
-private fun ScreenshotNotification(isLandscape: Boolean) {
-    val context = LocalContext.current
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .then(
-                if (!isLandscape) Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
-                else Modifier
-            )
-            .padding(16.dp), contentAlignment = Alignment.TopCenter
-    ) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-            modifier = Modifier.padding(top = if (isLandscape) 8.dp else 48.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PhotoCamera,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = context.getString(R.string.screenshot_saved),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun CameraControls(
     isLandscape: Boolean,
     isStreaming: Boolean,
@@ -482,7 +429,6 @@ private fun CameraControls(
     onFlashToggle: (Boolean) -> Unit,
     onMuteToggle: (Boolean) -> Unit,
     onSettingsClick: () -> Unit,
-    onShowScreenshotNotification: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -502,8 +448,7 @@ private fun CameraControls(
                 onStreamingToggle = onStreamingToggle,
                 onFlashToggle = onFlashToggle,
                 onMuteToggle = onMuteToggle,
-                onSettingsClick = onSettingsClick,
-                onShowScreenshotNotification = onShowScreenshotNotification
+                onSettingsClick = onSettingsClick
             )
         } else {
             PortraitCameraControls(
@@ -514,8 +459,7 @@ private fun CameraControls(
                 onStreamingToggle = onStreamingToggle,
                 onFlashToggle = onFlashToggle,
                 onMuteToggle = onMuteToggle,
-                onSettingsClick = onSettingsClick,
-                onShowScreenshotNotification = onShowScreenshotNotification
+                onSettingsClick = onSettingsClick
             )
         }
     }
@@ -531,7 +475,6 @@ private fun LandscapeCameraControls(
     onFlashToggle: (Boolean) -> Unit,
     onMuteToggle: (Boolean) -> Unit,
     onSettingsClick: () -> Unit,
-    onShowScreenshotNotification: () -> Unit
 ) {
     // Right side controls column
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterEnd) {
@@ -566,7 +509,6 @@ private fun LandscapeCameraControls(
             PhotoButton(
                 onClick = {
                     streamService?.takePhoto()
-                    onShowScreenshotNotification()
                 })
             FlashButton(
                 isFlashOn = isFlashOn, onClick = {
@@ -594,7 +536,6 @@ private fun PortraitCameraControls(
     onFlashToggle: (Boolean) -> Unit,
     onMuteToggle: (Boolean) -> Unit,
     onSettingsClick: () -> Unit,
-    onShowScreenshotNotification: () -> Unit
 ) {
     // Main Controls (Record button in center)
     RecordButton(
@@ -625,7 +566,6 @@ private fun PortraitCameraControls(
         PhotoButton(
             onClick = {
                 streamService?.takePhoto()
-                onShowScreenshotNotification()
             })
     }
 
