@@ -8,6 +8,10 @@ import android.util.Log
 import androidx.preference.PreferenceManager
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.video.CameraHelper
+import com.pedro.library.rtmp.RtmpCamera2
+import com.pedro.library.rtsp.RtspCamera2
+import com.pedro.library.srt.SrtCamera2
+import com.pedro.library.udp.UdpCamera2
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.model.StreamType
@@ -221,18 +225,27 @@ class StreamManager(
                 PreferenceKeys.VIDEO_BITRATE_DEFAULT
             )?.toIntOrNull() ?: 2500
 
-            Log.d(
-                TAG,
-                "Подготовка видео: ${videoWidth}x${videoHeight}, FPS=$fps, битрейт=${videoBitrate}k"
-            )
+            Log.d(TAG, "Подготовка видео: ${videoWidth}x${videoHeight}, FPS=$fps, битрейт=${videoBitrate}k")
 
-            cameraInterface.prepareVideo(
-                videoWidth,
-                videoHeight,
-                fps,
-                videoBitrate * 1000,
-                DEFAULT_I_FRAME_INTERVAL
-            )
+            getStream().let { camera ->
+                when (camera) {
+                    is RtmpCamera2 -> {
+                        camera.prepareVideo(videoWidth, videoHeight, fps, videoBitrate * 1000, DEFAULT_I_FRAME_INTERVAL)
+                    }
+
+                    is RtspCamera2 -> {
+                        camera.prepareVideo(videoWidth, videoHeight, fps, videoBitrate * 1000, DEFAULT_I_FRAME_INTERVAL)
+                    }
+
+                    is SrtCamera2 -> {
+                        camera.prepareVideo(videoWidth, videoHeight, fps, videoBitrate * 1000, DEFAULT_I_FRAME_INTERVAL)
+                    }
+
+                    is UdpCamera2 -> {
+                        camera.prepareVideo(videoWidth, videoHeight, fps, videoBitrate * 1000, DEFAULT_I_FRAME_INTERVAL)
+                    }
+                }
+            }
 
             return true
         } catch (e: Exception) {
