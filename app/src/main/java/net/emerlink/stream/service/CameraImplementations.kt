@@ -1,6 +1,7 @@
 package net.emerlink.stream.service
 
 import android.content.Context
+import android.util.Log
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.video.CameraHelper
 import com.pedro.library.rtmp.RtmpCamera2
@@ -14,7 +15,11 @@ class RtmpCameraImpl(
     private val context: Context,
     private val connectChecker: ConnectChecker
 ) : CameraInterface {
-    private val camera = RtmpCamera2(context, connectChecker)
+    companion object {
+        private const val TAG = "RtmpCameraImpl"
+    }
+
+    override val camera = RtmpCamera2(context, connectChecker)
 
     override val isStreaming: Boolean get() = camera.isStreaming
     override val isRecording: Boolean get() = camera.isRecording
@@ -46,8 +51,26 @@ class RtmpCameraImpl(
     override fun enableAudio() = camera.enableAudio()
     override fun disableAudio() = camera.disableAudio()
     override fun hasCongestion(): Boolean = camera.getStreamClient().hasCongestion()
-    override fun enableLantern() = camera.enableLantern()
-    override fun disableLantern() = camera.disableLantern()
+
+    override fun enableLantern(): Boolean {
+        return try {
+            camera.enableLantern()
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при включении фонарика: ${e.message}", e)
+            false
+        }
+    }
+
+    override fun disableLantern(): Boolean {
+        return try {
+            camera.disableLantern()
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при выключении фонарика: ${e.message}", e)
+            false
+        }
+    }
 
     override fun setAuthorization(username: String, password: String) {
         camera.getStreamClient().setAuthorization(username, password)
@@ -62,7 +85,11 @@ class RtspCameraImpl(
     private val context: Context,
     private val connectChecker: ConnectChecker
 ) : CameraInterface {
-    private val camera = RtspCamera2(context, connectChecker)
+    companion object {
+        private const val TAG = "RtspCameraImpl"
+    }
+
+    override val camera = RtspCamera2(context, connectChecker)
 
     override val isStreaming: Boolean get() = camera.isStreaming
     override val isRecording: Boolean get() = camera.isRecording
@@ -94,8 +121,26 @@ class RtspCameraImpl(
     override fun enableAudio() = camera.enableAudio()
     override fun disableAudio() = camera.disableAudio()
     override fun hasCongestion(): Boolean = camera.getStreamClient().hasCongestion()
-    override fun enableLantern() = camera.enableLantern()
-    override fun disableLantern() = camera.disableLantern()
+
+    override fun enableLantern(): Boolean {
+        return try {
+            camera.enableLantern()
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при включении фонарика: ${e.message}", e)
+            false
+        }
+    }
+
+    override fun disableLantern(): Boolean {
+        return try {
+            camera.disableLantern()
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при выключении фонарика: ${e.message}", e)
+            false
+        }
+    }
 
     override fun setAuthorization(username: String, password: String) {
         camera.getStreamClient().setAuthorization(username, password)
@@ -110,7 +155,11 @@ class SrtCameraImpl(
     private val context: Context,
     private val connectChecker: ConnectChecker
 ) : CameraInterface {
-    private val camera = SrtCamera2(context, connectChecker)
+    companion object {
+        private const val TAG = "SrtCameraImpl"
+    }
+
+    override val camera = SrtCamera2(context, connectChecker)
 
     override val isStreaming: Boolean get() = camera.isStreaming
     override val isRecording: Boolean get() = camera.isRecording
@@ -142,8 +191,26 @@ class SrtCameraImpl(
     override fun enableAudio() = camera.enableAudio()
     override fun disableAudio() = camera.disableAudio()
     override fun hasCongestion(): Boolean = camera.getStreamClient().hasCongestion()
-    override fun enableLantern() = camera.enableLantern()
-    override fun disableLantern() = camera.disableLantern()
+
+    override fun enableLantern(): Boolean {
+        return try {
+            camera.enableLantern()
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при включении фонарика: ${e.message}", e)
+            false
+        }
+    }
+
+    override fun disableLantern(): Boolean {
+        return try {
+            camera.disableLantern()
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при выключении фонарика: ${e.message}", e)
+            false
+        }
+    }
 
     override fun setAuthorization(username: String, password: String) {
         // Не применимо для SRT
@@ -158,7 +225,11 @@ class UdpCameraImpl(
     private val context: Context,
     private val connectChecker: ConnectChecker
 ) : CameraInterface {
-    private val camera = UdpCamera2(context, connectChecker)
+    companion object {
+        private const val TAG = "UdpCameraImpl"
+    }
+
+    override val camera = UdpCamera2(context, connectChecker)
 
     override val isStreaming: Boolean get() = camera.isStreaming
     override val isRecording: Boolean get() = camera.isRecording
@@ -190,8 +261,26 @@ class UdpCameraImpl(
     override fun enableAudio() = camera.enableAudio()
     override fun disableAudio() = camera.disableAudio()
     override fun hasCongestion(): Boolean = camera.getStreamClient().hasCongestion()
-    override fun enableLantern() = camera.enableLantern()
-    override fun disableLantern() = camera.disableLantern()
+
+    override fun enableLantern(): Boolean {
+        return try {
+            camera.enableLantern()
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при включении фонарика: ${e.message}", e)
+            false
+        }
+    }
+
+    override fun disableLantern(): Boolean {
+        return try {
+            camera.disableLantern()
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при выключении фонарика: ${e.message}", e)
+            false
+        }
+    }
 
     override fun setAuthorization(username: String, password: String) {
         // Не применимо для UDP

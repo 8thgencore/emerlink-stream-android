@@ -3,6 +3,7 @@ package net.emerlink.stream.service
 import android.content.Context
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.video.CameraHelper
+import com.pedro.library.base.Camera2Base
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.model.StreamType
 
@@ -10,6 +11,8 @@ import net.emerlink.stream.model.StreamType
  * Интерфейс для унификации работы с различными типами камер
  */
 interface CameraInterface {
+    val camera: Camera2Base
+
     val isStreaming: Boolean
     val isRecording: Boolean
     val isOnPreview: Boolean
@@ -30,8 +33,8 @@ interface CameraInterface {
     fun enableAudio()
     fun disableAudio()
     fun hasCongestion(): Boolean
-    fun enableLantern()
-    fun disableLantern()
+    fun enableLantern(): Boolean
+    fun disableLantern(): Boolean
 
     fun setAuthorization(username: String, password: String)
     fun setProtocol(tcp: Boolean)

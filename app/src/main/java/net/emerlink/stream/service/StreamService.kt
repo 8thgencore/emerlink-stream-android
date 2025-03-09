@@ -440,19 +440,22 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     fun toggleLantern(): Boolean {
         Log.d(TAG, "Вызов toggleLantern")
         return try {
-            val camera = streamManager.getStream() as com.pedro.library.base.Camera2Base
+            // Get the camera implementation
+            val cameraImpl = streamManager.getStream()
+            
+            // Toggle the flash state
             isFlashOn = !isFlashOn
-            if (isFlashOn) {
-                camera.enableLantern()
-            } else {
-                camera.disableLantern()
-            }
+            
+            // Access the underlying camera based on implementation type
+            if (isFlashOn) cameraImpl.camera.enableLantern() else cameraImpl.camera.disableLantern()
+            
             isFlashOn
-        } catch (e: ClassCastException) {
-            Log.e(TAG, "Ошибка приведения типа при управлении фонариком", e)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при управлении фонариком: ${e.message}", e)
             false
         }
     }
+
 
     /**
      * Switches between front and back cameras

@@ -232,15 +232,12 @@ class StreamManager(
                     is RtmpCamera2 -> {
                         camera.prepareVideo(videoWidth, videoHeight, fps, videoBitrate * 1000, DEFAULT_I_FRAME_INTERVAL)
                     }
-
                     is RtspCamera2 -> {
                         camera.prepareVideo(videoWidth, videoHeight, fps, videoBitrate * 1000, DEFAULT_I_FRAME_INTERVAL)
                     }
-
                     is SrtCamera2 -> {
                         camera.prepareVideo(videoWidth, videoHeight, fps, videoBitrate * 1000, DEFAULT_I_FRAME_INTERVAL)
                     }
-
                     is UdpCamera2 -> {
                         camera.prepareVideo(videoWidth, videoHeight, fps, videoBitrate * 1000, DEFAULT_I_FRAME_INTERVAL)
                     }
