@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.preference.PreferenceManager
@@ -68,7 +69,9 @@ fun AdvancedSettingsScreen(
                                 PreferenceKeys.VIDEO_KEYFRAME_INTERVAL, value
                             )
                         }
-                    })
+                    },
+                    keyboardType = KeyboardType.Number
+                )
 
                 DropdownPreference(
                     title = stringResource(id = R.string.video_profile),
@@ -129,7 +132,9 @@ fun AdvancedSettingsScreen(
                         preferences.edit {
                             putString(PreferenceKeys.NETWORK_BUFFER_SIZE, value)
                         }
-                    })
+                    },
+                    keyboardType = KeyboardType.Number
+                )
 
                 InputPreference(
                     title = stringResource(id = R.string.connection_timeout),
@@ -140,6 +145,7 @@ fun AdvancedSettingsScreen(
                     onValueChange = { value ->
                         preferences.edit { putString(PreferenceKeys.NETWORK_TIMEOUT, value) }
                     },
+                    keyboardType = KeyboardType.Number,
                 )
 
                 SwitchPreference(
@@ -165,6 +171,7 @@ fun AdvancedSettingsScreen(
                             putString(PreferenceKeys.NETWORK_RECONNECT_DELAY, value)
                         }
                     },
+                    keyboardType = KeyboardType.Number,
                 )
 
                 InputPreference(
@@ -179,6 +186,7 @@ fun AdvancedSettingsScreen(
                             putString(PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS, value)
                         }
                     },
+                    keyboardType = KeyboardType.Number,
                 )
             }
 

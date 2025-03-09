@@ -39,6 +39,7 @@ import net.emerlink.stream.ui.settings.components.DropdownPreference
 import net.emerlink.stream.ui.settings.components.InputPreference
 import net.emerlink.stream.ui.settings.components.PreferenceCategory
 import net.emerlink.stream.ui.settings.components.SwitchPreference
+import androidx.compose.ui.text.input.KeyboardType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -306,26 +307,33 @@ fun SettingsScreen(
                         summary = stringResource(id = R.string.stream_address_summary),
                         value = streamAddress,
                         onValueChange = { value ->
-                            streamAddress = value
-                            preferences.edit { putString(PreferenceKeys.STREAM_ADDRESS, value) }
-                        })
+                            val filteredValue = value.filterNot { it.isWhitespace() }
+                            streamAddress = filteredValue
+                            preferences.edit { putString(PreferenceKeys.STREAM_ADDRESS, filteredValue) }
+                        },
+                        keyboardType = KeyboardType.Number
+                    )
 
                     InputPreference(
                         title = stringResource(id = R.string.stream_port),
                         summary = stringResource(id = R.string.stream_port_summary),
                         value = streamPort,
                         onValueChange = { value ->
-                            streamPort = value
-                            preferences.edit { putString(PreferenceKeys.STREAM_PORT, value) }
-                        })
+                            val filteredValue = value.filterNot { it.isWhitespace() }
+                            streamPort = filteredValue
+                            preferences.edit { putString(PreferenceKeys.STREAM_PORT, filteredValue) }
+                        },
+                        keyboardType = KeyboardType.Number
+                    )
 
                     InputPreference(
                         title = stringResource(id = R.string.stream_path),
                         summary = stringResource(id = R.string.stream_path_summary),
                         value = streamPath,
                         onValueChange = { value ->
-                            streamPath = value
-                            preferences.edit { putString(PreferenceKeys.STREAM_PATH, value) }
+                            val filteredValue = value.filterNot { it.isWhitespace() }
+                            streamPath = filteredValue
+                            preferences.edit { putString(PreferenceKeys.STREAM_PATH, filteredValue) }
                         })
 
                     SwitchPreference(
@@ -346,8 +354,9 @@ fun SettingsScreen(
                         summary = stringResource(id = R.string.username_summary),
                         value = streamUsername,
                         onValueChange = { value ->
-                            streamUsername = value
-                            preferences.edit { putString(PreferenceKeys.STREAM_USERNAME, value) }
+                            val filteredValue = value.filterNot { it.isWhitespace() }
+                            streamUsername = filteredValue
+                            preferences.edit { putString(PreferenceKeys.STREAM_USERNAME, filteredValue) }
                         })
 
                     InputPreference(
@@ -356,8 +365,9 @@ fun SettingsScreen(
                         value = streamPassword,
                         isPassword = true,
                         onValueChange = { value ->
-                            streamPassword = value
-                            preferences.edit { putString(PreferenceKeys.STREAM_PASSWORD, value) }
+                            val filteredValue = value.filterNot { it.isWhitespace() }
+                            streamPassword = filteredValue
+                            preferences.edit { putString(PreferenceKeys.STREAM_PASSWORD, filteredValue) }
                         })
                 }
 
@@ -377,18 +387,22 @@ fun SettingsScreen(
                         title = stringResource(id = R.string.video_fps),
                         summary = stringResource(id = R.string.video_fps_summary),
                         value = videoFps,
+                        keyboardType = KeyboardType.Number,
                         onValueChange = { value ->
-                            videoFps = value
-                            preferences.edit { putString(PreferenceKeys.VIDEO_FPS, value) }
+                            val filteredValue = value.filterNot { it.isWhitespace() }
+                            videoFps = filteredValue
+                            preferences.edit { putString(PreferenceKeys.VIDEO_FPS, filteredValue) }
                         })
 
                     InputPreference(
                         title = stringResource(id = R.string.video_bitrate),
                         summary = stringResource(id = R.string.video_bitrate_summary),
                         value = videoBitrate,
+                        keyboardType = KeyboardType.Number,
                         onValueChange = { value ->
-                            videoBitrate = value
-                            preferences.edit { putString(PreferenceKeys.VIDEO_BITRATE, value) }
+                            val filteredValue = value.filterNot { it.isWhitespace() }
+                            videoBitrate = filteredValue
+                            preferences.edit { putString(PreferenceKeys.VIDEO_BITRATE, filteredValue) }
                         })
 
                     DropdownPreference(
@@ -449,9 +463,11 @@ fun SettingsScreen(
                         title = stringResource(id = R.string.audio_bitrate),
                         summary = stringResource(id = R.string.audio_bitrate_summary),
                         value = audioBitrate,
+                        keyboardType = KeyboardType.Number,
                         onValueChange = { value ->
-                            audioBitrate = value
-                            preferences.edit { putString(PreferenceKeys.AUDIO_BITRATE, value) }
+                            val filteredValue = value.filterNot { it.isWhitespace() }
+                            audioBitrate = filteredValue
+                            preferences.edit { putString(PreferenceKeys.AUDIO_BITRATE, filteredValue) }
                         })
 
                     DropdownPreference(
