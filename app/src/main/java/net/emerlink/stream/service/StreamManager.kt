@@ -8,12 +8,7 @@ import android.util.Log
 import androidx.preference.PreferenceManager
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.video.CameraHelper
-import com.pedro.library.rtmp.RtmpCamera2
-import com.pedro.library.rtsp.RtspCamera2
-import com.pedro.library.srt.SrtCamera2
-import com.pedro.library.udp.UdpCamera2
 import com.pedro.library.view.OpenGlView
-import com.pedro.rtsp.rtsp.Protocol
 import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.model.StreamType
 import net.emerlink.stream.util.ErrorHandler
@@ -38,15 +33,11 @@ class StreamManager(
         PreferenceManager.getDefaultSharedPreferences(context)
     }
 
-    private lateinit var rtmpCamera: RtmpCamera2
-    private lateinit var rtspCamera: RtspCamera2
-    private lateinit var srtCamera: SrtCamera2
-    private lateinit var udpCamera: UdpCamera2
-
+    private var cameraInterface: CameraInterface
     private var streamType: StreamType = StreamType.RTMP
 
     init {
-        initializeClients()
+        cameraInterface = CameraInterface.create(context, connectChecker, streamType)
         sharedPreferences.registerOnSharedPreferenceChangeListener(this)
     }
 
@@ -99,25 +90,14 @@ class StreamManager(
         }
     }
 
-    private fun initializeClients() {
-        rtmpCamera = RtmpCamera2(context, connectChecker)
-        rtspCamera = RtspCamera2(context, connectChecker)
-        srtCamera = SrtCamera2(context, connectChecker)
-        udpCamera = UdpCamera2(context, connectChecker)
-    }
-
     fun setStreamType(type: StreamType) {
-        streamType = type
-    }
-
-    fun getStream(): Any {
-        return when (streamType) {
-            StreamType.RTMP -> rtmpCamera
-            StreamType.RTSP -> rtspCamera
-            StreamType.SRT -> srtCamera
-            StreamType.UDP -> udpCamera
+        if (type != streamType) {
+            streamType = type
+            cameraInterface = CameraInterface.create(context, connectChecker, streamType)
         }
     }
+
+    fun getStream(): CameraInterface = cameraInterface
 
     fun startStream(
         url: String,
@@ -127,30 +107,17 @@ class StreamManager(
         tcp: Boolean
     ) {
         try {
-            when {
-                protocol.startsWith("rtmp") -> {
-                    if (username.isNotEmpty() && password.isNotEmpty()) {
-                        rtmpCamera.getStreamClient().setAuthorization(username, password)
-                    }
-                    rtmpCamera.startStream(url)
-                }
-
-                protocol.startsWith("rtsp") -> {
-                    if (username.isNotEmpty() && password.isNotEmpty()) {
-                        rtspCamera.getStreamClient().setAuthorization(username, password)
-                    }
-                    rtspCamera.getStreamClient().setProtocol(if (tcp) Protocol.TCP else Protocol.UDP)
-                    rtspCamera.startStream(url)
-                }
-
-                protocol == "srt" -> {
-                    srtCamera.startStream(url)
-                }
-
-                else -> {
-                    udpCamera.startStream(url)
-                }
+            if (username.isNotEmpty() && password.isNotEmpty() &&
+                (protocol.startsWith("rtmp") || protocol.startsWith("rtsp"))
+            ) {
+                cameraInterface.setAuthorization(username, password)
             }
+
+            if (protocol.startsWith("rtsp")) {
+                cameraInterface.setProtocol(tcp)
+            }
+
+            cameraInterface.startStream(url)
         } catch (e: Exception) {
             errorHandler.handleStreamError(e)
         }
@@ -159,12 +126,7 @@ class StreamManager(
     fun stopStream() {
         try {
             if (isStreaming()) {
-                when (streamType) {
-                    StreamType.RTMP -> rtmpCamera.stopStream()
-                    StreamType.RTSP -> rtspCamera.stopStream()
-                    StreamType.SRT -> srtCamera.stopStream()
-                    StreamType.UDP -> udpCamera.stopStream()
-                }
+                cameraInterface.stopStream()
             }
         } catch (e: Exception) {
             errorHandler.handleStreamError(e)
@@ -173,12 +135,7 @@ class StreamManager(
 
     fun startRecord(filePath: String) {
         try {
-            when (streamType) {
-                StreamType.RTMP -> rtmpCamera.startRecord(filePath)
-                StreamType.RTSP -> rtspCamera.startRecord(filePath)
-                StreamType.SRT -> srtCamera.startRecord(filePath)
-                StreamType.UDP -> udpCamera.startRecord(filePath)
-            }
+            cameraInterface.startRecord(filePath)
         } catch (e: Exception) {
             errorHandler.handleStreamError(e)
         }
@@ -187,12 +144,7 @@ class StreamManager(
     fun stopRecord() {
         try {
             if (isRecording()) {
-                when (streamType) {
-                    StreamType.RTMP -> rtmpCamera.stopRecord()
-                    StreamType.RTSP -> rtspCamera.stopRecord()
-                    StreamType.SRT -> srtCamera.stopRecord()
-                    StreamType.UDP -> udpCamera.stopRecord()
-                }
+                cameraInterface.stopRecord()
             }
         } catch (e: Exception) {
             errorHandler.handleStreamError(e)
@@ -209,83 +161,29 @@ class StreamManager(
 
             updateViewAspectRatio(view, videoWidth, videoHeight, isPortrait)
 
-            val camera = when (streamType) {
-                StreamType.RTMP -> rtmpCamera
-                StreamType.RTSP -> rtspCamera
-                StreamType.SRT -> srtCamera
-                StreamType.UDP -> udpCamera
+            if (isOnPreview()) {
+                cameraInterface.stopPreview()
             }
 
-            configureAndStartPreview(camera, view, isPortrait, videoWidth, videoHeight)
+            cameraInterface.replaceView(view)
+
+            val bitrate = cameraInterface.bitrate.takeIf { it > 0 } ?: DEFAULT_BITRATE
+
+            cameraInterface.prepareVideo(
+                videoWidth,
+                videoHeight,
+                DEFAULT_FPS,
+                bitrate,
+                DEFAULT_I_FRAME_INTERVAL
+            )
+
+            val rotation = if (isPortrait) 90 else 0
+            cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
+
+            Log.d(TAG, "Превью успешно запущен с разрешением ${videoWidth}x${videoHeight}")
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при запуске preview: ${e.message}")
             errorHandler.handleStreamError(e)
-        }
-    }
-
-    private fun <T> configureAndStartPreview(
-        camera: T,
-        view: OpenGlView,
-        isPortrait: Boolean,
-        width: Int,
-        height: Int
-    ) where T : Any {
-        try {
-            stopCurrentPreview(camera)
-            replaceViewForCamera(camera, view)
-
-            val bitrate = getBitrateFromCamera(camera) ?: DEFAULT_BITRATE
-
-            when (camera) {
-                is RtmpCamera2 -> camera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
-                is RtspCamera2 -> camera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
-                is SrtCamera2 -> camera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
-                is UdpCamera2 -> camera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
-            }
-
-            val rotation = if (isPortrait) 90 else 0
-            startCameraPreview(camera, rotation)
-
-            Log.d(TAG, "Превью успешно запущен с разрешением ${width}x${height}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка при настройке и запуске preview: ${e.message}")
-        }
-    }
-
-    private fun <T> getBitrateFromCamera(camera: T): Int? where T : Any {
-        return when (camera) {
-            is RtmpCamera2 -> camera.bitrate
-            is RtspCamera2 -> camera.bitrate
-            is SrtCamera2 -> camera.bitrate
-            is UdpCamera2 -> camera.bitrate
-            else -> null
-        }
-    }
-
-    private fun <T> stopCurrentPreview(camera: T) where T : Any {
-        when (camera) {
-            is RtmpCamera2 -> if (camera.isOnPreview) camera.stopPreview()
-            is RtspCamera2 -> if (camera.isOnPreview) camera.stopPreview()
-            is SrtCamera2 -> if (camera.isOnPreview) camera.stopPreview()
-            is UdpCamera2 -> if (camera.isOnPreview) camera.stopPreview()
-        }
-    }
-
-    private fun <T> replaceViewForCamera(camera: T, view: OpenGlView) where T : Any {
-        when (camera) {
-            is RtmpCamera2 -> camera.replaceView(view)
-            is RtspCamera2 -> camera.replaceView(view)
-            is SrtCamera2 -> camera.replaceView(view)
-            is UdpCamera2 -> camera.replaceView(view)
-        }
-    }
-
-    private fun <T> startCameraPreview(camera: T, rotation: Int) where T : Any {
-        when (camera) {
-            is RtmpCamera2 -> camera.startPreview(CameraHelper.Facing.BACK, rotation)
-            is RtspCamera2 -> camera.startPreview(CameraHelper.Facing.BACK, rotation)
-            is SrtCamera2 -> camera.startPreview(CameraHelper.Facing.BACK, rotation)
-            is UdpCamera2 -> camera.startPreview(CameraHelper.Facing.BACK, rotation)
         }
     }
 
@@ -293,12 +191,7 @@ class StreamManager(
         try {
             if (isOnPreview()) {
                 Log.d(TAG, "Stopping Preview")
-                when (streamType) {
-                    StreamType.RTMP -> rtmpCamera.stopPreview()
-                    StreamType.RTSP -> rtspCamera.stopPreview()
-                    StreamType.SRT -> srtCamera.stopPreview()
-                    StreamType.UDP -> udpCamera.stopPreview()
-                }
+                cameraInterface.stopPreview()
             }
         } catch (e: Exception) {
             errorHandler.handleStreamError(e)
@@ -308,15 +201,7 @@ class StreamManager(
     fun prepareAudio(): Boolean {
         try {
             Log.d(TAG, "Подготовка аудио")
-            // Используем getStream() для получения активной камеры
-            getStream().let { camera ->
-                when (camera) {
-                    is RtmpCamera2 -> camera.prepareAudio()
-                    is RtspCamera2 -> camera.prepareAudio()
-                    is SrtCamera2 -> camera.prepareAudio()
-                    is UdpCamera2 -> camera.prepareAudio()
-                }
-            }
+            cameraInterface.prepareAudio()
             return true
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка подготовки аудио: ${e.message}", e)
@@ -327,21 +212,28 @@ class StreamManager(
     fun prepareVideo(): Boolean {
         try {
             val (videoWidth, videoHeight) = parseResolution(sharedPreferences)
-            val fps = sharedPreferences.getString(PreferenceKeys.VIDEO_FPS, PreferenceKeys.VIDEO_FPS_DEFAULT)?.toIntOrNull() ?: 30
-            val videoBitrate = sharedPreferences.getString(PreferenceKeys.VIDEO_BITRATE, PreferenceKeys.VIDEO_BITRATE_DEFAULT)?.toIntOrNull() ?: 2500
-            
-            Log.d(TAG, "Подготовка видео: ${videoWidth}x${videoHeight}, FPS=$fps, битрейт=${videoBitrate}k")
-            
-            // Используем лямбду для уменьшения дублирования кода
-            getStream().let { camera ->
-                when (camera) {
-                    is RtmpCamera2 -> camera.prepareVideo(videoWidth, videoHeight, fps, videoBitrate * 1000, 2)
-                    is RtspCamera2 -> camera.prepareVideo(videoWidth, videoHeight, fps, videoBitrate * 1000, 2)
-                    is SrtCamera2 -> camera.prepareVideo(videoWidth, videoHeight, fps, videoBitrate * 1000, 2)
-                    is UdpCamera2 -> camera.prepareVideo(videoWidth, videoHeight, fps, videoBitrate * 1000, 2)
-                }
-            }
-            
+            val fps = sharedPreferences.getString(
+                PreferenceKeys.VIDEO_FPS,
+                PreferenceKeys.VIDEO_FPS_DEFAULT
+            )?.toIntOrNull() ?: 30
+            val videoBitrate = sharedPreferences.getString(
+                PreferenceKeys.VIDEO_BITRATE,
+                PreferenceKeys.VIDEO_BITRATE_DEFAULT
+            )?.toIntOrNull() ?: 2500
+
+            Log.d(
+                TAG,
+                "Подготовка видео: ${videoWidth}x${videoHeight}, FPS=$fps, битрейт=${videoBitrate}k"
+            )
+
+            cameraInterface.prepareVideo(
+                videoWidth,
+                videoHeight,
+                fps,
+                videoBitrate * 1000,
+                DEFAULT_I_FRAME_INTERVAL
+            )
+
             return true
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка подготовки видео: ${e.message}", e)
@@ -349,101 +241,40 @@ class StreamManager(
         }
     }
 
+    fun isStreaming(): Boolean = cameraInterface.isStreaming
+    fun isRecording(): Boolean = cameraInterface.isRecording
+    fun isOnPreview(): Boolean = cameraInterface.isOnPreview
 
-
-    fun isStreaming(): Boolean {
-        return when (streamType) {
-            StreamType.RTMP -> rtmpCamera.isStreaming
-            StreamType.RTSP -> rtspCamera.isStreaming
-            StreamType.SRT -> srtCamera.isStreaming
-            StreamType.UDP -> udpCamera.isStreaming
-        }
-    }
-
-    fun isRecording(): Boolean {
-        return when (streamType) {
-            StreamType.RTMP -> rtmpCamera.isRecording
-            StreamType.RTSP -> rtspCamera.isRecording
-            StreamType.SRT -> srtCamera.isRecording
-            StreamType.UDP -> udpCamera.isRecording
-        }
-    }
-
-    fun isOnPreview(): Boolean {
-        return when (streamType) {
-            StreamType.RTMP -> rtmpCamera.isOnPreview
-            StreamType.RTSP -> rtspCamera.isOnPreview
-            StreamType.SRT -> srtCamera.isOnPreview
-            StreamType.UDP -> udpCamera.isOnPreview
-        }
-    }
-
-    fun getVideoSource(): Any {
-        return getStream()
-    }
-
-    fun getGlInterface(): Any {
-        return when (streamType) {
-            StreamType.RTMP -> rtmpCamera.glInterface
-            StreamType.RTSP -> rtspCamera.glInterface
-            StreamType.SRT -> srtCamera.glInterface
-            StreamType.UDP -> udpCamera.glInterface
-        }
-    }
+    fun getVideoSource(): Any = cameraInterface
+    fun getGlInterface(): Any = cameraInterface.glInterface
 
     fun setVideoBitrateOnFly(bitrate: Int) {
-        when (streamType) {
-            StreamType.RTMP -> rtmpCamera.setVideoBitrateOnFly(bitrate)
-            StreamType.RTSP -> rtspCamera.setVideoBitrateOnFly(bitrate)
-            StreamType.SRT -> srtCamera.setVideoBitrateOnFly(bitrate)
-            StreamType.UDP -> udpCamera.setVideoBitrateOnFly(bitrate)
-        }
+        cameraInterface.setVideoBitrateOnFly(bitrate)
     }
 
-    fun hasCongestion(): Boolean {
-        return when (streamType) {
-            StreamType.RTMP -> rtmpCamera.getStreamClient().hasCongestion()
-            StreamType.RTSP -> rtspCamera.getStreamClient().hasCongestion()
-            StreamType.SRT -> srtCamera.getStreamClient().hasCongestion()
-            StreamType.UDP -> udpCamera.getStreamClient().hasCongestion()
-        }
-    }
+    fun hasCongestion(): Boolean = cameraInterface.hasCongestion()
 
     fun switchStreamResolution(width: Int, height: Int) {
         try {
-            val bitrate = when (val camera = getStream()) {
-                is RtmpCamera2 -> camera.bitrate
-                is RtspCamera2 -> camera.bitrate
-                is SrtCamera2 -> camera.bitrate
-                is UdpCamera2 -> camera.bitrate
-                else -> DEFAULT_BITRATE
-            }
+            val bitrate = cameraInterface.bitrate.takeIf { it > 0 } ?: DEFAULT_BITRATE
 
-            when (streamType) {
-                StreamType.RTMP -> {
-                    rtmpCamera.stopPreview()
-                    rtmpCamera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
-                    rtmpCamera.startPreview()
-                }
+            if (isOnPreview()) {
+                cameraInterface.stopPreview()
+                cameraInterface.prepareVideo(
+                    width,
+                    height,
+                    DEFAULT_FPS,
+                    bitrate,
+                    DEFAULT_I_FRAME_INTERVAL
+                )
 
-                StreamType.RTSP -> {
-                    rtspCamera.stopPreview()
-                    rtspCamera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
-                    rtspCamera.startPreview()
-                }
-
-                StreamType.SRT -> {
-                    srtCamera.stopPreview()
-                    srtCamera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
-                    srtCamera.startPreview()
-                }
-
-                StreamType.UDP -> {
-                    udpCamera.stopPreview()
-                    udpCamera.prepareVideo(width, height, DEFAULT_FPS, bitrate, DEFAULT_I_FRAME_INTERVAL)
-                    udpCamera.startPreview()
+                val rotation = if (currentIsPortrait) 90 else 0
+                currentView?.let { view ->
+                    cameraInterface.replaceView(view)
+                    cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
                 }
             }
+
             Log.d(TAG, "Установлено новое разрешение стрима: ${width}x${height}")
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при изменении разрешения стрима: ${e.message}")
@@ -451,26 +282,22 @@ class StreamManager(
     }
 
     fun enableAudio() {
-        when (streamType) {
-            StreamType.RTMP -> rtmpCamera.enableAudio()
-            StreamType.RTSP -> rtspCamera.enableAudio()
-            StreamType.SRT -> srtCamera.enableAudio()
-            StreamType.UDP -> udpCamera.enableAudio()
-        }
+        cameraInterface.enableAudio()
     }
 
     fun disableAudio() {
-        when (streamType) {
-            StreamType.RTMP -> rtmpCamera.disableAudio()
-            StreamType.RTSP -> rtspCamera.disableAudio()
-            StreamType.SRT -> srtCamera.disableAudio()
-            StreamType.UDP -> udpCamera.disableAudio()
-        }
+        cameraInterface.disableAudio()
     }
 
-    private fun updateViewAspectRatio(view: OpenGlView, width: Int, height: Int, isPortrait: Boolean) {
+    private fun updateViewAspectRatio(
+        view: OpenGlView,
+        width: Int,
+        height: Int,
+        isPortrait: Boolean
+    ) {
         try {
-            val method = view.javaClass.getMethod("setAspectRatioMode", Int::class.javaPrimitiveType)
+            val method =
+                view.javaClass.getMethod("setAspectRatioMode", Int::class.javaPrimitiveType)
             val mode = if (isPortrait) 1 else 0
             method.invoke(view, mode)
             Log.d(TAG, "Соотношение сторон OpenGlView обновлено: режим $mode")
@@ -486,13 +313,7 @@ class StreamManager(
     fun switchCamera(): Boolean {
         try {
             Log.d(TAG, "Switching camera")
-            val result = when (streamType) {
-                StreamType.RTMP -> rtmpCamera.switchCamera()
-                StreamType.RTSP -> rtspCamera.switchCamera()
-                StreamType.SRT -> srtCamera.switchCamera()
-                StreamType.UDP -> udpCamera.switchCamera()
-            }
-
+            val result = cameraInterface.switchCamera()
             Log.d(TAG, "Camera switched successfully: $result")
             return true
         } catch (e: Exception) {
@@ -504,16 +325,16 @@ class StreamManager(
     fun releaseCamera() {
         try {
             Log.d(TAG, "Освобождение ресурсов камеры")
-            
+
             // Остановка всех активных процессов
             if (isOnPreview()) stopPreview()
             if (isStreaming()) stopStream()
             if (isRecording()) stopRecord()
-            
-            // Пересоздаем объекты камер для полного обновления ресурсов
-            initializeClients()
+
+            // Пересоздаем объект камеры для полного обновления ресурсов
+            cameraInterface = CameraInterface.create(context, connectChecker, streamType)
             currentView = null
-            
+
             Log.d(TAG, "Ресурсы камеры освобождены")
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка освобождения камеры: ${e.message}", e)
