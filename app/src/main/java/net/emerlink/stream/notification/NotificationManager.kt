@@ -114,7 +114,7 @@ class NotificationManager private constructor(private val context: Context) {
         }
         
         // Настраиваем флаги для PendingIntent
-        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        var flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         } else {
             PendingIntent.FLAG_UPDATE_CURRENT
@@ -152,16 +152,26 @@ class NotificationManager private constructor(private val context: Context) {
                 // Действие "Стоп"
                 val stopIntent = Intent(context, StreamService::class.java).apply {
                     action = StreamService.ACTION_STOP_STREAM
+                    flags = Intent.FLAG_INCLUDE_STOPPED_PACKAGES
                     putExtra("request_code", 1)
                 }
-                val stopPendingIntent = PendingIntent.getService(context, 1, stopIntent, flags)
-                
+                val stopPendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    PendingIntent.getService(context, 1, stopIntent, PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                } else {
+                    PendingIntent.getService(context, 1, stopIntent,
+                        PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                }
+
                 // Действие "Выход"
                 val exitIntent = Intent(context, StreamService::class.java).apply {
                     action = StreamService.ACTION_EXIT_APP
                     putExtra("request_code", 2)
                 }
-                val exitPendingIntent = PendingIntent.getService(context, 2, exitIntent, flags)
+                val exitPendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    PendingIntent.getService(context, 2, exitIntent, PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                } else {
+                    PendingIntent.getService(context, 2, exitIntent, PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                }
                 
                 // Добавляем обе кнопки
                 builder.addAction(R.drawable.ic_stop, context.getString(R.string.stop), stopPendingIntent)
@@ -172,9 +182,15 @@ class NotificationManager private constructor(private val context: Context) {
                 // Только действие "Стоп"
                 val stopIntent = Intent(context, StreamService::class.java).apply {
                     action = StreamService.ACTION_STOP_STREAM
+                    flags = Intent.FLAG_INCLUDE_STOPPED_PACKAGES
                     putExtra("request_code", 1)
                 }
-                val stopPendingIntent = PendingIntent.getService(context, 1, stopIntent, flags)
+                val stopPendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    PendingIntent.getService(context, 1, stopIntent, PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                } else {
+                    PendingIntent.getService(context, 1, stopIntent,
+                        PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                }
                 builder.addAction(R.drawable.ic_stop, context.getString(R.string.stop), stopPendingIntent)
             }
             
@@ -185,7 +201,11 @@ class NotificationManager private constructor(private val context: Context) {
                         action = StreamService.ACTION_DISMISS_ERROR
                         putExtra("request_code", 3)
                     }
-                    val dismissPendingIntent = PendingIntent.getService(context, 3, dismissIntent, flags)
+                    val dismissPendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        PendingIntent.getService(context, 3, dismissIntent, PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                    } else {
+                        PendingIntent.getService(context, 3, dismissIntent, PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                    }
                     builder.addAction(
                         android.R.drawable.ic_menu_close_clear_cancel,
                         context.getString(android.R.string.ok),
@@ -303,11 +323,4 @@ class NotificationManager private constructor(private val context: Context) {
             Log.e(TAG, "Ошибка при очистке всех уведомлений: ${e.message}", e)
         }
     }
-    
-    /**
-     * Создает уведомление для foreground service
-     */
-    fun createForegroundNotification(text: String): Notification {
-        return createNotification(text, true, ACTION_ALL)
-    }
-} 
+}

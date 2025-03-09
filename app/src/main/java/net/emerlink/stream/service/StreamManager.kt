@@ -474,7 +474,7 @@ class StreamManager(
             val mode = if (isPortrait) 1 else 0
             method.invoke(view, mode)
             Log.d(TAG, "Соотношение сторон OpenGlView обновлено: режим $mode")
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             Log.d(TAG, "Метод setAspectRatioMode не найден, альтернативное обновление невозможно")
         }
     }

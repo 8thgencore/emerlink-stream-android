@@ -38,6 +38,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPreferenceChangeListener,
     SensorEventListener {
@@ -56,12 +57,13 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
         val observer = MutableLiveData<StreamService?>()
         val screenshotTaken = MutableLiveData<Boolean>()
+        val streamingState = MutableLiveData<Boolean>()
     }
 
     private lateinit var preferences: SharedPreferences
     private lateinit var notificationManager: NotificationManager
     private lateinit var errorHandler: ErrorHandler
-    private lateinit var streamManager: StreamManager
+    internal lateinit var streamManager: StreamManager
     private lateinit var cameraManager: CameraManager
 
     lateinit var streamSettings: StreamSettings
@@ -211,6 +213,21 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                     ACTION_STOP_STREAM -> {
                         Log.d(TAG, "Обработка команды остановки стрима")
                         notificationManager.clearAllNotifications()
+                        
+                        if (streamManager.isStreaming()) {
+                            streamManager.stopStream()
+                            
+                            streamingState.postValue(false)
+                        }
+                        
+                        if (streamManager.isRecording()) {
+                            streamManager.stopRecord()
+                        }
+                        
+                        // Отправляем сообщение через LocalBroadcastManager
+                        val broadcastIntent = Intent("net.emerlink.stream.STREAM_STOPPED")
+                        LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent)
+                        
                         stopStream(null, null)
                     }
                     ACTION_EXIT_APP -> {
@@ -658,6 +675,8 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 streamSettings.tcp
             )
 
+            streamingState.postValue(true)
+
             notificationManager.showStreamingNotification(
                 getString(R.string.streaming), true, NotificationManager.ACTION_STOP_ONLY
             )
@@ -702,9 +721,20 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 notificationManager.clearAllNotifications()
             }
 
-            if (streamManager.isStreaming()) {
+            val wasStreaming = streamManager.isStreaming()
+            
+            if (wasStreaming) {
                 Log.d(TAG, "Stopping active stream")
                 streamManager.stopStream()
+                
+                // Обновляем LiveData с логированием
+                Log.d(TAG, "Обновляем LiveData streamingState на false")
+                streamingState.postValue(false)
+                
+                // Используем LocalBroadcastManager с логированием
+                Log.d(TAG, "Отправляем сообщение STREAM_STOPPED через LocalBroadcastManager")
+                val broadcastIntent = Intent("net.emerlink.stream.STREAM_STOPPED")
+                LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent)
             }
 
             if (streamManager.isRecording()) {

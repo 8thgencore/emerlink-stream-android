@@ -48,6 +48,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,9 +88,14 @@ fun CameraScreen(
     var screenWasOff by remember { mutableStateOf(false) }
     var isPreviewActive by remember { mutableStateOf(streamService?.isPreviewRunning() == true) }
     
-    // Единая точка запуска превью камеры - перемещаем объявление ПЕРЕД использованием
+    LaunchedEffect(streamService) {
+        streamService?.let { service ->
+            isStreaming = service.streamManager.isStreaming()
+            StreamService.streamingState.value = isStreaming
+        }
+    }
+
     fun initializeCamera(view: OpenGlView) {
-        // Запускаем предпросмотр только если сервис подключен и превью не активно
         if (streamService != null && !isPreviewActive && !streamService.isPreviewRunning()) {
             try {
                 Log.d("CameraScreen", "Запуск камеры из единой точки инициализации")
@@ -235,7 +241,6 @@ fun CameraScreen(
     // Обновляем информацию о стриме при подключении к сервису
     DisposableEffect(streamService) {
         streamService?.let { service ->
-            // Получаем информацию из сервиса
             val settings = service.streamSettings
             streamInfo = StreamInfo(
                 protocol = settings.protocol,
@@ -245,6 +250,41 @@ fun CameraScreen(
             )
         }
         onDispose { }
+    }
+
+    // Удаляем DisposableEffect с BroadcastReceiver и заменяем его на наблюдение за LiveData
+    LaunchedEffect(Unit) {
+        StreamService.streamingState.observe(lifecycleOwner) { isStreamingNow ->
+            Log.d("CameraScreen", "Получено обновление состояния стрима: $isStreamingNow")
+            isStreaming = isStreamingNow
+        }
+    }
+
+    // Регистрируем приемник через LocalBroadcastManager
+    DisposableEffect(key1 = isStreaming) {
+        val streamStoppedReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                if (intent.action == "net.emerlink.stream.STREAM_STOPPED") {
+                    Log.d("CameraScreen", "Получено уведомление об остановке стрима")
+                    isStreaming = false
+                }
+            }
+        }
+        
+        val filter = IntentFilter("net.emerlink.stream.STREAM_STOPPED")
+        
+        // Используем LocalBroadcastManager
+        androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(context)
+            .registerReceiver(streamStoppedReceiver, filter)
+        
+        onDispose {
+            try {
+                androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(context)
+                    .unregisterReceiver(streamStoppedReceiver)
+            } catch (e: Exception) {
+                Log.e("CameraScreen", "Ошибка при отмене регистрации приемника: ${e.message}", e)
+            }
+        }
     }
 
     // Перемещаем определение конфигурации на уровень Composable функции
@@ -287,7 +327,6 @@ fun CameraScreen(
                     showSettingsConfirmDialog = true
                 } else {
                     try {
-                        // Обязательно останавливаем предпросмотр перед переходом на экран настроек
                         streamService?.stopPreview()
                         openGlView = null
                         onSettingsClick()
