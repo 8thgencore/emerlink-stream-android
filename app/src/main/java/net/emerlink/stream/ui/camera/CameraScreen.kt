@@ -87,7 +87,7 @@ fun CameraScreen(
     var openGlView by remember { mutableStateOf<OpenGlView?>(null) }
     var screenWasOff by remember { mutableStateOf(false) }
     var isPreviewActive by remember { mutableStateOf(streamService?.isPreviewRunning() == true) }
-    
+
     LaunchedEffect(streamService) {
         streamService?.let { service ->
             isStreaming = service.streamManager.isStreaming()
@@ -117,14 +117,16 @@ fun CameraScreen(
                     Intent.ACTION_SCREEN_OFF -> {
                         Log.d("CameraScreen", "Экран выключен")
                         screenWasOff = true
-                        
+
                         // При выключении экрана полностью освобождаем ресурсы камеры
                         streamService?.releaseCamera()
                     }
+
                     Intent.ACTION_SCREEN_ON -> {
                         Log.d("CameraScreen", "Экран включен")
                         // Перезапуск камеры будет происходить в ACTION_USER_PRESENT
                     }
+
                     Intent.ACTION_USER_PRESENT -> {
                         Log.d("CameraScreen", "Пользователь разблокировал экран")
                         if (screenWasOff && openGlView != null && streamService != null) {
@@ -139,7 +141,7 @@ fun CameraScreen(
                                     screenWasOff = false
                                 } catch (e: Exception) {
                                     Log.e("CameraScreen", "Ошибка перезапуска предпросмотра: ${e.message}", e)
-                                    
+
                                     // При ошибке пытаемся повторить еще раз с большей задержкой
                                     Handler(android.os.Looper.getMainLooper()).postDelayed({
                                         try {
@@ -158,14 +160,14 @@ fun CameraScreen(
                 }
             }
         }
-        
+
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_SCREEN_ON)
             addAction(Intent.ACTION_USER_PRESENT)
         }
         context.registerReceiver(screenStateReceiver, filter)
-        
+
         onDispose {
             try {
                 context.unregisterReceiver(screenStateReceiver)
@@ -184,11 +186,13 @@ fun CameraScreen(
                     streamService?.stopPreview()
                     isPreviewActive = false
                 }
+
                 Lifecycle.Event.ON_STOP -> {
                     Log.d("CameraScreen", "Lifecycle.Event.ON_STOP")
                     streamService?.releaseCamera()
                     isPreviewActive = false
                 }
+
                 Lifecycle.Event.ON_RESUME -> {
                     Log.d("CameraScreen", "Lifecycle.Event.ON_RESUME")
                     // Запускаем камеру только если предпросмотр не активен и OpenGlView готов
@@ -209,13 +213,14 @@ fun CameraScreen(
                         }
                     }
                 }
+
                 else -> {}
             }
         }
 
         lifecycleOwner.lifecycle.addObserver(observer)
 
-        onDispose { 
+        onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
@@ -270,13 +275,13 @@ fun CameraScreen(
                 }
             }
         }
-        
+
         val filter = IntentFilter("net.emerlink.stream.STREAM_STOPPED")
-        
+
         // Используем LocalBroadcastManager
         androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(context)
             .registerReceiver(streamStoppedReceiver, filter)
-        
+
         onDispose {
             try {
                 androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(context)
@@ -295,7 +300,7 @@ fun CameraScreen(
         // Camera Preview
         CameraPreview(
             streamService = streamService,
-            onOpenGlViewCreated = { view -> 
+            onOpenGlViewCreated = { view ->
                 openGlView = view
                 initializeCamera(view)
             }
@@ -340,7 +345,7 @@ fun CameraScreen(
     // Settings confirmation dialog
     if (showSettingsConfirmDialog) {
         SettingsConfirmationDialog(
-            onDismiss = { showSettingsConfirmDialog = false }, 
+            onDismiss = { showSettingsConfirmDialog = false },
             onConfirm = {
                 showSettingsConfirmDialog = false
                 try {
@@ -366,7 +371,7 @@ private fun CameraPreview(
     AndroidView(
         factory = { ctx ->
             Log.d("CameraScreen", "Создание OpenGlView")
-            OpenGlView(ctx).apply { 
+            OpenGlView(ctx).apply {
                 // Создаем именованный объект для колбека SurfaceHolder
                 val surfaceCallback = object : SurfaceHolder.Callback {
                     override fun surfaceCreated(holder: SurfaceHolder) {
@@ -374,21 +379,21 @@ private fun CameraPreview(
                         // Сохраняем ссылку на созданный OpenGlView только когда surface готов
                         onOpenGlViewCreated(this@apply)
                     }
-                    
+
                     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
                         Log.d("CameraScreen", "Surface изменен: $width x $height")
                         // Не запускаем камеру повторно при изменении размера
                     }
-                    
+
                     override fun surfaceDestroyed(holder: SurfaceHolder) {
                         Log.d("CameraScreen", "Surface уничтожен")
                     }
                 }
-                
+
                 // Добавляем колбек к SurfaceHolder
                 holder.addCallback(surfaceCallback)
             }
-        }, 
+        },
         modifier = Modifier
             .fillMaxSize()
             .pointerInteropFilter { event ->
@@ -397,10 +402,12 @@ private fun CameraPreview(
                         streamService?.tapToFocus(event)
                         true
                     }
+
                     MotionEvent.ACTION_MOVE -> {
                         streamService?.setZoom(event)
                         true
                     }
+
                     else -> false
                 }
             }
@@ -750,12 +757,15 @@ private fun StreamInfoPanel(
                 if (!isLandscape) Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
                 else Modifier
             )
-            .padding(16.dp), contentAlignment = Alignment.TopStart
+            .padding(16.dp),
+        contentAlignment = Alignment.TopCenter
     ) {
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-            modifier = Modifier.padding(top = 48.dp)
+            modifier = Modifier
+                .padding(top = if (isLandscape) 16.dp else 48.dp)
+                .then(if (isLandscape) Modifier.width(300.dp) else Modifier)
         ) {
             Column(
                 modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)
