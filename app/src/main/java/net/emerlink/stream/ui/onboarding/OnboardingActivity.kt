@@ -36,7 +36,11 @@ class OnboardingActivity : AppIntro() {
         isSystemBackButtonLocked = true
         isIndicatorEnabled = true
 
-        // Add slides
+        setupSlides()
+    }
+
+    private fun setupSlides() {
+        // Welcome slide
         addSlide(
             AppIntroFragment.createInstance(
                 title = getString(R.string.welcome_to_emerlink),
@@ -46,6 +50,7 @@ class OnboardingActivity : AppIntro() {
             )
         )
 
+        // Camera permission slide
         addSlide(
             AppIntroFragment.createInstance(
                 title = getString(R.string.camera_permission),
@@ -54,9 +59,13 @@ class OnboardingActivity : AppIntro() {
                 backgroundColorRes = R.color.primary
             )
         )
+        askForPermissions(
+            permissions = arrayOf(Manifest.permission.CAMERA),
+            slideNumber = 1,
+            required = false
+        )
 
-        askForPermissions(arrayOf(Manifest.permission.CAMERA), 1)
-
+        // Microphone permission slide
         addSlide(
             AppIntroFragment.createInstance(
                 title = getString(R.string.microphone_permission),
@@ -65,20 +74,29 @@ class OnboardingActivity : AppIntro() {
                 backgroundColorRes = R.color.primary
             )
         )
+        askForPermissions(
+            permissions = arrayOf(Manifest.permission.RECORD_AUDIO),
+            slideNumber = 2,
+            required = false
+        )
 
-        askForPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 2)
+        addSlide(
+            AppIntroFragment.createInstance(
+                title = getString(R.string.location_permission),
+                description = getString(R.string.location_permission_description),
+                imageDrawable = R.drawable.ic_location,
+                backgroundColorRes = R.color.primary
+            )
+        )
 
-//        addSlide(
-//            AppIntroFragment.createInstance(
-//                title = getString(R.string.location_permission),
-//                description = getString(R.string.location_permission_description),
-//                imageDrawable = R.drawable.ic_location,
-//                backgroundColorRes = R.color.primary
-//            )
-//        )
-//
-//        askForPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 3)
+        askForPermissions(
+            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+            slideNumber = 3,
+            required = false
+        )
 
+
+        // Storage permission slide (for Android < 10)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             addSlide(
                 AppIntroFragment.createInstance(
@@ -88,14 +106,14 @@ class OnboardingActivity : AppIntro() {
                     backgroundColorRes = R.color.primary
                 )
             )
-
-            askForPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 3)
+            askForPermissions(
+                permissions = arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                slideNumber = 4,
+                required = false
+            )
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            askForPermissions(arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION), 3)
-        }
-
+        // Notification permission slide (for Android >= 13)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             addSlide(
                 AppIntroFragment.createInstance(
@@ -105,8 +123,11 @@ class OnboardingActivity : AppIntro() {
                     backgroundColorRes = R.color.primary
                 )
             )
-
-            askForPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 4)
+            askForPermissions(
+                permissions = arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                slideNumber = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) 4 else 3,
+                required = false
+            )
         }
     }
 
@@ -121,20 +142,27 @@ class OnboardingActivity : AppIntro() {
     }
 
     override fun onUserDeniedPermission(permissionName: String) {
+        // Просто переходим к следующему слайду, даже если пользователь отказал в разрешении
         goToNextSlide()
     }
-    
+
     override fun onUserDisabledPermission(permissionName: String) {
+        // Просто переходим к следующему слайду, даже если пользователь отключил разрешение
         goToNextSlide()
     }
 
     private fun finishOnboarding() {
         // Отмечаем онбординг как завершенный (устанавливаем флаг в false, чтобы показать, что это НЕ первый запуск)
         val preferences = PreferenceManager.getDefaultSharedPreferences(this)
-        preferences.edit { putBoolean(PreferenceKeys.FIRST_RUN, false) }
+        preferences.edit {
+            putBoolean(PreferenceKeys.FIRST_RUN, false)
+            apply()
+        }
 
         // Start main activity
-        val intent = Intent(this, MainActivity::class.java)
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
         startActivity(intent)
         finish()
     }
