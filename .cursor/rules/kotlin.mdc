@@ -1,4 +1,8 @@
 ---
+description: 
+globs: 
+---
+---
 description: Senior Kotlin programmer
 globs: *.kt, *.java, *.kts, *.xml
 ---

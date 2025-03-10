@@ -145,9 +145,7 @@ class StreamManager(
             currentView = view
             currentIsPortrait = isPortrait
 
-            val (videoWidth, videoHeight) = parseResolution(sharedPreferences)
-
-            updateViewAspectRatio(view, videoWidth, videoHeight, isPortrait)
+            val (width, height) = parseResolution(sharedPreferences)
 
             if (isOnPreview()) {
                 cameraInterface.stopPreview()
@@ -157,12 +155,12 @@ class StreamManager(
 
             val bitrate = cameraInterface.bitrate.takeIf { it > 0 } ?: DEFAULT_BITRATE
 
-            cameraInterface.prepareVideo(videoWidth, videoHeight, DEFAULT_FPS, bitrate)
+            cameraInterface.prepareVideo(width, height, DEFAULT_FPS, bitrate)
 
             val rotation = if (isPortrait) 90 else 0
             cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
 
-            Log.d(TAG, "Превью успешно запущен с разрешением ${videoWidth}x${videoHeight}")
+            Log.d(TAG, "Превью успешно запущен с разрешением ${width}x${height}, isPortrait=$isPortrait, rotation=$rotation")
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при запуске preview: ${e.message}")
             errorHandler.handleStreamError(e)
@@ -241,7 +239,7 @@ class StreamManager(
                 }
             }
 
-            Log.d(TAG, "Установлено новое разрешение стрима: ${width}x${height}")
+            Log.d(TAG, "Установлено новое разрешение стрима: ${width}x${height}, isPortrait=$currentIsPortrait")
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при изменении разрешения стрима: ${e.message}")
         }
@@ -253,17 +251,6 @@ class StreamManager(
 
     fun disableAudio() {
         cameraInterface.disableAudio()
-    }
-
-    private fun updateViewAspectRatio(view: OpenGlView, width: Int, height: Int, isPortrait: Boolean) {
-        try {
-            val method = view.javaClass.getMethod("setAspectRatioMode", Int::class.javaPrimitiveType)
-            val mode = if (isPortrait) 1 else 0
-            method.invoke(view, mode)
-            Log.d(TAG, "Соотношение сторон OpenGlView обновлено: режим $mode")
-        } catch (_: Exception) {
-            Log.d(TAG, "Метод setAspectRatioMode не найден, альтернативное обновление невозможно")
-        }
     }
 
     /**

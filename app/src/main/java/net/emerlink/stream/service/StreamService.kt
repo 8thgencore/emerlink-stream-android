@@ -410,7 +410,9 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             val isPortrait =
                 resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
+            // Важно: сначала подготовить видео с правильной ориентацией
             streamManager.prepareVideo()
+            // Затем запустить предпросмотр с той же ориентацией
             streamManager.startPreview(view, isPortrait)
 
             isPreviewActive = true
@@ -895,8 +897,9 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             val isPortrait =
                 resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
+            // Важно: сначала подготовить видео с правильной ориентацией
             streamManager.prepareVideo()
-
+            // Затем запустить предпросмотр с той же ориентацией
             streamManager.startPreview(view, isPortrait)
 
             Log.d(TAG, "Предпросмотр успешно перезапущен")
