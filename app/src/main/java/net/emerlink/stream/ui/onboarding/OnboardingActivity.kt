@@ -14,21 +14,6 @@ import net.emerlink.stream.R
 import net.emerlink.stream.data.preferences.PreferenceKeys
 
 class OnboardingActivity : AppIntro() {
-
-    private val permissions = mutableListOf(
-        Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO, Manifest.permission.ACCESS_FINE_LOCATION
-    ).apply {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            add(Manifest.permission.POST_NOTIFICATIONS)
-        }
-    }.toTypedArray()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -40,7 +25,7 @@ class OnboardingActivity : AppIntro() {
     }
 
     private fun setupSlides() {
-        // Welcome slide
+        // Welcome slide (слайд 0)
         addSlide(
             AppIntroFragment.createInstance(
                 title = getString(R.string.welcome_to_emerlink),
@@ -50,7 +35,7 @@ class OnboardingActivity : AppIntro() {
             )
         )
 
-        // Camera permission slide
+        // Camera permission slide (слайд 1)
         addSlide(
             AppIntroFragment.createInstance(
                 title = getString(R.string.camera_permission),
@@ -59,13 +44,8 @@ class OnboardingActivity : AppIntro() {
                 backgroundColorRes = R.color.primary
             )
         )
-        askForPermissions(
-            permissions = arrayOf(Manifest.permission.CAMERA),
-            slideNumber = 1,
-            required = false
-        )
 
-        // Microphone permission slide
+        // Microphone permission slide (слайд 2)
         addSlide(
             AppIntroFragment.createInstance(
                 title = getString(R.string.microphone_permission),
@@ -74,12 +54,8 @@ class OnboardingActivity : AppIntro() {
                 backgroundColorRes = R.color.primary
             )
         )
-        askForPermissions(
-            permissions = arrayOf(Manifest.permission.RECORD_AUDIO),
-            slideNumber = 2,
-            required = false
-        )
 
+        // Location permission slide (слайд 3)
         addSlide(
             AppIntroFragment.createInstance(
                 title = getString(R.string.location_permission),
@@ -89,14 +65,7 @@ class OnboardingActivity : AppIntro() {
             )
         )
 
-        askForPermissions(
-            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-            slideNumber = 3,
-            required = false
-        )
-
-
-        // Storage permission slide (for Android < 10)
+        // Storage permission slide (слайд 4, только для Android < 10)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             addSlide(
                 AppIntroFragment.createInstance(
@@ -106,14 +75,9 @@ class OnboardingActivity : AppIntro() {
                     backgroundColorRes = R.color.primary
                 )
             )
-            askForPermissions(
-                permissions = arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
-                slideNumber = 4,
-                required = false
-            )
         }
 
-        // Notification permission slide (for Android >= 13)
+        // Notification permission slide (слайд 5 или 4, в зависимости от версии Android)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             addSlide(
                 AppIntroFragment.createInstance(
@@ -123,9 +87,45 @@ class OnboardingActivity : AppIntro() {
                     backgroundColorRes = R.color.primary
                 )
             )
+        }
+
+        // Настраиваем запросы разрешений для каждого слайда
+        // Запрос разрешения для камеры (на слайде 1)
+        askForPermissions(
+            permissions = arrayOf(Manifest.permission.CAMERA),
+            slideNumber = 2,
+            required = false
+        )
+
+        // Запрос разрешения для микрофона (на слайде 2)
+        askForPermissions(
+            permissions = arrayOf(Manifest.permission.RECORD_AUDIO),
+            slideNumber = 3,
+            required = false
+        )
+
+        // Запрос разрешения для местоположения (на слайде 3)
+        askForPermissions(
+            permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+            slideNumber = 4,
+            required = false
+        )
+
+        // Запрос разрешения для хранилища (на слайде 4, только для Android < 10)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            askForPermissions(
+                permissions = arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                slideNumber = 5,
+                required = false
+            )
+        }
+
+        // Запрос разрешения для уведомлений (на слайде 5 или 4, в зависимости от версии Android)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val notificationSlideNumber = 5
             askForPermissions(
                 permissions = arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                slideNumber = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) 4 else 3,
+                slideNumber = notificationSlideNumber,
                 required = false
             )
         }
@@ -142,12 +142,10 @@ class OnboardingActivity : AppIntro() {
     }
 
     override fun onUserDeniedPermission(permissionName: String) {
-        // Просто переходим к следующему слайду, даже если пользователь отказал в разрешении
         goToNextSlide()
     }
 
     override fun onUserDisabledPermission(permissionName: String) {
-        // Просто переходим к следующему слайду, даже если пользователь отключил разрешение
         goToNextSlide()
     }
 
