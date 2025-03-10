@@ -35,27 +35,17 @@ class OnboardingActivity : AppIntro() {
             )
         )
 
-        // Camera permission slide (слайд 1)
+        // Camera and Microphone permissions slide (объединенный слайд 1)
         addSlide(
             AppIntroFragment.createInstance(
-                title = getString(R.string.camera_permission),
-                description = getString(R.string.camera_permission_description),
+                title = getString(R.string.camera_and_mic_permissions),
+                description = getString(R.string.camera_and_mic_permissions_description),
                 imageDrawable = R.drawable.ic_camera,
                 backgroundColorRes = R.color.primary
             )
         )
 
-        // Microphone permission slide (слайд 2)
-        addSlide(
-            AppIntroFragment.createInstance(
-                title = getString(R.string.microphone_permission),
-                description = getString(R.string.microphone_permission_description),
-                imageDrawable = R.drawable.ic_microphone,
-                backgroundColorRes = R.color.primary
-            )
-        )
-
-        // Location permission slide (слайд 3)
+        // Location permission slide (слайд 2)
         addSlide(
             AppIntroFragment.createInstance(
                 title = getString(R.string.location_permission),
@@ -65,7 +55,7 @@ class OnboardingActivity : AppIntro() {
             )
         )
 
-        // Storage permission slide (слайд 4, только для Android < 10)
+        // Storage permission slide (слайд 3, только для Android < 10)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             addSlide(
                 AppIntroFragment.createInstance(
@@ -77,7 +67,7 @@ class OnboardingActivity : AppIntro() {
             )
         }
 
-        // Notification permission slide (слайд 5 или 4, в зависимости от версии Android)
+        // Notification permission slide (слайд 4 или 3, в зависимости от версии Android)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             addSlide(
                 AppIntroFragment.createInstance(
@@ -89,40 +79,46 @@ class OnboardingActivity : AppIntro() {
             )
         }
 
+        // Финальный слайд с другим текстом перед кнопкой "Готово"
+        addSlide(
+            AppIntroFragment.createInstance(
+                title = getString(R.string.all_set),
+                description = getString(R.string.ready_to_start_description),
+                imageDrawable = R.drawable.ic_welcome,
+                backgroundColorRes = R.color.primary
+            )
+        )
+
         // Настраиваем запросы разрешений для каждого слайда
-        // Запрос разрешения для камеры (на слайде 1)
+        // Запрос разрешений для камеры и микрофона (на слайде 1)
         askForPermissions(
-            permissions = arrayOf(Manifest.permission.CAMERA),
+            permissions = arrayOf(
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO
+            ),
             slideNumber = 2,
             required = false
         )
 
-        // Запрос разрешения для микрофона (на слайде 2)
+        // Запрос разрешения для местоположения (на слайде 2)
         askForPermissions(
-            permissions = arrayOf(Manifest.permission.RECORD_AUDIO),
+            permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
             slideNumber = 3,
             required = false
         )
 
-        // Запрос разрешения для местоположения (на слайде 3)
-        askForPermissions(
-            permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-            slideNumber = 4,
-            required = false
-        )
-
-        // Запрос разрешения для хранилища (на слайде 4, только для Android < 10)
+        // Запрос разрешения для хранилища (на слайде 3, только для Android < 10)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             askForPermissions(
                 permissions = arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
-                slideNumber = 5,
+                slideNumber = 4,
                 required = false
             )
         }
 
-        // Запрос разрешения для уведомлений (на слайде 5 или 4, в зависимости от версии Android)
+        // Запрос разрешения для уведомлений (на слайде 4 или 3, в зависимости от версии Android)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val notificationSlideNumber = 5
+            val notificationSlideNumber = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) 5 else 4
             askForPermissions(
                 permissions = arrayOf(Manifest.permission.POST_NOTIFICATIONS),
                 slideNumber = notificationSlideNumber,
