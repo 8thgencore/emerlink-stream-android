@@ -671,6 +671,8 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             Log.d(TAG, "Starting streaming")
 
             val url = buildStreamUrl()
+            // Log the URL (remove sensitive info in production)
+            Log.d(TAG, "Stream URL: ${url.replace(Regex(":[^:/]*:[^:/]*"), ":****:****")}")
 
             val (videoWidth, videoHeight) = parseVideoResolution()
 
@@ -854,7 +856,24 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             }
 
             streamSettings.protocol == "srt" -> {
-                "srt://${streamSettings.address}:${streamSettings.port}?streamid=${streamSettings.path}"
+                // Format the streamid according to the required format: action:pathname[:query] or action:pathname:user:pass[:query]
+                val streamId = if (streamSettings.username.isNotEmpty() && streamSettings.password.isNotEmpty()) {
+                    // Format with credentials: action:pathname:user:pass[:query]
+                    "publish:${streamSettings.path}:${streamSettings.username}:${streamSettings.password}"
+                } else {
+                    // Format without credentials: action:pathname[:query]
+                    "publish:${streamSettings.path}"
+                }
+                
+                // Build the SRT URL with the properly formatted streamid
+                val srtParams = StringBuilder()
+                srtParams.append("streamid=$streamId")
+                
+                // Add latency parameter (common SRT parameter)
+                srtParams.append("&latency=2000")
+                
+                // Build the final URL
+                "srt://${streamSettings.address}:${streamSettings.port}?$srtParams"
             }
 
             else -> {
