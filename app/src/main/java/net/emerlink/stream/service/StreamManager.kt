@@ -8,10 +8,6 @@ import android.util.Log
 import androidx.preference.PreferenceManager
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.video.CameraHelper
-import com.pedro.library.rtmp.RtmpCamera2
-import com.pedro.library.rtsp.RtspCamera2
-import com.pedro.library.srt.SrtCamera2
-import com.pedro.library.udp.UdpCamera2
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.model.StreamType
@@ -19,14 +15,11 @@ import net.emerlink.stream.util.ErrorHandler
 import java.util.Locale
 
 class StreamManager(
-    private val context: Context,
-    private val connectChecker: ConnectChecker,
-    private val errorHandler: ErrorHandler
+    private val context: Context, private val connectChecker: ConnectChecker, private val errorHandler: ErrorHandler
 ) : SharedPreferences.OnSharedPreferenceChangeListener {
     companion object {
         private const val TAG = "StreamManager"
         private const val DEFAULT_FPS = 30
-        private const val DEFAULT_I_FRAME_INTERVAL = 2
         private const val DEFAULT_BITRATE = 2500000 // 2.5 Mbps
     }
 
@@ -69,8 +62,7 @@ class StreamManager(
 
     private fun parseResolution(sharedPreferences: SharedPreferences): Pair<Int, Int> {
         val videoResolution = sharedPreferences.getString(
-            PreferenceKeys.VIDEO_RESOLUTION,
-            PreferenceKeys.VIDEO_RESOLUTION_DEFAULT
+            PreferenceKeys.VIDEO_RESOLUTION, PreferenceKeys.VIDEO_RESOLUTION_DEFAULT
         ) ?: "1920x1080"
 
         val dimensions = videoResolution.lowercase(Locale.getDefault()).replace("х", "x").split("x")
@@ -103,17 +95,9 @@ class StreamManager(
 
     fun getStream(): CameraInterface = cameraInterface
 
-    fun startStream(
-        url: String,
-        protocol: String,
-        username: String,
-        password: String,
-        tcp: Boolean
-    ) {
+    fun startStream(url: String, protocol: String, username: String, password: String, tcp: Boolean) {
         try {
-            if (username.isNotEmpty() && password.isNotEmpty() &&
-                (protocol.startsWith("rtmp") || protocol.startsWith("rtsp"))
-            ) {
+            if (username.isNotEmpty() && password.isNotEmpty() && (protocol.startsWith("rtmp") || protocol.startsWith("rtsp"))) {
                 cameraInterface.setAuthorization(username, password)
             }
 
@@ -173,13 +157,7 @@ class StreamManager(
 
             val bitrate = cameraInterface.bitrate.takeIf { it > 0 } ?: DEFAULT_BITRATE
 
-            cameraInterface.prepareVideo(
-                videoWidth,
-                videoHeight,
-                DEFAULT_FPS,
-                bitrate,
-                DEFAULT_I_FRAME_INTERVAL
-            )
+            cameraInterface.prepareVideo(videoWidth, videoHeight, DEFAULT_FPS, bitrate)
 
             val rotation = if (isPortrait) 90 else 0
             cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
@@ -215,34 +193,18 @@ class StreamManager(
 
     fun prepareVideo(): Boolean {
         try {
-            val (videoWidth, videoHeight) = parseResolution(sharedPreferences)
+            val (width, height) = parseResolution(sharedPreferences)
             val fps = sharedPreferences.getString(
-                PreferenceKeys.VIDEO_FPS,
-                PreferenceKeys.VIDEO_FPS_DEFAULT
+                PreferenceKeys.VIDEO_FPS, PreferenceKeys.VIDEO_FPS_DEFAULT
             )?.toIntOrNull() ?: 30
             val videoBitrate = sharedPreferences.getString(
-                PreferenceKeys.VIDEO_BITRATE,
-                PreferenceKeys.VIDEO_BITRATE_DEFAULT
+                PreferenceKeys.VIDEO_BITRATE, PreferenceKeys.VIDEO_BITRATE_DEFAULT
             )?.toIntOrNull() ?: 2500
 
-            Log.d(TAG, "Подготовка видео: ${videoWidth}x${videoHeight}, FPS=$fps, битрейт=${videoBitrate}k")
+            Log.d(TAG, "Подготовка видео: ${width}x${height}, FPS=$fps, битрейт=${videoBitrate}k")
 
-            getStream().let { camera ->
-                when (camera) {
-                    is RtmpCamera2 -> {
-                        camera.prepareVideo(videoWidth, videoHeight, fps, videoBitrate * 1000, DEFAULT_I_FRAME_INTERVAL)
-                    }
-                    is RtspCamera2 -> {
-                        camera.prepareVideo(videoWidth, videoHeight, fps, videoBitrate * 1000, DEFAULT_I_FRAME_INTERVAL)
-                    }
-                    is SrtCamera2 -> {
-                        camera.prepareVideo(videoWidth, videoHeight, fps, videoBitrate * 1000, DEFAULT_I_FRAME_INTERVAL)
-                    }
-                    is UdpCamera2 -> {
-                        camera.prepareVideo(videoWidth, videoHeight, fps, videoBitrate * 1000, DEFAULT_I_FRAME_INTERVAL)
-                    }
-                }
-            }
+            val rotation = if (currentIsPortrait) 90 else 0
+            cameraInterface.prepareVideo(width, height, fps, videoBitrate * 1000, rotation)
 
             return true
         } catch (e: Exception) {
@@ -270,13 +232,7 @@ class StreamManager(
 
             if (isOnPreview()) {
                 cameraInterface.stopPreview()
-                cameraInterface.prepareVideo(
-                    width,
-                    height,
-                    DEFAULT_FPS,
-                    bitrate,
-                    DEFAULT_I_FRAME_INTERVAL
-                )
+                cameraInterface.prepareVideo(width, height, DEFAULT_FPS, bitrate)
 
                 val rotation = if (currentIsPortrait) 90 else 0
                 currentView?.let { view ->
@@ -299,15 +255,9 @@ class StreamManager(
         cameraInterface.disableAudio()
     }
 
-    private fun updateViewAspectRatio(
-        view: OpenGlView,
-        width: Int,
-        height: Int,
-        isPortrait: Boolean
-    ) {
+    private fun updateViewAspectRatio(view: OpenGlView, width: Int, height: Int, isPortrait: Boolean) {
         try {
-            val method =
-                view.javaClass.getMethod("setAspectRatioMode", Int::class.javaPrimitiveType)
+            val method = view.javaClass.getMethod("setAspectRatioMode", Int::class.javaPrimitiveType)
             val mode = if (isPortrait) 1 else 0
             method.invoke(view, mode)
             Log.d(TAG, "Соотношение сторон OpenGlView обновлено: режим $mode")

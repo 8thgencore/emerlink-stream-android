@@ -20,7 +20,7 @@ interface CameraInterface {
     val glInterface: Any
 
     fun prepareAudio(): Boolean
-    fun prepareVideo(width: Int, height: Int, fps: Int, bitrate: Int, iFrameInterval: Int): Boolean
+    fun prepareVideo(width: Int, height: Int, fps: Int, bitrate: Int, rotation: Int = 0): Boolean
     fun startStream(url: String)
     fun stopStream()
     fun startRecord(filePath: String)

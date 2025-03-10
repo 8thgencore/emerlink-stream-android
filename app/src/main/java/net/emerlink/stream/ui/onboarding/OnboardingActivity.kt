@@ -89,7 +89,7 @@ class OnboardingActivity : AppIntro() {
                 )
             )
 
-            askForPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 4)
+            askForPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 3)
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -106,8 +106,7 @@ class OnboardingActivity : AppIntro() {
                 )
             )
 
-            val slideIndex = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) 5 else 4
-            askForPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), slideIndex)
+            askForPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 4)
         }
     }
 

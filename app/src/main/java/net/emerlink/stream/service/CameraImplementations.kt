@@ -33,9 +33,9 @@ class RtmpCameraImpl(
         height: Int,
         fps: Int,
         bitrate: Int,
-        iFrameInterval: Int
+        rotation: Int
     ) =
-        camera.prepareVideo(width, height, fps, bitrate, iFrameInterval)
+        camera.prepareVideo(width, height, fps, bitrate, rotation)
 
     override fun startStream(url: String) = camera.startStream(url)
     override fun stopStream() = camera.stopStream()
@@ -103,9 +103,9 @@ class RtspCameraImpl(
         height: Int,
         fps: Int,
         bitrate: Int,
-        iFrameInterval: Int
+        rotation: Int
     ) =
-        camera.prepareVideo(width, height, fps, bitrate, iFrameInterval)
+        camera.prepareVideo(width, height, fps, bitrate, rotation)
 
     override fun startStream(url: String) = camera.startStream(url)
     override fun stopStream() = camera.stopStream()
@@ -173,9 +173,9 @@ class SrtCameraImpl(
         height: Int,
         fps: Int,
         bitrate: Int,
-        iFrameInterval: Int
+        rotation: Int
     ) =
-        camera.prepareVideo(width, height, fps, bitrate, iFrameInterval)
+        camera.prepareVideo(width, height, fps, bitrate, rotation)
 
     override fun startStream(url: String) = camera.startStream(url)
     override fun stopStream() = camera.stopStream()
@@ -243,9 +243,9 @@ class UdpCameraImpl(
         height: Int,
         fps: Int,
         bitrate: Int,
-        iFrameInterval: Int
+        rotation: Int
     ) =
-        camera.prepareVideo(width, height, fps, bitrate, iFrameInterval)
+        camera.prepareVideo(width, height, fps, bitrate, rotation)
 
     override fun startStream(url: String) = camera.startStream(url)
     override fun stopStream() = camera.stopStream()
