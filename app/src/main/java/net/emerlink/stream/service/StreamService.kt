@@ -131,11 +131,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         streamManager = StreamManager(this, this, errorHandler)
         streamManager.setStreamType(getStreamTypeFromProtocol(streamSettings.protocol))
 
-        cameraManager = CameraManager(
-            this,
-            { streamManager.getVideoSource() },
-            { streamManager.getCameraInterface() }
-        )
+        cameraManager = CameraManager(this, { streamManager.getVideoSource() }, { streamManager.getCameraInterface() })
 
         observer.postValue(this)
 
@@ -212,11 +208,10 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
                     AppConstants.ACTION_STOP_STREAM -> {
                         Log.d(TAG, "Обработка команды остановки стрима")
-                        notificationManager.clearAllNotifications()
+                        notificationManager.clearStreamingNotifications()
 
                         if (streamManager.isStreaming()) {
                             streamManager.stopStream()
-
                             streamingState.postValue(false)
                         }
 
@@ -224,11 +219,8 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                             streamManager.stopRecord()
                         }
 
-                        // Отправляем сообщение через LocalBroadcastManager
                         val broadcastIntent = Intent(AppConstants.BROADCAST_STREAM_STOPPED)
                         LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent)
-
-                        stopStream(null, null)
                     }
 
                     AppConstants.ACTION_EXIT_APP -> {
@@ -242,6 +234,10 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                     AppConstants.ACTION_DISMISS_ERROR -> {
                         Log.d(TAG, "Обработка команды скрытия ошибки")
                         notificationManager.clearAllNotifications()
+                    }
+
+                    else -> {
+                        Log.d(TAG, "Неизвестная команда: $action")
                     }
                 }
             }
@@ -424,8 +420,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         try {
             openGlView = view
 
-            val isPortrait =
-                resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+            val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
             // Важно: сначала подготовить видео с правильной ориентацией
             streamManager.prepareVideo()
@@ -528,8 +523,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                     put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, filename)
                     put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
                     put(
-                        android.provider.MediaStore.Images.Media.RELATIVE_PATH,
-                        "Pictures/EmerlinkStream"
+                        android.provider.MediaStore.Images.Media.RELATIVE_PATH, "Pictures/EmerlinkStream"
                     )
                 }
 
@@ -679,11 +673,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             streamManager.switchStreamResolution(videoWidth, videoHeight)
 
             streamManager.startStream(
-                url,
-                streamSettings.protocol,
-                streamSettings.username,
-                streamSettings.password,
-                streamSettings.tcp
+                url, streamSettings.protocol, streamSettings.username, streamSettings.password, streamSettings.tcp
             )
 
             streamingState.postValue(true)
@@ -720,15 +710,17 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     }
 
     fun stopStream(
-        message: String?,
-        action: String?,
-        actionType: Int = NotificationManager.ACTION_ALL,
-        isError: Boolean = false
+        message: String?, action: String?, actionType: Int = NotificationManager.ACTION_ALL, isError: Boolean = false
     ) {
         Log.d(TAG, "Stopping stream with message: $message, isError: $isError")
 
         try {
+            // Если это ошибка, НЕ очищаем все уведомления сразу
+            // Вместо этого очищаем только уведомление о стриминге
             if (isError) {
+                notificationManager.clearStreamingNotifications()
+            } else {
+                // Если это не ошибка, можно очистить все
                 notificationManager.clearAllNotifications()
             }
 
@@ -746,6 +738,9 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 Log.d(TAG, "Отправляем сообщение STREAM_STOPPED через LocalBroadcastManager")
                 val broadcastIntent = Intent(AppConstants.BROADCAST_STREAM_STOPPED)
                 LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent)
+
+                // Очищаем уведомления о стриминге
+                notificationManager.clearStreamingNotifications()
             }
 
             if (streamManager.isRecording()) {
@@ -772,14 +767,16 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
             if (message != null) {
                 Log.d(
-                    TAG,
-                    "Отображение уведомления: $message, тип действия: $actionType, isError: $isError"
+                    TAG, "Отображение уведомления: $message, тип действия: $actionType, isError: $isError"
                 )
                 if (isError) {
                     notificationManager.showErrorNotification(message, actionType)
                 } else {
                     notificationManager.showStreamingNotification(message, false, actionType)
                 }
+            } else if (!isError) {
+                // Если сообщение не указано и это не ошибка, очищаем все уведомления
+                notificationManager.clearAllNotifications()
             }
 
             if (action != null) {
@@ -801,8 +798,11 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             val broadcastIntent = Intent(AppConstants.BROADCAST_STREAM_STOPPED)
             LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent)
 
+            // Очищаем только уведомления о стриминге, но не об ошибках
+            notificationManager.clearStreamingNotifications()
+
             if (message != null) {
-                notificationManager.clearAllNotifications()
+                // НЕ очищаем все уведомления перед показом ошибки
                 notificationManager.showErrorNotification(message + " (${e.message})")
             }
         }
@@ -864,15 +864,11 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                     // Format without credentials: action:pathname[:query]
                     "publish:${streamSettings.path}"
                 }
-                
-                // Build the SRT URL with the properly formatted streamid
+
                 val srtParams = StringBuilder()
                 srtParams.append("streamid=$streamId")
-                
-                // Add latency parameter (common SRT parameter)
                 srtParams.append("&latency=2000")
-                
-                // Build the final URL
+
                 "srt://${streamSettings.address}:${streamSettings.port}?$srtParams"
             }
 
@@ -924,8 +920,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
             openGlView = view
 
-            val isPortrait =
-                resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+            val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
             // Важно: сначала подготовить видео с правильной ориентацией
             streamManager.prepareVideo()
