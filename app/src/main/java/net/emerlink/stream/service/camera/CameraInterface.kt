@@ -1,4 +1,4 @@
-package net.emerlink.stream.service
+package net.emerlink.stream.service.camera
 
 import android.content.Context
 import com.pedro.common.ConnectChecker
@@ -8,7 +8,7 @@ import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.model.StreamType
 
 /**
- * Интерфейс для унификации работы с различными типами камер
+ * Interface for camera implementation
  */
 interface CameraInterface {
     val camera: Camera2Base

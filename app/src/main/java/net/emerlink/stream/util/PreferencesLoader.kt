@@ -38,31 +38,25 @@ class PreferencesLoader(private val context: Context) {
             password = preferences.getString(PreferenceKeys.STREAM_PASSWORD, PreferenceKeys.STREAM_PASSWORD_DEFAULT)
                 ?: PreferenceKeys.STREAM_PASSWORD_DEFAULT,
             streamSelfSignedCert = preferences.getBoolean(
-                PreferenceKeys.STREAM_SELF_SIGNED_CERT,
-                PreferenceKeys.STREAM_SELF_SIGNED_CERT_DEFAULT
+                PreferenceKeys.STREAM_SELF_SIGNED_CERT, PreferenceKeys.STREAM_SELF_SIGNED_CERT_DEFAULT
             ),
             certFile = preferences.getString(
-                PreferenceKeys.STREAM_CERTIFICATE,
-                PreferenceKeys.STREAM_CERTIFICATE_DEFAULT
+                PreferenceKeys.STREAM_CERTIFICATE, PreferenceKeys.STREAM_CERTIFICATE_DEFAULT
             ),
             certPassword = preferences.getString(
-                PreferenceKeys.STREAM_CERTIFICATE_PASSWORD,
-                PreferenceKeys.STREAM_CERTIFICATE_PASSWORD_DEFAULT
+                PreferenceKeys.STREAM_CERTIFICATE_PASSWORD, PreferenceKeys.STREAM_CERTIFICATE_PASSWORD_DEFAULT
             ) ?: PreferenceKeys.STREAM_CERTIFICATE_PASSWORD_DEFAULT,
 
             // Audio settings
             sampleRate = preferences.getString(
-                PreferenceKeys.AUDIO_SAMPLE_RATE,
-                PreferenceKeys.AUDIO_SAMPLE_RATE_DEFAULT
+                PreferenceKeys.AUDIO_SAMPLE_RATE, PreferenceKeys.AUDIO_SAMPLE_RATE_DEFAULT
             )?.toIntOrNull() ?: 44100,
             stereo = preferences.getBoolean(PreferenceKeys.AUDIO_STEREO, PreferenceKeys.AUDIO_STEREO_DEFAULT),
             echoCancel = preferences.getBoolean(
-                PreferenceKeys.AUDIO_ECHO_CANCEL,
-                PreferenceKeys.AUDIO_ECHO_CANCEL_DEFAULT
+                PreferenceKeys.AUDIO_ECHO_CANCEL, PreferenceKeys.AUDIO_ECHO_CANCEL_DEFAULT
             ),
             noiseReduction = preferences.getBoolean(
-                PreferenceKeys.AUDIO_NOISE_REDUCTION,
-                PreferenceKeys.AUDIO_NOISE_REDUCTION_DEFAULT
+                PreferenceKeys.AUDIO_NOISE_REDUCTION, PreferenceKeys.AUDIO_NOISE_REDUCTION_DEFAULT
             ),
             enableAudio = preferences.getBoolean(PreferenceKeys.ENABLE_AUDIO, PreferenceKeys.ENABLE_AUDIO_DEFAULT),
             audioBitrate = preferences.getString(PreferenceKeys.AUDIO_BITRATE, PreferenceKeys.AUDIO_BITRATE_DEFAULT)
@@ -75,8 +69,7 @@ class PreferencesLoader(private val context: Context) {
                 ?: 30,
             resolution = getResolutionFromPreferences(preferences),
             adaptiveBitrate = preferences.getBoolean(
-                PreferenceKeys.VIDEO_ADAPTIVE_BITRATE,
-                PreferenceKeys.VIDEO_ADAPTIVE_BITRATE_DEFAULT
+                PreferenceKeys.VIDEO_ADAPTIVE_BITRATE, PreferenceKeys.VIDEO_ADAPTIVE_BITRATE_DEFAULT
             ),
             record = preferences.getBoolean(PreferenceKeys.RECORD_VIDEO, PreferenceKeys.RECORD_VIDEO_DEFAULT),
             stream = preferences.getBoolean(PreferenceKeys.STREAM_VIDEO, PreferenceKeys.STREAM_VIDEO_DEFAULT),
@@ -92,54 +85,44 @@ class PreferencesLoader(private val context: Context) {
 
             // Advanced Video Settings
             keyframeInterval = preferences.getString(
-                PreferenceKeys.VIDEO_KEYFRAME_INTERVAL,
-                PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT
+                PreferenceKeys.VIDEO_KEYFRAME_INTERVAL, PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT
             )?.toIntOrNull() ?: 2,
             videoProfile = preferences.getString(PreferenceKeys.VIDEO_PROFILE, PreferenceKeys.VIDEO_PROFILE_DEFAULT)
                 ?: PreferenceKeys.VIDEO_PROFILE_DEFAULT,
             videoLevel = preferences.getString(PreferenceKeys.VIDEO_LEVEL, PreferenceKeys.VIDEO_LEVEL_DEFAULT)
                 ?: PreferenceKeys.VIDEO_LEVEL_DEFAULT,
             bitrateMode = preferences.getString(
-                PreferenceKeys.VIDEO_BITRATE_MODE,
-                PreferenceKeys.VIDEO_BITRATE_MODE_DEFAULT
+                PreferenceKeys.VIDEO_BITRATE_MODE, PreferenceKeys.VIDEO_BITRATE_MODE_DEFAULT
             ) ?: PreferenceKeys.VIDEO_BITRATE_MODE_DEFAULT,
             encodingQuality = preferences.getString(PreferenceKeys.VIDEO_QUALITY, PreferenceKeys.VIDEO_QUALITY_DEFAULT)
                 ?: PreferenceKeys.VIDEO_QUALITY_DEFAULT,
 
             // Network Settings
             bufferSize = preferences.getString(
-                PreferenceKeys.NETWORK_BUFFER_SIZE,
-                PreferenceKeys.NETWORK_BUFFER_SIZE_DEFAULT
+                PreferenceKeys.NETWORK_BUFFER_SIZE, PreferenceKeys.NETWORK_BUFFER_SIZE_DEFAULT
             )?.toIntOrNull() ?: 0,
             connectionTimeout = preferences.getString(
-                PreferenceKeys.NETWORK_TIMEOUT,
-                PreferenceKeys.NETWORK_TIMEOUT_DEFAULT
+                PreferenceKeys.NETWORK_TIMEOUT, PreferenceKeys.NETWORK_TIMEOUT_DEFAULT
             )?.toIntOrNull() ?: 5000,
             autoReconnect = preferences.getBoolean(
-                PreferenceKeys.NETWORK_RECONNECT,
-                PreferenceKeys.NETWORK_RECONNECT_DEFAULT
+                PreferenceKeys.NETWORK_RECONNECT, PreferenceKeys.NETWORK_RECONNECT_DEFAULT
             ),
             reconnectDelay = preferences.getString(
-                PreferenceKeys.NETWORK_RECONNECT_DELAY,
-                PreferenceKeys.NETWORK_RECONNECT_DELAY_DEFAULT
+                PreferenceKeys.NETWORK_RECONNECT_DELAY, PreferenceKeys.NETWORK_RECONNECT_DELAY_DEFAULT
             )?.toIntOrNull() ?: 3000,
             maxReconnectAttempts = preferences.getString(
-                PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS,
-                PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS_DEFAULT
+                PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS, PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS_DEFAULT
             )?.toIntOrNull() ?: 5,
 
             // Stability Settings
             lowLatencyMode = preferences.getBoolean(
-                PreferenceKeys.STABILITY_LOW_LATENCY,
-                PreferenceKeys.STABILITY_LOW_LATENCY_DEFAULT
+                PreferenceKeys.STABILITY_LOW_LATENCY, PreferenceKeys.STABILITY_LOW_LATENCY_DEFAULT
             ),
             hardwareRotation = preferences.getBoolean(
-                PreferenceKeys.STABILITY_HARDWARE_ROTATION,
-                PreferenceKeys.STABILITY_HARDWARE_ROTATION_DEFAULT
+                PreferenceKeys.STABILITY_HARDWARE_ROTATION, PreferenceKeys.STABILITY_HARDWARE_ROTATION_DEFAULT
             ),
             dynamicFps = preferences.getBoolean(
-                PreferenceKeys.STABILITY_DYNAMIC_FPS,
-                PreferenceKeys.STABILITY_DYNAMIC_FPS_DEFAULT
+                PreferenceKeys.STABILITY_DYNAMIC_FPS, PreferenceKeys.STABILITY_DYNAMIC_FPS_DEFAULT
             )
         )
     }
@@ -153,10 +136,10 @@ class PreferencesLoader(private val context: Context) {
             try {
                 Size(parts[0].toInt(), parts[1].toInt())
             } catch (e: NumberFormatException) {
-                Size(1280, 720) // Default if parsing fails
+                Size(1920, 1080) // Default if parsing fails
             }
         } else {
-            Size(1280, 720) // Default if format is incorrect
+            Size(1920, 1080) // Default if format is incorrect
         }
     }
 } 

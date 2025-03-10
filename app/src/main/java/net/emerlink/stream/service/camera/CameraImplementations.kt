@@ -1,4 +1,4 @@
-package net.emerlink.stream.service
+package net.emerlink.stream.service.camera
 
 import android.content.Context
 import android.util.Log

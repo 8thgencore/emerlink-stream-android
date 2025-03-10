@@ -22,6 +22,7 @@ import android.os.Looper
 import android.util.Log
 import android.view.MotionEvent
 import androidx.lifecycle.MutableLiveData
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.preference.PreferenceManager
 import com.pedro.common.ConnectChecker
 import com.pedro.library.util.BitrateAdapter
@@ -31,6 +32,10 @@ import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.model.StreamSettings
 import net.emerlink.stream.model.StreamType
 import net.emerlink.stream.notification.NotificationManager
+import net.emerlink.stream.service.camera.CameraManager
+import net.emerlink.stream.service.camera.ICameraManager
+import net.emerlink.stream.service.location.StreamLocationListener
+import net.emerlink.stream.service.stream.StreamManager
 import net.emerlink.stream.util.AppConstants
 import net.emerlink.stream.util.ErrorHandler
 import net.emerlink.stream.util.PathUtils
@@ -39,7 +44,6 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPreferenceChangeListener,
     SensorEventListener {
@@ -55,7 +59,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     private lateinit var notificationManager: NotificationManager
     private lateinit var errorHandler: ErrorHandler
     internal lateinit var streamManager: StreamManager
-    private lateinit var cameraManager: CameraManager
+    private lateinit var cameraManager: ICameraManager
 
     lateinit var streamSettings: StreamSettings
 
@@ -127,7 +131,11 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         streamManager = StreamManager(this, this, errorHandler)
         streamManager.setStreamType(getStreamTypeFromProtocol(streamSettings.protocol))
 
-        cameraManager = CameraManager(this, streamManager)
+        cameraManager = CameraManager(
+            this,
+            { streamManager.getVideoSource() },
+            { streamManager.getCameraInterface() }
+        )
 
         observer.postValue(this)
 
@@ -201,26 +209,28 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                     AppConstants.ACTION_START_STREAM -> {
                         startStream()
                     }
+
                     AppConstants.ACTION_STOP_STREAM -> {
                         Log.d(TAG, "Обработка команды остановки стрима")
                         notificationManager.clearAllNotifications()
-                        
+
                         if (streamManager.isStreaming()) {
                             streamManager.stopStream()
-                            
+
                             streamingState.postValue(false)
                         }
-                        
+
                         if (streamManager.isRecording()) {
                             streamManager.stopRecord()
                         }
-                        
+
                         // Отправляем сообщение через LocalBroadcastManager
                         val broadcastIntent = Intent(AppConstants.BROADCAST_STREAM_STOPPED)
                         LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent)
-                        
+
                         stopStream(null, null)
                     }
+
                     AppConstants.ACTION_EXIT_APP -> {
                         Log.d(TAG, "Обработка команды выхода из приложения")
                         exiting = true
@@ -228,6 +238,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                         stopStream(null, null)
                         stopSelf()
                     }
+
                     AppConstants.ACTION_DISMISS_ERROR -> {
                         Log.d(TAG, "Обработка команды скрытия ошибки")
                         notificationManager.clearAllNotifications()
@@ -287,10 +298,10 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             if (streamManager.isStreaming()) {
                 Log.d(TAG, "Принудительная остановка стрима из-за ошибки подключения")
                 streamManager.stopStream()
-                
+
                 // Обновляем LiveData состояния стрима
                 streamingState.postValue(false)
-                
+
                 // Отправляем сообщение через LocalBroadcastManager
                 val broadcastIntent = Intent(AppConstants.BROADCAST_STREAM_STOPPED)
                 LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent)
@@ -317,14 +328,14 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
             try {
                 streamManager.stopStream()
-                
+
                 // Обновляем LiveData состояния стрима даже при ошибке
                 streamingState.postValue(false)
-                
+
                 // Отправляем сообщение через LocalBroadcastManager
                 val broadcastIntent = Intent(AppConstants.BROADCAST_STREAM_STOPPED)
                 LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent)
-                
+
                 notificationManager.clearAllNotifications()
                 notificationManager.showErrorNotification("Критическая ошибка: ${e.message}")
             } catch (e2: Exception) {
@@ -446,24 +457,11 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     }
 
     fun toggleLantern(): Boolean {
-        Log.d(TAG, "Вызов toggleLantern")
-        return try {
-            // Get the camera implementation
-            val cameraImpl = streamManager.getStream()
-            
-            // Toggle the flash state
-            isFlashOn = !isFlashOn
-            
-            // Access the underlying camera based on implementation type
-            if (isFlashOn) cameraImpl.camera.enableLantern() else cameraImpl.camera.disableLantern()
-            
-            isFlashOn
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка при управлении фонариком: ${e.message}", e)
-            false
-        }
+        Log.d(TAG, "Calling toggleLantern")
+        val result = cameraManager.toggleLantern()
+        isFlashOn = result
+        return result
     }
-
 
     /**
      * Switches between front and back cameras
@@ -472,10 +470,10 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     fun switchCamera(): Boolean {
         try {
             Log.d(TAG, "Service: Switching camera")
-            val result = streamManager.switchCamera()
+            val result = cameraManager.switchCamera()
 
             if (result) {
-                currentCameraId = if (currentCameraId == 0) 1 else 0
+                currentCameraId = cameraManager.getCurrentCameraId()
                 Log.d(TAG, "Camera switched to ID: $currentCameraId")
             } else {
                 Log.e(TAG, "Failed to switch camera")
@@ -733,15 +731,15 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             }
 
             val wasStreaming = streamManager.isStreaming()
-            
+
             if (wasStreaming) {
                 Log.d(TAG, "Stopping active stream")
                 streamManager.stopStream()
-                
+
                 // Обновляем LiveData с логированием
                 Log.d(TAG, "Обновляем LiveData streamingState на false")
                 streamingState.postValue(false)
-                
+
                 // Используем LocalBroadcastManager с логированием
                 Log.d(TAG, "Отправляем сообщение STREAM_STOPPED через LocalBroadcastManager")
                 val broadcastIntent = Intent(AppConstants.BROADCAST_STREAM_STOPPED)
@@ -796,7 +794,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
             // Даже при ошибке обновляем состояние
             streamingState.postValue(false)
-            
+
             // Отправляем сообщение через LocalBroadcastManager
             val broadcastIntent = Intent(AppConstants.BROADCAST_STREAM_STOPPED)
             LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent)

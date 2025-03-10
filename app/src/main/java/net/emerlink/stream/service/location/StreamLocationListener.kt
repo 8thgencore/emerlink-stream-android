@@ -1,4 +1,4 @@
-package net.emerlink.stream.service
+package net.emerlink.stream.service.location
 
 import android.content.Context
 import android.content.Intent

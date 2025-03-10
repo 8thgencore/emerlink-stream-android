@@ -1,4 +1,4 @@
-package net.emerlink.stream.service
+package net.emerlink.stream.service.stream
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -11,6 +11,7 @@ import com.pedro.encoder.input.video.CameraHelper
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.model.StreamType
+import net.emerlink.stream.service.camera.CameraInterface
 import net.emerlink.stream.util.ErrorHandler
 import java.util.Locale
 
@@ -92,8 +93,6 @@ class StreamManager(
             cameraInterface = CameraInterface.create(context, connectChecker, streamType)
         }
     }
-
-    fun getStream(): CameraInterface = cameraInterface
 
     fun startStream(url: String, protocol: String, username: String, password: String, tcp: Boolean) {
         try {
@@ -256,22 +255,6 @@ class StreamManager(
         cameraInterface.disableAudio()
     }
 
-    /**
-     * Switches between front and back cameras
-     * @return true if camera switched successfully, false otherwise
-     */
-    fun switchCamera(): Boolean {
-        try {
-            Log.d(TAG, "Switching camera")
-            val result = cameraInterface.switchCamera()
-            Log.d(TAG, "Camera switched successfully: $result")
-            return true
-        } catch (e: Exception) {
-            Log.e(TAG, "Error switching camera: ${e.message}", e)
-            return false
-        }
-    }
-
     fun releaseCamera() {
         try {
             Log.d(TAG, "Освобождение ресурсов камеры")
@@ -290,4 +273,10 @@ class StreamManager(
             Log.e(TAG, "Ошибка освобождения камеры: ${e.message}", e)
         }
     }
+
+    /**
+     * Gets the camera interface implementation
+     * @return The current camera interface
+     */
+    fun getCameraInterface(): CameraInterface = cameraInterface
 }
