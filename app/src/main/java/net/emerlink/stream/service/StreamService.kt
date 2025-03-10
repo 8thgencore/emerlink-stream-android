@@ -31,6 +31,7 @@ import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.model.StreamSettings
 import net.emerlink.stream.model.StreamType
 import net.emerlink.stream.notification.NotificationManager
+import net.emerlink.stream.util.AppConstants
 import net.emerlink.stream.util.ErrorHandler
 import net.emerlink.stream.util.PathUtils
 import net.emerlink.stream.util.PreferencesLoader
@@ -44,16 +45,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     SensorEventListener {
     companion object {
         private const val TAG = "StreamService"
-
-        const val ACTION_START_STREAM = "net.emerlink.stream.START_STREAM"
-        const val ACTION_STOP_STREAM = "net.emerlink.stream.STOP_STREAM"
-        const val ACTION_EXIT_APP = "net.emerlink.stream.EXIT_APP"
-        const val ACTION_AUTH_ERROR = "net.emerlink.stream.AUTH_ERROR"
-        const val ACTION_CONNECTION_FAILED = "net.emerlink.stream.CONNECTION_FAILED"
-        const val ACTION_TOOK_PICTURE = "net.emerlink.stream.TOOK_PICTURE"
-        const val ACTION_NEW_BITRATE = "net.emerlink.stream.NEW_BITRATE"
-        const val ACTION_LOCATION_CHANGE = "net.emerlink.stream.LOCATION_CHANGE"
-        const val ACTION_DISMISS_ERROR = "net.emerlink.stream.DISMISS_ERROR"
 
         val observer = MutableLiveData<StreamService?>()
         val screenshotTaken = MutableLiveData<Boolean>()
@@ -152,10 +143,10 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         initializeStream()
 
         val intentFilter = IntentFilter().apply {
-            addAction(ACTION_START_STREAM)
-            addAction(ACTION_STOP_STREAM)
-            addAction(ACTION_EXIT_APP)
-            addAction(ACTION_DISMISS_ERROR)
+            addAction(AppConstants.ACTION_START_STREAM)
+            addAction(AppConstants.ACTION_STOP_STREAM)
+            addAction(AppConstants.ACTION_EXIT_APP)
+            addAction(AppConstants.ACTION_DISMISS_ERROR)
         }
 
         val commandReceiver = object : BroadcastReceiver() {
@@ -163,15 +154,15 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 Log.d(TAG, "Получен интент: ${intent.action}")
                 try {
                     when (intent.action) {
-                        ACTION_START_STREAM -> startStream()
-                        ACTION_STOP_STREAM -> {
+                        AppConstants.ACTION_START_STREAM -> startStream()
+                        AppConstants.ACTION_STOP_STREAM -> {
                             Log.d(TAG, "Обработка команды остановки стрима из BroadcastReceiver")
 
                             notificationManager.clearAllNotifications()
                             stopStream(null, null)
                         }
 
-                        ACTION_EXIT_APP -> {
+                        AppConstants.ACTION_EXIT_APP -> {
                             Log.d(
                                 TAG, "Обработка команды выхода из приложения из BroadcastReceiver"
                             )
@@ -181,7 +172,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                             stopSelf()
                         }
 
-                        ACTION_DISMISS_ERROR -> {
+                        AppConstants.ACTION_DISMISS_ERROR -> {
                             Log.d(TAG, "Обработка команды скрытия ошибки из BroadcastReceiver")
                             notificationManager.clearAllNotifications()
                         }
@@ -207,10 +198,10 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             intent?.action?.let { action ->
                 Log.d(TAG, "Обработка действия: $action")
                 when (action) {
-                    ACTION_START_STREAM -> {
+                    AppConstants.ACTION_START_STREAM -> {
                         startStream()
                     }
-                    ACTION_STOP_STREAM -> {
+                    AppConstants.ACTION_STOP_STREAM -> {
                         Log.d(TAG, "Обработка команды остановки стрима")
                         notificationManager.clearAllNotifications()
                         
@@ -225,19 +216,19 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                         }
                         
                         // Отправляем сообщение через LocalBroadcastManager
-                        val broadcastIntent = Intent("net.emerlink.stream.STREAM_STOPPED")
+                        val broadcastIntent = Intent(AppConstants.BROADCAST_STREAM_STOPPED)
                         LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent)
                         
                         stopStream(null, null)
                     }
-                    ACTION_EXIT_APP -> {
+                    AppConstants.ACTION_EXIT_APP -> {
                         Log.d(TAG, "Обработка команды выхода из приложения")
                         exiting = true
                         notificationManager.clearAllNotifications()
                         stopStream(null, null)
                         stopSelf()
                     }
-                    ACTION_DISMISS_ERROR -> {
+                    AppConstants.ACTION_DISMISS_ERROR -> {
                         Log.d(TAG, "Обработка команды скрытия ошибки")
                         notificationManager.clearAllNotifications()
                     }
@@ -282,7 +273,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
     override fun onAuthError() {
         Log.d(TAG, "Auth error")
-        stopStream(getString(R.string.auth_error), ACTION_AUTH_ERROR)
+        stopStream(getString(R.string.auth_error), AppConstants.ACTION_AUTH_ERROR)
     }
 
     override fun onAuthSuccess() {
@@ -296,6 +287,13 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             if (streamManager.isStreaming()) {
                 Log.d(TAG, "Принудительная остановка стрима из-за ошибки подключения")
                 streamManager.stopStream()
+                
+                // Обновляем LiveData состояния стрима
+                streamingState.postValue(false)
+                
+                // Отправляем сообщение через LocalBroadcastManager
+                val broadcastIntent = Intent(AppConstants.BROADCAST_STREAM_STOPPED)
+                LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent)
             }
 
             prepareAudio = false
@@ -307,7 +305,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             notificationManager.clearAllNotifications()
             notificationManager.showErrorNotification(errorText)
 
-            val intent = Intent(ACTION_CONNECTION_FAILED)
+            val intent = Intent(AppConstants.ACTION_CONNECTION_FAILED)
             applicationContext.sendBroadcast(intent)
 
             Handler(Looper.getMainLooper()).postDelayed({
@@ -319,6 +317,14 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
             try {
                 streamManager.stopStream()
+                
+                // Обновляем LiveData состояния стрима даже при ошибке
+                streamingState.postValue(false)
+                
+                // Отправляем сообщение через LocalBroadcastManager
+                val broadcastIntent = Intent(AppConstants.BROADCAST_STREAM_STOPPED)
+                LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent)
+                
                 notificationManager.clearAllNotifications()
                 notificationManager.showErrorNotification("Критическая ошибка: ${e.message}")
             } catch (e2: Exception) {
@@ -345,8 +351,8 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
     override fun onNewBitrate(bitrate: Long) {
         bitrateAdapter?.adaptBitrate(bitrate, streamManager.hasCongestion())
-        val intent = Intent(ACTION_NEW_BITRATE)
-        intent.putExtra(ACTION_NEW_BITRATE, bitrate)
+        val intent = Intent(AppConstants.ACTION_NEW_BITRATE)
+        intent.putExtra(AppConstants.ACTION_NEW_BITRATE, bitrate)
         applicationContext.sendBroadcast(intent)
     }
 
@@ -538,7 +544,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                     resolver.openOutputStream(it)?.use { outputStream ->
                         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
                         Log.d(TAG, "Отправка бродкаста ACTION_TOOK_PICTURE")
-                        applicationContext.sendBroadcast(Intent(ACTION_TOOK_PICTURE))
+                        applicationContext.sendBroadcast(Intent(AppConstants.ACTION_TOOK_PICTURE))
                         notificationManager.showPhotoNotification(getString(R.string.saved_photo))
                     } ?: run {
                         notificationManager.showErrorNotification(getString(R.string.saved_photo_failed))
@@ -556,7 +562,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 )
 
                 Log.d(TAG, "Отправка бродкаста ACTION_TOOK_PICTURE")
-                applicationContext.sendBroadcast(Intent(ACTION_TOOK_PICTURE))
+                applicationContext.sendBroadcast(Intent(AppConstants.ACTION_TOOK_PICTURE))
                 notificationManager.showPhotoNotification(getString(R.string.saved_photo))
             }
 
@@ -738,7 +744,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 
                 // Используем LocalBroadcastManager с логированием
                 Log.d(TAG, "Отправляем сообщение STREAM_STOPPED через LocalBroadcastManager")
-                val broadcastIntent = Intent("net.emerlink.stream.STREAM_STOPPED")
+                val broadcastIntent = Intent(AppConstants.BROADCAST_STREAM_STOPPED)
                 LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent)
             }
 
@@ -787,6 +793,13 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         } catch (e: Exception) {
             Log.e(TAG, "Error in stopStream: ${e.message}", e)
             errorHandler.handleStreamError(e)
+
+            // Даже при ошибке обновляем состояние
+            streamingState.postValue(false)
+            
+            // Отправляем сообщение через LocalBroadcastManager
+            val broadcastIntent = Intent(AppConstants.BROADCAST_STREAM_STOPPED)
+            LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent)
 
             if (message != null) {
                 notificationManager.clearAllNotifications()
@@ -843,7 +856,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             }
 
             streamSettings.protocol == "srt" -> {
-                "srt://${streamSettings.address}:${streamSettings.port}"
+                "srt://${streamSettings.address}:${streamSettings.port}?streamid=${streamSettings.path}"
             }
 
             else -> {

@@ -68,6 +68,7 @@ import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.R
 import net.emerlink.stream.model.StreamInfo
 import net.emerlink.stream.service.StreamService
+import net.emerlink.stream.util.AppConstants
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
@@ -269,14 +270,14 @@ fun CameraScreen(
     DisposableEffect(key1 = isStreaming) {
         val streamStoppedReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
-                if (intent.action == "net.emerlink.stream.STREAM_STOPPED") {
+                if (intent.action == AppConstants.BROADCAST_STREAM_STOPPED) {
                     Log.d("CameraScreen", "Получено уведомление об остановке стрима")
                     isStreaming = false
                 }
             }
         }
 
-        val filter = IntentFilter("net.emerlink.stream.STREAM_STOPPED")
+        val filter = IntentFilter(AppConstants.BROADCAST_STREAM_STOPPED)
 
         // Используем LocalBroadcastManager
         androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(context)

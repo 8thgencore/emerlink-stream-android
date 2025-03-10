@@ -160,7 +160,10 @@ class StreamManager(
             val rotation = if (isPortrait) 90 else 0
             cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
 
-            Log.d(TAG, "Превью успешно запущен с разрешением ${width}x${height}, isPortrait=$isPortrait, rotation=$rotation")
+            Log.d(
+                TAG,
+                "Превью успешно запущен с разрешением ${width}x${height}, isPortrait=$isPortrait, rotation=$rotation"
+            )
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при запуске preview: ${e.message}")
             errorHandler.handleStreamError(e)
