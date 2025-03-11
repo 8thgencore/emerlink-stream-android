@@ -627,6 +627,9 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             val dateFormat = SimpleDateFormat("yyyy-MM-dd_HH:mm:ss", Locale.getDefault())
             currentDateAndTime = dateFormat.format(Date())
 
+            // Make sure to apply the correct orientation before starting the stream
+            streamManager.switchStreamResolution()
+
             if (streamSettings.stream) {
                 startStreaming()
             }

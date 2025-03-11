@@ -134,6 +134,7 @@ class StreamManager(
             val resolution = Resolution.parseFromPreferences(sharedPreferences)
             cameraInterface.prepareVideo(resolution.width, resolution.height, DEFAULT_FPS, bitrate)
 
+
             val rotation = CameraHelper.getCameraOrientation(context)
             cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
 
@@ -182,7 +183,6 @@ class StreamManager(
             Log.d(TAG, "Подготовка видео: ${resolution.width}x${resolution.height}, FPS=$fps, битрейт=${videoBitrate}k")
 
             val rotation = CameraHelper.getCameraOrientation(context)
-
             cameraInterface.prepareVideo(resolution.width, resolution.height, fps, videoBitrate * 1000, rotation)
 
             return true
@@ -199,9 +199,7 @@ class StreamManager(
     fun getVideoSource(): Any = cameraInterface
     fun getGlInterface(): Any = cameraInterface.glInterface
 
-    fun setVideoBitrateOnFly(bitrate: Int) {
-        cameraInterface.setVideoBitrateOnFly(bitrate)
-    }
+    fun setVideoBitrateOnFly(bitrate: Int) = cameraInterface.setVideoBitrateOnFly(bitrate)
 
     fun hasCongestion(): Boolean = cameraInterface.hasCongestion()
 
@@ -210,12 +208,15 @@ class StreamManager(
             val resolution = Resolution.parseFromPreferences(sharedPreferences)
 
             val bitrate = cameraInterface.bitrate.takeIf { it > 0 } ?: DEFAULT_BITRATE
+            val fps = sharedPreferences.getString(
+                PreferenceKeys.VIDEO_FPS, PreferenceKeys.VIDEO_FPS_DEFAULT
+            )?.toIntOrNull() ?: DEFAULT_FPS
 
             if (isOnPreview()) {
-                cameraInterface.stopPreview()
-                cameraInterface.prepareVideo(resolution.width, resolution.height, DEFAULT_FPS, bitrate)
-
                 val rotation = CameraHelper.getCameraOrientation(context)
+
+                cameraInterface.stopPreview()
+                cameraInterface.prepareVideo(resolution.width, resolution.height, fps, bitrate, rotation)
 
                 currentView?.let { view ->
                     cameraInterface.replaceView(view)
@@ -229,13 +230,9 @@ class StreamManager(
         }
     }
 
-    fun enableAudio() {
-        cameraInterface.enableAudio()
-    }
+    fun enableAudio() = cameraInterface.enableAudio()
 
-    fun disableAudio() {
-        cameraInterface.disableAudio()
-    }
+    fun disableAudio() = cameraInterface.disableAudio()
 
     fun releaseCamera() {
         try {
