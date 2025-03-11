@@ -10,10 +10,10 @@ import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.video.CameraHelper
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.data.preferences.PreferenceKeys
+import net.emerlink.stream.model.Resolution
 import net.emerlink.stream.model.StreamType
 import net.emerlink.stream.service.camera.CameraInterface
 import net.emerlink.stream.util.ErrorHandler
-import java.util.Locale
 
 class StreamManager(
     private val context: Context, private val connectChecker: ConnectChecker, private val errorHandler: ErrorHandler
@@ -50,27 +50,15 @@ class StreamManager(
             if (currentView != null) {
                 Log.d(TAG, "Перезапуск превью с новым разрешением")
                 try {
-                    val (videoWidth, videoHeight) = parseResolution(sharedPreferences)
+                    val resolution = Resolution.parseFromPreferences(sharedPreferences)
 
-                    switchStreamResolution(videoWidth, videoHeight)
+                    switchStreamResolution(resolution.width, resolution.height)
                     restartPreview(currentView, currentIsPortrait)
                 } catch (e: Exception) {
                     Log.e(TAG, "Ошибка при обновлении разрешения: ${e.message}", e)
                 }
             }
         }
-    }
-
-    private fun parseResolution(sharedPreferences: SharedPreferences): Pair<Int, Int> {
-        val videoResolution = sharedPreferences.getString(
-            PreferenceKeys.VIDEO_RESOLUTION, PreferenceKeys.VIDEO_RESOLUTION_DEFAULT
-        ) ?: "1920x1080"
-
-        val dimensions = videoResolution.lowercase(Locale.getDefault()).replace("х", "x").split("x")
-        val videoWidth = if (dimensions.isNotEmpty()) dimensions[0].toIntOrNull() ?: 1920 else 1920
-        val videoHeight = if (dimensions.size >= 2) dimensions[1].toIntOrNull() ?: 1080 else 1080
-
-        return Pair(videoWidth, videoHeight)
     }
 
     private fun restartPreview(view: OpenGlView, isPortrait: Boolean) {
@@ -150,7 +138,6 @@ class StreamManager(
             currentView = view
             currentIsPortrait = isPortrait
 
-            val (width, height) = parseResolution(sharedPreferences)
 
             if (isOnPreview()) {
                 cameraInterface.stopPreview()
@@ -160,14 +147,16 @@ class StreamManager(
 
             val bitrate = cameraInterface.bitrate.takeIf { it > 0 } ?: DEFAULT_BITRATE
 
-            cameraInterface.prepareVideo(width, height, DEFAULT_FPS, bitrate)
+            val resolution = Resolution.parseFromPreferences(sharedPreferences)
+
+            cameraInterface.prepareVideo(resolution.width, resolution.height, DEFAULT_FPS, bitrate)
 
             val rotation = if (isPortrait) 90 else 0
             cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
 
             Log.d(
                 TAG,
-                "Превью успешно запущен с разрешением ${width}x${height}, isPortrait=$isPortrait, rotation=$rotation"
+                "Превью успешно запущен с разрешением ${resolution.width}x${resolution.height}, isPortrait=$isPortrait, rotation=$rotation"
             )
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при запуске preview: ${e.message}")
@@ -199,7 +188,7 @@ class StreamManager(
 
     fun prepareVideo(): Boolean {
         try {
-            val (width, height) = parseResolution(sharedPreferences)
+            val resolution = Resolution.parseFromPreferences(sharedPreferences)
             val fps = sharedPreferences.getString(
                 PreferenceKeys.VIDEO_FPS, PreferenceKeys.VIDEO_FPS_DEFAULT
             )?.toIntOrNull() ?: 30
@@ -207,10 +196,10 @@ class StreamManager(
                 PreferenceKeys.VIDEO_BITRATE, PreferenceKeys.VIDEO_BITRATE_DEFAULT
             )?.toIntOrNull() ?: 2500
 
-            Log.d(TAG, "Подготовка видео: ${width}x${height}, FPS=$fps, битрейт=${videoBitrate}k")
+            Log.d(TAG, "Подготовка видео: ${resolution.width}x${resolution.height}, FPS=$fps, битрейт=${videoBitrate}k")
 
             val rotation = if (currentIsPortrait) 90 else 0
-            cameraInterface.prepareVideo(width, height, fps, videoBitrate * 1000, rotation)
+            cameraInterface.prepareVideo(resolution.width, resolution.height, fps, videoBitrate * 1000, rotation)
 
             return true
         } catch (e: Exception) {

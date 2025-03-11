@@ -30,6 +30,7 @@ import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.R
 import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.data.preferences.PreferencesLoader
+import net.emerlink.stream.model.Resolution
 import net.emerlink.stream.model.StreamSettings
 import net.emerlink.stream.notification.NotificationManager
 import net.emerlink.stream.service.camera.CameraManager
@@ -315,7 +316,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 reason.contains("461") -> getString(R.string.error_unsupported_transport)
                 else -> getString(R.string.connection_failed) + ": " + reason
             }
-            
+
             Log.d(TAG, "Создание уведомления об ошибке: $errorText")
 
             notificationManager.clearAllNotifications()
@@ -668,12 +669,12 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 path = streamSettings.path,
                 username = streamSettings.username.ifEmpty { null },
                 password = streamSettings.password.ifEmpty { null })
-                // Log the URL (remove sensitive info in production)
+            // Log the URL (remove sensitive info in production)
             Log.d(TAG, "Stream URL: ${streamUrl.replace(Regex(":[^:/]*:[^:/]*"), ":****:****")}")
 
-            val (videoWidth, videoHeight) = parseVideoResolution()
+            val resolution = Resolution.parseFromPreferences(preferences)
 
-            streamManager.switchStreamResolution(videoWidth, videoHeight)
+            streamManager.switchStreamResolution(resolution.width, resolution.height)
 
             streamManager.startStream(
                 streamUrl,
@@ -836,17 +837,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         } catch (e: Exception) {
             Log.e(TAG, "Error toggling mute state: ${e.message}", e)
         }
-    }
-
-    /** Парсит настройки разрешения видео */
-    private fun parseVideoResolution(): Pair<Int, Int> {
-        val videoResolution = preferences.getString(
-            PreferenceKeys.VIDEO_RESOLUTION, PreferenceKeys.VIDEO_RESOLUTION_DEFAULT
-        ) ?: "1920x1080"
-        val dimensions = videoResolution.lowercase(Locale.getDefault()).replace("х", "x").split("x")
-        val videoWidth = if (dimensions.isNotEmpty()) dimensions[0].toIntOrNull() ?: 1920 else 1920
-        val videoHeight = if (dimensions.size >= 2) dimensions[1].toIntOrNull() ?: 1080 else 1080
-        return Pair(videoWidth, videoHeight)
     }
 
     /** Проверяет наличие разрешений на доступ к местоположению */
