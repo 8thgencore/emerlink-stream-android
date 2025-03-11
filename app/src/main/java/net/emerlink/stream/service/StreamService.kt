@@ -311,7 +311,11 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             prepareAudio = false
             prepareVideo = false
 
-            val errorText = getString(R.string.connection_failed) + ": " + reason
+            val errorText = when {
+                reason.contains("461") -> getString(R.string.error_unsupported_transport)
+                else -> getString(R.string.connection_failed) + ": " + reason
+            }
+            
             Log.d(TAG, "Создание уведомления об ошибке: $errorText")
 
             notificationManager.clearAllNotifications()
@@ -664,7 +668,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 path = streamSettings.path,
                 username = streamSettings.username.ifEmpty { null },
                 password = streamSettings.password.ifEmpty { null })
-            // Log the URL (remove sensitive info in production)
+                // Log the URL (remove sensitive info in production)
             Log.d(TAG, "Stream URL: ${streamUrl.replace(Regex(":[^:/]*:[^:/]*"), ":****:****")}")
 
             val (videoWidth, videoHeight) = parseVideoResolution()

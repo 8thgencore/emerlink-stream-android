@@ -96,16 +96,22 @@ class StreamManager(
 
     fun startStream(url: String, protocol: String, username: String, password: String, tcp: Boolean) {
         try {
-            if (username.isNotEmpty() && password.isNotEmpty() && (protocol.startsWith("rtmp") || protocol.startsWith("rtsp"))) {
-                cameraInterface.setAuthorization(username, password)
-            }
+            Log.d(TAG, "Starting stream with protocol: $protocol, tcp: $tcp")
 
             if (protocol.startsWith("rtsp")) {
                 cameraInterface.setProtocol(tcp)
             }
 
+            if (username.isNotEmpty() && password.isNotEmpty() &&
+                (protocol.startsWith("rtmp") || protocol.startsWith("rtsp"))
+            ) {
+                cameraInterface.setAuthorization(username, password)
+            }
+
             cameraInterface.startStream(url)
+            Log.d(TAG, "Stream started successfully")
         } catch (e: Exception) {
+            Log.e(TAG, "Error starting stream: ${e.message}", e)
             errorHandler.handleStreamError(e)
         }
     }
@@ -259,12 +265,10 @@ class StreamManager(
         try {
             Log.d(TAG, "Освобождение ресурсов камеры")
 
-            // Остановка всех активных процессов
             if (isOnPreview()) stopPreview()
             if (isStreaming()) stopStream()
             if (isRecording()) stopRecord()
 
-            // Пересоздаем объект камеры для полного обновления ресурсов
             cameraInterface = CameraInterface.create(context, connectChecker, streamType)
             currentView = null
 
