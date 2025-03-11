@@ -90,7 +90,6 @@ object PreferenceKeys {
 
     // First run
     const val FIRST_RUN = "first_run"
-    const val FIRST_RUN_DEFAULT = true
 
     // Advanced video settings
     const val VIDEO_KEYFRAME_INTERVAL = "video_keyframe_interval"

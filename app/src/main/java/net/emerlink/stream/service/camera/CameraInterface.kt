@@ -47,7 +47,9 @@ interface CameraInterface {
         ): CameraInterface {
             return when (streamType) {
                 StreamType.RTMP -> RtmpCameraImpl(context, connectChecker)
+                StreamType.RTMPs -> RtmpCameraImpl(context, connectChecker)
                 StreamType.RTSP -> RtspCameraImpl(context, connectChecker)
+                StreamType.RTSPs -> RtspCameraImpl(context, connectChecker)
                 StreamType.SRT -> SrtCameraImpl(context, connectChecker)
                 StreamType.UDP -> UdpCameraImpl(context, connectChecker)
             }

@@ -1,10 +1,10 @@
-package net.emerlink.stream.util
+package net.emerlink.stream.data.preferences
 
 import android.content.SharedPreferences
 import android.util.Log
 import android.util.Size
-import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.model.StreamSettings
+import net.emerlink.stream.model.StreamType
 
 /**
  * Класс для загрузки настроек из SharedPreferences
@@ -22,8 +22,10 @@ class PreferencesLoader {
 
         return StreamSettings(
             // Stream settings
-            protocol = preferences.getString(PreferenceKeys.STREAM_PROTOCOL, PreferenceKeys.STREAM_PROTOCOL_DEFAULT)
-                ?: PreferenceKeys.STREAM_PROTOCOL_DEFAULT,
+            protocol = StreamType.fromString(
+                preferences.getString(PreferenceKeys.STREAM_PROTOCOL, PreferenceKeys.STREAM_PROTOCOL_DEFAULT)
+                    ?: PreferenceKeys.STREAM_PROTOCOL_DEFAULT
+            ),
             address = preferences.getString(PreferenceKeys.STREAM_ADDRESS, PreferenceKeys.STREAM_ADDRESS_DEFAULT)
                 ?: PreferenceKeys.STREAM_ADDRESS_DEFAULT,
             port = preferences.getString(PreferenceKeys.STREAM_PORT, PreferenceKeys.STREAM_PORT_DEFAULT)?.toIntOrNull()
@@ -140,4 +142,4 @@ class PreferencesLoader {
             Size(1920, 1080) // Default if format is incorrect
         }
     }
-} 
+}

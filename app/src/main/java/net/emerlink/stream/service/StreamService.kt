@@ -29,8 +29,8 @@ import com.pedro.library.util.BitrateAdapter
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.R
 import net.emerlink.stream.data.preferences.PreferenceKeys
+import net.emerlink.stream.data.preferences.PreferencesLoader
 import net.emerlink.stream.model.StreamSettings
-import net.emerlink.stream.model.StreamType
 import net.emerlink.stream.notification.NotificationManager
 import net.emerlink.stream.service.camera.CameraManager
 import net.emerlink.stream.service.camera.ICameraManager
@@ -39,7 +39,6 @@ import net.emerlink.stream.service.stream.StreamManager
 import net.emerlink.stream.util.AppConstants
 import net.emerlink.stream.util.ErrorHandler
 import net.emerlink.stream.util.PathUtils
-import net.emerlink.stream.util.PreferencesLoader
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -129,7 +128,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         loadPreferences()
 
         streamManager = StreamManager(this, this, errorHandler)
-        streamManager.setStreamType(getStreamTypeFromProtocol(streamSettings.protocol))
+        streamManager.setStreamType(streamSettings.protocol)
 
         cameraManager = CameraManager(this, { streamManager.getVideoSource() }, { streamManager.getCameraInterface() })
 
@@ -160,7 +159,9 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                     when (intent.action) {
                         AppConstants.ACTION_START_STREAM -> startStream()
                         AppConstants.ACTION_STOP_STREAM -> {
-                            Log.d(TAG, "Обработка команды остановки стрима из BroadcastReceiver")
+                            Log.d(
+                                TAG, "Обработка команды остановки стрима из BroadcastReceiver"
+                            )
 
                             notificationManager.clearAllNotifications()
                             stopStream(null, null)
@@ -177,12 +178,16 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                         }
 
                         AppConstants.ACTION_DISMISS_ERROR -> {
-                            Log.d(TAG, "Обработка команды скрытия ошибки из BroadcastReceiver")
+                            Log.d(
+                                TAG, "Обработка команды скрытия ошибки из BroadcastReceiver"
+                            )
                             notificationManager.clearAllNotifications()
                         }
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Ошибка при обработке интента в BroadcastReceiver: ${e.message}", e)
+                    Log.e(
+                        TAG, "Ошибка при обработке интента в BroadcastReceiver: ${e.message}", e
+                    )
                 }
             }
         }
@@ -315,10 +320,9 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             val intent = Intent(AppConstants.ACTION_CONNECTION_FAILED)
             applicationContext.sendBroadcast(intent)
 
-            Handler(Looper.getMainLooper()).postDelayed({
-                stopStream(null, null, NotificationManager.ACTION_NONE, false)
-            }, 500)
-
+            Handler(Looper.getMainLooper()).postDelayed(
+                { stopStream(null, null, NotificationManager.ACTION_NONE, false) }, 500
+            )
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при обработке сбоя подключения: ${e.message}", e)
 
@@ -499,9 +503,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 glInterface.takePhoto { bitmap ->
                     val handlerThread = android.os.HandlerThread("HandlerThread")
                     handlerThread.start()
-                    Handler(handlerThread.looper).post {
-                        saveBitmapToGallery(bitmap)
-                    }
+                    Handler(handlerThread.looper).post { saveBitmapToGallery(bitmap) }
                 }
             } else {
                 Log.e(TAG, "glInterface неправильного типа: ${glInterface.javaClass.name}")
@@ -539,7 +541,9 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                         applicationContext.sendBroadcast(Intent(AppConstants.ACTION_TOOK_PICTURE))
                         notificationManager.showPhotoNotification(getString(R.string.saved_photo))
                     } ?: run {
-                        notificationManager.showErrorNotification(getString(R.string.saved_photo_failed))
+                        notificationManager.showErrorNotification(
+                            getString(R.string.saved_photo_failed)
+                        )
                     }
                 }
             } else {
@@ -570,15 +574,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         }
     }
 
-    private fun getStreamTypeFromProtocol(protocol: String): StreamType {
-        return when {
-            protocol.startsWith("rtmp") -> StreamType.RTMP
-            protocol.startsWith("rtsp") -> StreamType.RTSP
-            protocol == "srt" -> StreamType.SRT
-            else -> StreamType.UDP
-        }
-    }
-
     private fun getCameraIds() {
         if (streamSettings.videoSource == PreferenceKeys.VIDEO_SOURCE_DEFAULT) {
             try {
@@ -589,7 +584,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 Log.d(TAG, "Получены идентификаторы камер через CameraManager: $cameraIds")
             } catch (e: Exception) {
                 Log.e(TAG, "Ошибка при получении списка камер", e)
-
 
                 if (cameraIds.isEmpty()) {
                     cameraIds.add("0")
@@ -608,7 +602,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         streamSettings = preferencesLoader.loadPreferences(preferences)
 
         if (streamSettings.protocol != oldProtocol && ::streamManager.isInitialized) {
-            streamManager.setStreamType(getStreamTypeFromProtocol(streamSettings.protocol))
+            streamManager.setStreamType(streamSettings.protocol)
         }
     }
 
@@ -664,16 +658,25 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         try {
             Log.d(TAG, "Starting streaming")
 
-            val url = buildStreamUrl()
+            val streamUrl = streamSettings.protocol.buildStreamUrl(
+                address = streamSettings.address,
+                port = streamSettings.port.toString(),
+                path = streamSettings.path,
+                username = streamSettings.username.ifEmpty { null },
+                password = streamSettings.password.ifEmpty { null })
             // Log the URL (remove sensitive info in production)
-            Log.d(TAG, "Stream URL: ${url.replace(Regex(":[^:/]*:[^:/]*"), ":****:****")}")
+            Log.d(TAG, "Stream URL: ${streamUrl.replace(Regex(":[^:/]*:[^:/]*"), ":****:****")}")
 
             val (videoWidth, videoHeight) = parseVideoResolution()
 
             streamManager.switchStreamResolution(videoWidth, videoHeight)
 
             streamManager.startStream(
-                url, streamSettings.protocol, streamSettings.username, streamSettings.password, streamSettings.tcp
+                streamUrl,
+                streamSettings.protocol.toString(),
+                streamSettings.username,
+                streamSettings.password,
+                streamSettings.tcp
             )
 
             streamingState.postValue(true)
@@ -809,7 +812,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     }
 
     private fun initializeStream() {
-        streamManager.setStreamType(getStreamTypeFromProtocol(streamSettings.protocol))
+        streamManager.setStreamType(streamSettings.protocol)
         getCameraIds()
     }
 
@@ -840,42 +843,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         val videoWidth = if (dimensions.isNotEmpty()) dimensions[0].toIntOrNull() ?: 1920 else 1920
         val videoHeight = if (dimensions.size >= 2) dimensions[1].toIntOrNull() ?: 1080 else 1080
         return Pair(videoWidth, videoHeight)
-    }
-
-    /** Формирует URL стрима на основе настроек */
-    private fun buildStreamUrl(): String {
-        return when {
-            streamSettings.protocol.startsWith("rtmp") -> {
-                val prefix = if (streamSettings.protocol == "rtmps") "rtmps" else "rtmp"
-                "$prefix://${streamSettings.address}:${streamSettings.port}/${streamSettings.path}"
-            }
-
-            streamSettings.protocol.startsWith("rtsp") -> {
-                val prefix = if (streamSettings.protocol == "rtsps") "rtsps" else "rtsp"
-                "$prefix://${streamSettings.address}:${streamSettings.port}/${streamSettings.path}"
-            }
-
-            streamSettings.protocol == "srt" -> {
-                // Format the streamid according to the required format: action:pathname[:query] or action:pathname:user:pass[:query]
-                val streamId = if (streamSettings.username.isNotEmpty() && streamSettings.password.isNotEmpty()) {
-                    // Format with credentials: action:pathname:user:pass[:query]
-                    "publish:${streamSettings.path}:${streamSettings.username}:${streamSettings.password}"
-                } else {
-                    // Format without credentials: action:pathname[:query]
-                    "publish:${streamSettings.path}"
-                }
-
-                val srtParams = StringBuilder()
-                srtParams.append("streamid=$streamId")
-                srtParams.append("&latency=2000")
-
-                "srt://${streamSettings.address}:${streamSettings.port}?$srtParams"
-            }
-
-            else -> {
-                "udp://${streamSettings.address}:${streamSettings.port}"
-            }
-        }
     }
 
     /** Проверяет наличие разрешений на доступ к местоположению */

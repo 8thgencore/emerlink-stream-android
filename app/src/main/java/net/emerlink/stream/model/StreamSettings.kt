@@ -7,7 +7,7 @@ import android.util.Size
  */
 data class StreamSettings(
     // Stream settings
-    var protocol: String = "",
+    var protocol: StreamType = StreamType.RTMP,
     var address: String = "",
     var port: Int = 0,
     var path: String = "",

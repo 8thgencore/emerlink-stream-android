@@ -197,7 +197,7 @@ fun CameraScreen(
                 Lifecycle.Event.ON_RESUME -> {
                     Log.d("CameraScreen", "Lifecycle.Event.ON_RESUME")
                     // Запускаем камеру только если предпросмотр не активен и OpenGlView готов
-                    if (!isPreviewActive && openGlView != null && streamService != null && streamService.isPreviewRunning() == false) {
+                    if (!isPreviewActive && openGlView != null && streamService != null && !streamService.isPreviewRunning()) {
                         openGlView?.let { view ->
                             if (view.holder.surface?.isValid == true) {
                                 Log.d("CameraScreen", "Запуск камеры из ON_RESUME")
@@ -249,7 +249,7 @@ fun CameraScreen(
         streamService?.let { service ->
             val settings = service.streamSettings
             streamInfo = StreamInfo(
-                protocol = settings.protocol,
+                protocol = settings.protocol.toString(),
                 resolution = settings.resolution.toString(),
                 bitrate = "${settings.bitrate} kbps",
                 fps = "${settings.fps} fps"
