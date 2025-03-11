@@ -601,7 +601,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     }
 
     private fun loadPreferences() {
-        val preferencesLoader = PreferencesLoader(applicationContext)
+        val preferencesLoader = PreferencesLoader()
 
         val oldProtocol = streamSettings.protocol
 

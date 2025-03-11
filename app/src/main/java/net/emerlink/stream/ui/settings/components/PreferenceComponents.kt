@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -53,13 +54,17 @@ fun SwitchPreference(
     title: String,
     summary: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true
 ) {
+    val alpha = if (enabled) 1f else 0.6f
+    
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) }
-            .padding(vertical = 8.dp),
+            .clickable(enabled = enabled) { onCheckedChange(!checked) }
+            .padding(vertical = 8.dp)
+            .alpha(alpha),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -76,7 +81,8 @@ fun SwitchPreference(
 
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = if (enabled) onCheckedChange else null,
+            enabled = enabled
         )
     }
 }
@@ -88,12 +94,16 @@ fun InputPreference(
     value: String,
     isPassword: Boolean = false,
     onValueChange: (String) -> Unit,
-    keyboardType: KeyboardType = KeyboardType.Text
+    keyboardType: KeyboardType = KeyboardType.Text,
+    enabled: Boolean = true
 ) {
+    val alpha = if (enabled) 1f else 0.6f
+    
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
+            .alpha(alpha)
     ) {
         Text(
             text = title,
@@ -111,7 +121,8 @@ fun InputPreference(
             modifier = Modifier.fillMaxWidth(),
             visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-            singleLine = true
+            singleLine = true,
+            enabled = enabled
         )
     }
 }
@@ -122,14 +133,17 @@ fun DropdownPreference(
     summary: String,
     selectedValue: String,
     options: List<String>,
-    onValueSelected: (String) -> Unit
+    onValueSelected: (String) -> Unit,
+    enabled: Boolean = true
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val alpha = if (enabled) 1f else 0.6f
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
+            .alpha(alpha)
     ) {
         Text(
             text = title,
@@ -145,7 +159,7 @@ fun DropdownPreference(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { expanded = true }
+                .clickable(enabled = enabled) { expanded = true }
                 .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -155,18 +169,20 @@ fun DropdownPreference(
                 color = MaterialTheme.colorScheme.primary
             )
 
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                options.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text(text = option) },
-                        onClick = {
-                            onValueSelected(option)
-                            expanded = false
-                        }
-                    )
+            if (enabled) {
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    options.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(text = option) },
+                            onClick = {
+                                onValueSelected(option)
+                                expanded = false
+                            }
+                        )
+                    }
                 }
             }
         }

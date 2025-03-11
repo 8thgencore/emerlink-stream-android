@@ -56,6 +56,12 @@
     <string name="username_summary">Имя пользователя для авторизации на сервере</string>
     <string name="password">Пароль</string>
     <string name="password_summary">Пароль для авторизации на сервере</string>
+    <string name="self_signed_certificate">Самоподписанный сертификат</string>
+    <string name="self_signed_certificate_summary">Использовать самоподписанный сертификат для безопасных соединений</string>
+    <string name="certificate">Сертификат</string>
+    <string name="certificate_summary">Путь к файлу сертификата</string>
+    <string name="certificate_password">Пароль для сертификата</string>
+    <string name="certificate_password_summary">Пароль для сертификата</string>
     
     <!-- Video Settings -->
     <string name="video_settings">Настройки видео</string>

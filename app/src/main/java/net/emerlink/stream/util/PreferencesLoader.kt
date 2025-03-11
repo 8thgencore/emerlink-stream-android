@@ -1,6 +1,5 @@
 package net.emerlink.stream.util
 
-import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import android.util.Size
@@ -10,8 +9,7 @@ import net.emerlink.stream.model.StreamSettings
 /**
  * Класс для загрузки настроек из SharedPreferences
  */
-class PreferencesLoader(private val context: Context) {
-
+class PreferencesLoader {
     companion object {
         private const val TAG = "PreferencesLoader"
     }

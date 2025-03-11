@@ -1,16 +1,25 @@
 package net.emerlink.stream.ui.settings
 
 import android.content.Context
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.VideoCameraBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -25,12 +34,12 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import android.hardware.camera2.CameraCharacteristics
-import android.hardware.camera2.CameraManager
 import androidx.core.content.edit
 import androidx.preference.PreferenceManager
 import net.emerlink.stream.R
@@ -39,17 +48,18 @@ import net.emerlink.stream.ui.settings.components.DropdownPreference
 import net.emerlink.stream.ui.settings.components.InputPreference
 import net.emerlink.stream.ui.settings.components.PreferenceCategory
 import net.emerlink.stream.ui.settings.components.SwitchPreference
-import androidx.compose.ui.text.input.KeyboardType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onBackClick: () -> Unit, onAdvancedSettingsClick: () -> Unit
+    onBackClick: () -> Unit,
+    onAdvancedSettingsClick: () -> Unit,
+    onStreamSettingsClick: () -> Unit
 ) {
     val context = LocalContext.current
     val preferences = PreferenceManager.getDefaultSharedPreferences(context)
     val scrollState = rememberScrollState()
-    
+
     // List to store available camera resolutions
     val availableResolutions = remember { mutableStateListOf<String>() }
 
@@ -62,23 +72,23 @@ fun SettingsScreen(
                 val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
                 facing == CameraCharacteristics.LENS_FACING_BACK
             }
-            
+
             cameraId?.let { id ->
                 val characteristics = cameraManager.getCameraCharacteristics(id)
                 val configs = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
-                
+
                 configs?.let { config ->
                     val sizes = config.getOutputSizes(android.graphics.ImageFormat.JPEG)
-                    sizes?.let { 
+                    sizes?.let {
                         // Sort resolutions by area (width * height) in descending order
                         val sortedSizes = sizes.sortedByDescending { it.width * it.height }
-                        
+
                         // Add resolutions to the list
                         availableResolutions.clear()
                         sortedSizes.forEach { size ->
                             availableResolutions.add("${size.width}x${size.height}")
                         }
-                        
+
                         // If no resolutions were found, add default ones
                         if (availableResolutions.isEmpty()) {
                             availableResolutions.addAll(listOf("1920x1080", "1280x720", "854x480", "640x360"))
@@ -86,7 +96,7 @@ fun SettingsScreen(
                     }
                 }
             }
-            
+
             // If we couldn't get camera resolutions, use default ones
             if (availableResolutions.isEmpty()) {
                 availableResolutions.addAll(listOf("1920x1080", "1280x720", "854x480", "640x360"))
@@ -98,71 +108,19 @@ fun SettingsScreen(
         }
     }
 
-    // Состояния для отслеживания изменений настроек
-    // Stream Settings
-    var streamVideo by remember {
-        mutableStateOf(
-            preferences.getBoolean(
-                PreferenceKeys.STREAM_VIDEO, PreferenceKeys.STREAM_VIDEO_DEFAULT
-            )
-        )
-    }
-    var streamProtocol by remember {
-        mutableStateOf(
-            preferences.getString(
-                PreferenceKeys.STREAM_PROTOCOL, PreferenceKeys.STREAM_PROTOCOL_DEFAULT
-            ) ?: PreferenceKeys.STREAM_PROTOCOL_DEFAULT
-        )
-    }
-    var streamAddress by remember {
-        mutableStateOf(
-            preferences.getString(
-                PreferenceKeys.STREAM_ADDRESS, PreferenceKeys.STREAM_ADDRESS_DEFAULT
-            ) ?: PreferenceKeys.STREAM_ADDRESS_DEFAULT
-        )
-    }
-    var streamPort by remember {
-        mutableStateOf(
-            preferences.getString(
-                PreferenceKeys.STREAM_PORT, PreferenceKeys.STREAM_PORT_DEFAULT
-            ) ?: PreferenceKeys.STREAM_PORT_DEFAULT
-        )
-    }
-    var streamPath by remember {
-        mutableStateOf(
-            preferences.getString(
-                PreferenceKeys.STREAM_PATH, PreferenceKeys.STREAM_PATH_DEFAULT
-            ) ?: PreferenceKeys.STREAM_PATH_DEFAULT
-        )
-    }
-    var streamUseTcp by remember {
-        mutableStateOf(
-            preferences.getBoolean(
-                PreferenceKeys.STREAM_USE_TCP, PreferenceKeys.STREAM_USE_TCP_DEFAULT
-            )
-        )
-    }
-    var streamUsername by remember {
-        mutableStateOf(
-            preferences.getString(
-                PreferenceKeys.STREAM_USERNAME, PreferenceKeys.STREAM_USERNAME_DEFAULT
-            ) ?: PreferenceKeys.STREAM_USERNAME_DEFAULT
-        )
-    }
-    var streamPassword by remember {
-        mutableStateOf(
-            preferences.getString(
-                PreferenceKeys.STREAM_PASSWORD, PreferenceKeys.STREAM_PASSWORD_DEFAULT
-            ) ?: PreferenceKeys.STREAM_PASSWORD_DEFAULT
-        )
-    }
-
     // Video Settings
     var videoResolution by remember {
         mutableStateOf(
             preferences.getString(
                 PreferenceKeys.VIDEO_RESOLUTION, PreferenceKeys.VIDEO_RESOLUTION_DEFAULT
             ) ?: PreferenceKeys.VIDEO_RESOLUTION_DEFAULT
+        )
+    }
+    var screenOrientation by remember {
+        mutableStateOf(
+            preferences.getString(
+                PreferenceKeys.SCREEN_ORIENTATION, PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
+            ) ?: PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
         )
     }
     var videoFps by remember {
@@ -198,13 +156,6 @@ fun SettingsScreen(
             preferences.getBoolean(
                 PreferenceKeys.RECORD_VIDEO, PreferenceKeys.RECORD_VIDEO_DEFAULT
             )
-        )
-    }
-    var screenOrientation by remember {
-        mutableStateOf(
-            preferences.getString(
-                PreferenceKeys.SCREEN_ORIENTATION, PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
-            ) ?: PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
         )
     }
 
@@ -281,95 +232,36 @@ fun SettingsScreen(
                     .verticalScroll(scrollState)
                     .padding(16.dp)
             ) {
-                // Stream Settings
-                PreferenceCategory(title = stringResource(id = R.string.stream_settings)) {
-                    SwitchPreference(
-                        title = stringResource(id = R.string.enable_streaming),
-                        summary = stringResource(id = R.string.enable_streaming_summary),
-                        checked = streamVideo,
-                        onCheckedChange = { checked ->
-                            streamVideo = checked
-                            preferences.edit { putBoolean(PreferenceKeys.STREAM_VIDEO, checked) }
-                        })
-
-                    DropdownPreference(
-                        title = stringResource(id = R.string.stream_protocol),
-                        summary = stringResource(id = R.string.stream_protocol_summary),
-                        selectedValue = streamProtocol,
-                        options = listOf("rtmp", "rtmps", "rtsp", "rtsps", "srt"),
-                        onValueSelected = { value ->
-                            streamProtocol = value
-                            preferences.edit { putString(PreferenceKeys.STREAM_PROTOCOL, value) }
-                        })
-
-                    InputPreference(
-                        title = stringResource(id = R.string.stream_address),
-                        summary = stringResource(id = R.string.stream_address_summary),
-                        value = streamAddress,
-                        onValueChange = { value ->
-                            val filteredValue = value.filterNot { it.isWhitespace() }
-                            streamAddress = filteredValue
-                            preferences.edit { putString(PreferenceKeys.STREAM_ADDRESS, filteredValue) }
-                        },
-                        keyboardType = KeyboardType.Number
+                // Stream Settings Navigation
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onStreamSettingsClick)
+                        .padding(vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.VideoCameraBack,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
                     )
-
-                    InputPreference(
-                        title = stringResource(id = R.string.stream_port),
-                        summary = stringResource(id = R.string.stream_port_summary),
-                        value = streamPort,
-                        onValueChange = { value ->
-                            val filteredValue = value.filterNot { it.isWhitespace() }
-                            streamPort = filteredValue
-                            preferences.edit { putString(PreferenceKeys.STREAM_PORT, filteredValue) }
-                        },
-                        keyboardType = KeyboardType.Number
+                    Text(
+                        text = stringResource(id = R.string.stream_settings),
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = 16.dp)
                     )
-
-                    InputPreference(
-                        title = stringResource(id = R.string.stream_path),
-                        summary = stringResource(id = R.string.stream_path_summary),
-                        value = streamPath,
-                        onValueChange = { value ->
-                            val filteredValue = value.filterNot { it.isWhitespace() }
-                            streamPath = filteredValue
-                            preferences.edit { putString(PreferenceKeys.STREAM_PATH, filteredValue) }
-                        })
-
-                    SwitchPreference(
-                        title = stringResource(id = R.string.use_tcp),
-                        summary = stringResource(id = R.string.use_tcp_summary),
-                        checked = streamUseTcp,
-                        onCheckedChange = { checked ->
-                            streamUseTcp = checked
-                            preferences.edit {
-                                putBoolean(
-                                    PreferenceKeys.STREAM_USE_TCP, checked
-                                )
-                            }
-                        })
-
-                    InputPreference(
-                        title = stringResource(id = R.string.username),
-                        summary = stringResource(id = R.string.username_summary),
-                        value = streamUsername,
-                        onValueChange = { value ->
-                            val filteredValue = value.filterNot { it.isWhitespace() }
-                            streamUsername = filteredValue
-                            preferences.edit { putString(PreferenceKeys.STREAM_USERNAME, filteredValue) }
-                        })
-
-                    InputPreference(
-                        title = stringResource(id = R.string.password),
-                        summary = stringResource(id = R.string.password_summary),
-                        value = streamPassword,
-                        isPassword = true,
-                        onValueChange = { value ->
-                            val filteredValue = value.filterNot { it.isWhitespace() }
-                            streamPassword = filteredValue
-                            preferences.edit { putString(PreferenceKeys.STREAM_PASSWORD, filteredValue) }
-                        })
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Video Settings
                 PreferenceCategory(title = stringResource(id = R.string.video_settings)) {
@@ -381,6 +273,16 @@ fun SettingsScreen(
                         onValueSelected = { value ->
                             videoResolution = value
                             preferences.edit { putString(PreferenceKeys.VIDEO_RESOLUTION, value) }
+                        })
+
+                    DropdownPreference(
+                        title = stringResource(id = R.string.screen_orientation),
+                        summary = stringResource(id = R.string.screen_orientation_summary),
+                        selectedValue = screenOrientation,
+                        options = listOf("landscape", "portrait"),
+                        onValueSelected = { value ->
+                            screenOrientation = value
+                            preferences.edit { putString(PreferenceKeys.SCREEN_ORIENTATION, value) }
                         })
 
                     InputPreference(
@@ -436,16 +338,6 @@ fun SettingsScreen(
                             recordVideo = checked
                             preferences.edit { putBoolean(PreferenceKeys.RECORD_VIDEO, checked) }
                         })
-
-                    DropdownPreference(
-                        title = stringResource(id = R.string.screen_orientation),
-                        summary = stringResource(id = R.string.screen_orientation_summary),
-                        selectedValue = screenOrientation,
-                        options = listOf("landscape", "portrait"),
-                        onValueSelected = { value ->
-                            screenOrientation = value
-                            preferences.edit { putString(PreferenceKeys.SCREEN_ORIENTATION, value) }
-                        })
                 }
 
                 // Audio Settings
@@ -485,24 +377,28 @@ fun SettingsScreen(
                         })
 
                     SwitchPreference(
-                        stringResource(id = R.string.stereo), stringResource(id = R.string.stereo_summary), audioStereo
-                    ) { checked ->
-                        audioStereo = checked
-                        preferences.edit { putBoolean(PreferenceKeys.AUDIO_STEREO, checked) }
-                    }
+                        title = stringResource(id = R.string.stereo),
+                        summary = stringResource(id = R.string.stereo_summary),
+                        checked = audioStereo,
+                        onCheckedChange = { checked ->
+                            audioStereo = checked
+                            preferences.edit { putBoolean(PreferenceKeys.AUDIO_STEREO, checked) }
+                        }
+                    )
 
                     SwitchPreference(
-                        stringResource(id = R.string.echo_cancellation),
-                        stringResource(id = R.string.echo_cancellation_summary),
-                        audioEchoCancel
-                    ) { checked ->
-                        audioEchoCancel = checked
-                        preferences.edit {
-                            putBoolean(
-                                PreferenceKeys.AUDIO_ECHO_CANCEL, checked
-                            )
+                        title = stringResource(id = R.string.echo_cancellation),
+                        summary = stringResource(id = R.string.echo_cancellation_summary),
+                        checked = audioEchoCancel,
+                        onCheckedChange = { checked ->
+                            audioEchoCancel = checked
+                            preferences.edit {
+                                putBoolean(
+                                    PreferenceKeys.AUDIO_ECHO_CANCEL, checked
+                                )
+                            }
                         }
-                    }
+                    )
 
                     SwitchPreference(
                         title = stringResource(id = R.string.noise_reduction),
