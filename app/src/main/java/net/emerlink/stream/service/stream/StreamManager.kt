@@ -17,7 +17,7 @@ import net.emerlink.stream.util.ErrorHandler
 
 class StreamManager(
     private val context: Context, private val connectChecker: ConnectChecker, private val errorHandler: ErrorHandler
-) : SharedPreferences.OnSharedPreferenceChangeListener {
+) {
     companion object {
         private const val TAG = "StreamManager"
         private const val DEFAULT_FPS = 30
@@ -36,27 +36,18 @@ class StreamManager(
 
     init {
         cameraInterface = CameraInterface.create(context, connectChecker, streamType)
-        sharedPreferences.registerOnSharedPreferenceChangeListener(this)
     }
 
-    fun destroy() {
-        sharedPreferences.unregisterOnSharedPreferenceChangeListener(this)
-    }
-
-    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences, key: String?) {
-        if (key == PreferenceKeys.VIDEO_RESOLUTION) {
-            Log.d(TAG, "Обнаружено изменение разрешения в настройках")
-            val currentView = this.currentView
-            if (currentView != null) {
-                Log.d(TAG, "Перезапуск превью с новым разрешением")
-                try {
-                    val resolution = Resolution.parseFromPreferences(sharedPreferences)
-
-                    switchStreamResolution(resolution.width, resolution.height)
-                    restartPreview(currentView, currentIsPortrait)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Ошибка при обновлении разрешения: ${e.message}", e)
-                }
+    fun handleResolutionChange() {
+        val currentView = this.currentView
+        if (currentView != null) {
+            Log.d(TAG, "Перезапуск превью с новым разрешением")
+            try {
+                val resolution = Resolution.parseFromPreferences(sharedPreferences)
+                switchStreamResolution(resolution.width, resolution.height)
+                restartPreview(currentView, currentIsPortrait)
+            } catch (e: Exception) {
+                Log.e(TAG, "Ошибка при обновлении разрешения: ${e.message}", e)
             }
         }
     }
@@ -90,9 +81,7 @@ class StreamManager(
                 cameraInterface.setProtocol(tcp)
             }
 
-            if (username.isNotEmpty() && password.isNotEmpty() &&
-                (protocol.startsWith("rtmp") || protocol.startsWith("rtsp"))
-            ) {
+            if (username.isNotEmpty() && password.isNotEmpty() && (protocol.startsWith("rtmp") || protocol.startsWith("rtsp"))) {
                 cameraInterface.setAuthorization(username, password)
             }
 

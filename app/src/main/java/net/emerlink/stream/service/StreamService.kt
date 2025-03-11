@@ -267,8 +267,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 stopStream(null, null)
             }
 
-            streamManager.destroy()
-
             preferences.unregisterOnSharedPreferenceChangeListener(this)
 
             if (commandReceiver != null) {
@@ -413,10 +411,13 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     override fun onAccuracyChanged(sensor: android.hardware.Sensor?, accuracy: Int) {}
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences, key: String?) {
-        Log.d(TAG, "onSharedPreferenceChanged")
-        if (key != PreferenceKeys.TEXT_OVERLAY) {
-            loadPreferences()
+        when (key) {
+            PreferenceKeys.VIDEO_RESOLUTION -> {
+                Log.d(TAG, "Обнаружено изменение разрешения в настройках")
+                streamManager.handleResolutionChange()
+            }
         }
+        loadPreferences()
     }
 
     /** Запускает предпросмотр камеры */
