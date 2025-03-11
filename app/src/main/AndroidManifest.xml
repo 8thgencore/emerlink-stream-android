@@ -50,7 +50,7 @@
 
         <activity
             android:name=".MainActivity"
-            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
             android:exported="true"
             android:screenOrientation="fullSensor">
             <intent-filter>
@@ -66,11 +66,6 @@
             android:screenOrientation="fullSensor"
             android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
             tools:ignore="DiscouragedApi" />
-
-        <activity
-            android:name=".ui.settings.SettingsActivity"
-            android:screenOrientation="fullSensor"
-            tools:ignore="DiscouragedApi"/>
 
         <service
             android:name=".service.StreamService"
