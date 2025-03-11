@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
-import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -30,7 +29,6 @@ import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.R
 import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.data.preferences.PreferencesLoader
-import net.emerlink.stream.model.Resolution
 import net.emerlink.stream.model.StreamSettings
 import net.emerlink.stream.notification.NotificationManager
 import net.emerlink.stream.service.camera.CameraManager
@@ -430,12 +428,10 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         try {
             openGlView = view
 
-            val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-
             // Важно: сначала подготовить видео с правильной ориентацией
             streamManager.prepareVideo()
             // Затем запустить предпросмотр с той же ориентацией
-            streamManager.startPreview(view, isPortrait)
+            streamManager.startPreview(view)
 
             isPreviewActive = true
             Log.d(TAG, "Предпросмотр успешно запущен")
@@ -619,7 +615,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             Log.d(TAG, "Already streaming")
             return
         }
-
         if (streamManager.isRecording()) {
             Log.d(TAG, "Already recording")
             return
@@ -635,7 +630,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             if (streamSettings.stream) {
                 startStreaming()
             }
-
             if (streamSettings.record) {
                 startRecording()
             }
@@ -673,9 +667,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             // Log the URL (remove sensitive info in production)
             Log.d(TAG, "Stream URL: ${streamUrl.replace(Regex(":[^:/]*:[^:/]*"), ":****:****")}")
 
-            val resolution = Resolution.parseFromPreferences(preferences)
-
-            streamManager.switchStreamResolution(resolution.width, resolution.height)
+            streamManager.switchStreamResolution()
 
             streamManager.startStream(
                 streamUrl,
@@ -882,12 +874,10 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
             openGlView = view
 
-            val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-
             // Важно: сначала подготовить видео с правильной ориентацией
             streamManager.prepareVideo()
             // Затем запустить предпросмотр с той же ориентацией
-            streamManager.startPreview(view, isPortrait)
+            streamManager.startPreview(view)
 
             Log.d(TAG, "Предпросмотр успешно перезапущен")
         } catch (e: Exception) {
@@ -901,7 +891,5 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         }
     }
 
-    fun isPreviewRunning(): Boolean {
-        return isPreviewActive
-    }
+    fun isPreviewRunning(): Boolean = isPreviewActive
 }

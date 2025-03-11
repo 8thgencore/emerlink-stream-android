@@ -600,7 +600,7 @@ private fun PortraitCameraControls(
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .padding(bottom = 8.dp),
+            .padding(bottom = 6.dp),
         horizontalArrangement = Arrangement.Start,
         verticalAlignment = Alignment.Bottom
     ) {
@@ -620,7 +620,7 @@ private fun PortraitCameraControls(
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .padding(bottom = 8.dp),
+            .padding(bottom = 6.dp),
         horizontalArrangement = Arrangement.End,
         verticalAlignment = Alignment.Bottom
     ) {

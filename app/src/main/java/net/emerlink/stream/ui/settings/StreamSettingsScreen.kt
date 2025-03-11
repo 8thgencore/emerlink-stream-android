@@ -165,7 +165,7 @@ fun StreamSettingsScreen(onBackClick: () -> Unit) {
                         title = stringResource(id = R.string.stream_protocol),
                         summary = stringResource(id = R.string.stream_protocol_summary),
                         selectedValue = streamProtocol,
-                        options = StreamType.entries.map { it.toString() },
+                        options = StreamType.entries.filter { it != StreamType.UDP }.map { it.toString() },
                         onValueSelected = { value ->
                             streamProtocol = value
                             // Reset port to default for new protocol

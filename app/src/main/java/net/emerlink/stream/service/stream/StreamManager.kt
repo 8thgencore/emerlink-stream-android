@@ -25,7 +25,6 @@ class StreamManager(
     }
 
     private var currentView: OpenGlView? = null
-    private var currentIsPortrait: Boolean = false
 
     private val sharedPreferences: SharedPreferences by lazy {
         PreferenceManager.getDefaultSharedPreferences(context)
@@ -43,22 +42,21 @@ class StreamManager(
         if (currentView != null) {
             Log.d(TAG, "Перезапуск превью с новым разрешением")
             try {
-                val resolution = Resolution.parseFromPreferences(sharedPreferences)
-                switchStreamResolution(resolution.width, resolution.height)
-                restartPreview(currentView, currentIsPortrait)
+                switchStreamResolution()
+                restartPreview(currentView)
             } catch (e: Exception) {
                 Log.e(TAG, "Ошибка при обновлении разрешения: ${e.message}", e)
             }
         }
     }
 
-    private fun restartPreview(view: OpenGlView, isPortrait: Boolean) {
+    private fun restartPreview(view: OpenGlView) {
         try {
             Log.d(TAG, "Перезапуск превью")
             stopPreview()
 
             Handler(Looper.getMainLooper()).postDelayed({
-                startPreview(view, isPortrait)
+                startPreview(view)
                 Log.d(TAG, "Превью перезапущено успешно")
             }, 100)
         } catch (e: Exception) {
@@ -121,12 +119,10 @@ class StreamManager(
         }
     }
 
-    fun startPreview(view: OpenGlView, isPortrait: Boolean = false) {
+    fun startPreview(view: OpenGlView) {
         try {
             Log.d(TAG, "Запуск превью")
             currentView = view
-            currentIsPortrait = isPortrait
-
 
             if (isOnPreview()) {
                 cameraInterface.stopPreview()
@@ -135,17 +131,15 @@ class StreamManager(
             cameraInterface.replaceView(view)
 
             val bitrate = cameraInterface.bitrate.takeIf { it > 0 } ?: DEFAULT_BITRATE
-
             val resolution = Resolution.parseFromPreferences(sharedPreferences)
-
             cameraInterface.prepareVideo(resolution.width, resolution.height, DEFAULT_FPS, bitrate)
 
-            val rotation = if (isPortrait) 90 else 0
+            val rotation = CameraHelper.getCameraOrientation(context)
             cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
 
             Log.d(
                 TAG,
-                "Превью успешно запущен с разрешением ${resolution.width}x${resolution.height}, isPortrait=$isPortrait, rotation=$rotation"
+                "Превью успешно запущено ${resolution.width}x${resolution.height}, rotation=$rotation"
             )
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при запуске preview: ${e.message}")
@@ -187,7 +181,8 @@ class StreamManager(
 
             Log.d(TAG, "Подготовка видео: ${resolution.width}x${resolution.height}, FPS=$fps, битрейт=${videoBitrate}k")
 
-            val rotation = if (currentIsPortrait) 90 else 0
+            val rotation = CameraHelper.getCameraOrientation(context)
+
             cameraInterface.prepareVideo(resolution.width, resolution.height, fps, videoBitrate * 1000, rotation)
 
             return true
@@ -210,22 +205,25 @@ class StreamManager(
 
     fun hasCongestion(): Boolean = cameraInterface.hasCongestion()
 
-    fun switchStreamResolution(width: Int, height: Int) {
+    fun switchStreamResolution() {
         try {
+            val resolution = Resolution.parseFromPreferences(sharedPreferences)
+
             val bitrate = cameraInterface.bitrate.takeIf { it > 0 } ?: DEFAULT_BITRATE
 
             if (isOnPreview()) {
                 cameraInterface.stopPreview()
-                cameraInterface.prepareVideo(width, height, DEFAULT_FPS, bitrate)
+                cameraInterface.prepareVideo(resolution.width, resolution.height, DEFAULT_FPS, bitrate)
 
-                val rotation = if (currentIsPortrait) 90 else 0
+                val rotation = CameraHelper.getCameraOrientation(context)
+
                 currentView?.let { view ->
                     cameraInterface.replaceView(view)
                     cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
                 }
             }
 
-            Log.d(TAG, "Установлено новое разрешение стрима: ${width}x${height}, isPortrait=$currentIsPortrait")
+            Log.d(TAG, "Установлено новое разрешение стрима: ${resolution.width}x${resolution.height}")
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при изменении разрешения стрима: ${e.message}")
         }

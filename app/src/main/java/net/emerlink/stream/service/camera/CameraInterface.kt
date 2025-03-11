@@ -4,6 +4,7 @@ import android.content.Context
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.video.CameraHelper
 import com.pedro.library.base.Camera2Base
+import com.pedro.library.view.GlInterface
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.model.StreamType
 
@@ -17,7 +18,7 @@ interface CameraInterface {
     val isRecording: Boolean
     val isOnPreview: Boolean
     val bitrate: Int
-    val glInterface: Any
+    val glInterface: GlInterface
 
     fun prepareAudio(): Boolean
     fun prepareVideo(width: Int, height: Int, fps: Int, bitrate: Int, rotation: Int = 0): Boolean

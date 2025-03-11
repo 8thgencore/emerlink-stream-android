@@ -8,6 +8,7 @@ import com.pedro.library.rtmp.RtmpCamera2
 import com.pedro.library.rtsp.RtspCamera2
 import com.pedro.library.srt.SrtCamera2
 import com.pedro.library.udp.UdpCamera2
+import com.pedro.library.view.GlInterface
 import com.pedro.library.view.OpenGlView
 import com.pedro.rtsp.rtsp.Protocol
 
@@ -25,7 +26,7 @@ class RtmpCameraImpl(
     override val isRecording: Boolean get() = camera.isRecording
     override val isOnPreview: Boolean get() = camera.isOnPreview
     override val bitrate: Int get() = camera.bitrate
-    override val glInterface: Any get() = camera.glInterface
+    override val glInterface: GlInterface get() = camera.glInterface
 
     override fun prepareAudio() = camera.prepareAudio()
     override fun prepareVideo(
@@ -95,7 +96,7 @@ class RtspCameraImpl(
     override val isRecording: Boolean get() = camera.isRecording
     override val isOnPreview: Boolean get() = camera.isOnPreview
     override val bitrate: Int get() = camera.bitrate
-    override val glInterface: Any get() = camera.glInterface
+    override val glInterface: GlInterface get() = camera.glInterface
 
     override fun prepareAudio() = camera.prepareAudio()
     override fun prepareVideo(
@@ -165,7 +166,7 @@ class SrtCameraImpl(
     override val isRecording: Boolean get() = camera.isRecording
     override val isOnPreview: Boolean get() = camera.isOnPreview
     override val bitrate: Int get() = camera.bitrate
-    override val glInterface: Any get() = camera.glInterface
+    override val glInterface: GlInterface get() = camera.glInterface
 
     override fun prepareAudio() = camera.prepareAudio()
     override fun prepareVideo(
@@ -235,7 +236,7 @@ class UdpCameraImpl(
     override val isRecording: Boolean get() = camera.isRecording
     override val isOnPreview: Boolean get() = camera.isOnPreview
     override val bitrate: Int get() = camera.bitrate
-    override val glInterface: Any get() = camera.glInterface
+    override val glInterface: GlInterface get() = camera.glInterface
 
     override fun prepareAudio() = camera.prepareAudio()
     override fun prepareVideo(
