@@ -92,7 +92,6 @@ fun CameraScreen(
     LaunchedEffect(streamService) {
         streamService?.let { service ->
             isStreaming = service.streamManager.isStreaming()
-            StreamService.streamingState.value = isStreaming
         }
     }
 
@@ -256,14 +255,6 @@ fun CameraScreen(
             )
         }
         onDispose { }
-    }
-
-    // Удаляем DisposableEffect с BroadcastReceiver и заменяем его на наблюдение за LiveData
-    LaunchedEffect(Unit) {
-        StreamService.streamingState.observe(lifecycleOwner) { isStreamingNow ->
-            Log.d("CameraScreen", "Получено обновление состояния стрима: $isStreamingNow")
-            isStreaming = isStreamingNow
-        }
     }
 
     // Регистрируем приемник через LocalBroadcastManager

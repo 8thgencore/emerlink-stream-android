@@ -50,7 +50,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
         val observer = MutableLiveData<StreamService?>()
         val screenshotTaken = MutableLiveData<Boolean>()
-        val streamingState = MutableLiveData<Boolean>()
     }
 
     private lateinit var preferences: SharedPreferences
@@ -281,45 +280,39 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             if (streamManager.isStreaming()) {
                 Log.d(TAG, "Принудительная остановка стрима из-за ошибки подключения")
                 streamManager.stopStream()
+                
+                // Send broadcast to update UI immediately
+                LocalBroadcastManager.getInstance(this)
+                    .sendBroadcast(Intent(AppIntentActions.BROADCAST_STREAM_STOPPED))
 
-                // Обновляем LiveData состояния стрима
-                streamingState.postValue(false)
+                val errorText = when {
+                    reason.contains("461") -> getString(R.string.error_unsupported_transport)
+                    else -> getString(R.string.connection_failed) + ": " + reason
+                }
 
-                // Отправляем сообщение через LocalBroadcastManager
-                val broadcastIntent = Intent(AppIntentActions.BROADCAST_STREAM_STOPPED)
-                LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent)
+                Log.d(TAG, "Создание уведомления об ошибке: $errorText")
+
+                notificationManager.showErrorNotification(errorText)
+
+                val intent = Intent(AppIntentActions.ACTION_CONNECTION_FAILED)
+                applicationContext.sendBroadcast(intent)
+
+                Handler(Looper.getMainLooper()).postDelayed(
+                    { stopStream(null, null, false) }, 500
+                )
             }
 
             prepareAudio = false
             prepareVideo = false
-
-            val errorText = when {
-                reason.contains("461") -> getString(R.string.error_unsupported_transport)
-                else -> getString(R.string.connection_failed) + ": " + reason
-            }
-
-            Log.d(TAG, "Создание уведомления об ошибке: $errorText")
-
-            notificationManager.showErrorNotification(errorText)
-
-            val intent = Intent(AppIntentActions.ACTION_CONNECTION_FAILED)
-            applicationContext.sendBroadcast(intent)
-
-            Handler(Looper.getMainLooper()).postDelayed(
-                { stopStream(null, null, false) }, 500
-            )
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при обработке сбоя подключения: ${e.message}", e)
 
             try {
                 streamManager.stopStream()
-
-                // Обновляем LiveData состояния стрима даже при ошибке
-                streamingState.postValue(false)
-
-                // Отправляем сообщение через LocalBroadcastManager
-                val broadcastIntent = Intent(AppIntentActions.BROADCAST_STREAM_STOPPED)
-                LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent)
+                
+                // Send broadcast even in case of error
+                LocalBroadcastManager.getInstance(this)
+                    .sendBroadcast(Intent(AppIntentActions.BROADCAST_STREAM_STOPPED))
 
                 notificationManager.showErrorNotification("Критическая ошибка: ${e.message}")
             } catch (e2: Exception) {
@@ -663,8 +656,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 streamSettings.tcp
             )
 
-            streamingState.postValue(true)
-
             notificationManager.showStreamingNotification(
                 getString(R.string.streaming), true, NotificationManager.ACTION_STOP_ONLY
             )
@@ -707,7 +698,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             if (streamManager.isStreaming()) {
                 Log.d(TAG, "Stopping active stream")
                 streamManager.stopStream()
-                streamingState.postValue(false)
                 
                 // Notify UI about stream stop
                 LocalBroadcastManager.getInstance(this)
@@ -758,8 +748,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         } catch (e: Exception) {
             Log.e(TAG, "Error in stopStream: ${e.message}", e)
             
-            // Update state even on error
-            streamingState.postValue(false)
+            // Send broadcast to update UI even on error
             LocalBroadcastManager.getInstance(this)
                 .sendBroadcast(Intent(AppIntentActions.BROADCAST_STREAM_STOPPED))
             
