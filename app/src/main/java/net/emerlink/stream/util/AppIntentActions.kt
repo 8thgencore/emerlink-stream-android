@@ -3,7 +3,7 @@ package net.emerlink.stream.util
 /**
  * Константы, используемые в приложении
  */
-object AppConstants {
+object AppIntentActions {
     // Действия для Intent
     const val ACTION_START_STREAM = "net.emerlink.stream.START_STREAM"
     const val ACTION_STOP_STREAM = "net.emerlink.stream.STOP_STREAM"

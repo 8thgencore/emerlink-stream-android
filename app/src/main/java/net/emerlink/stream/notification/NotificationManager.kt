@@ -13,7 +13,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import net.emerlink.stream.MainActivity
 import net.emerlink.stream.R
-import net.emerlink.stream.util.AppConstants
+import net.emerlink.stream.util.AppIntentActions
 
 /**
  * Класс для управления уведомлениями приложения.
@@ -151,7 +151,7 @@ class NotificationManager private constructor(private val context: Context) {
         when (actionType) {
             ACTION_ALL -> {
                 // Действие "Стоп"
-                val stopIntent = Intent(AppConstants.ACTION_STOP_STREAM).apply {
+                val stopIntent = Intent(AppIntentActions.ACTION_STOP_STREAM).apply {
                     // Явно указываем компонент для Intent
                     setPackage(context.packageName)
                 }
@@ -165,7 +165,7 @@ class NotificationManager private constructor(private val context: Context) {
                 )
 
                 // Действие "Выход"
-                val exitIntent = Intent(AppConstants.ACTION_EXIT_APP).apply {
+                val exitIntent = Intent(AppIntentActions.ACTION_EXIT_APP).apply {
                     // Явно указываем компонент для Intent
                     setPackage(context.packageName)
                 }
@@ -185,7 +185,7 @@ class NotificationManager private constructor(private val context: Context) {
 
             ACTION_STOP_ONLY -> {
                 // Только действие "Стоп"
-                val stopIntent = Intent(AppConstants.ACTION_STOP_STREAM).apply {
+                val stopIntent = Intent(AppIntentActions.ACTION_STOP_STREAM).apply {
                     // Явно указываем компонент для Intent
                     setPackage(context.packageName)
                 }
@@ -203,7 +203,7 @@ class NotificationManager private constructor(private val context: Context) {
             ACTION_NONE -> {
                 // Для ошибок добавляем кнопку "ОК" для скрытия уведомления
                 if (isError) {
-                    val dismissIntent = Intent(AppConstants.ACTION_DISMISS_ERROR).apply {
+                    val dismissIntent = Intent(AppIntentActions.ACTION_DISMISS_ERROR).apply {
                         // Явно указываем компонент для Intent
                         setPackage(context.packageName)
                     }
@@ -231,52 +231,46 @@ class NotificationManager private constructor(private val context: Context) {
      * Показывает уведомление о стриминге
      */
     fun showStreamingNotification(text: String, ongoing: Boolean, actionType: Int = ACTION_ALL) {
-        Log.d(TAG, "Показ уведомления о стриминге: $text")
-        clearAllNotifications()
-
-        handler.postDelayed({
-            try {
-                val notification = createNotification(text, ongoing, actionType)
-                notificationManager.notify(NOTIFICATION_ID, notification)
-            } catch (e: Exception) {
-                Log.e(TAG, "Ошибка при отображении уведомления о стриминге: ${e.message}", e)
-            }
-        }, 100)
+        Log.d(TAG, "Showing streaming notification: $text")
+        
+        try {
+            val notification = createNotification(text, ongoing, actionType)
+            notificationManager.notify(NOTIFICATION_ID, notification)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error showing streaming notification: ${e.message}", e)
+        }
     }
 
     /**
      * Показывает уведомление об ошибке
      */
     fun showErrorNotification(text: String, actionType: Int = ACTION_NONE) {
-        Log.d(TAG, "Показ уведомления об ошибке: $text")
-        clearAllNotifications()
-
-        handler.postDelayed({
-            try {
-                val notification = createNotification(text, false, actionType, true)
-                notificationManager.notify(ERROR_NOTIFICATION_ID, notification)
-            } catch (e: Exception) {
-                Log.e(TAG, "Ошибка при отображении уведомления об ошибке: ${e.message}", e)
-            }
-        }, 100)
+        Log.d(TAG, "Showing error notification: $text")
+        
+        try {
+            val notification = createNotification(text, false, actionType, true)
+            notificationManager.notify(ERROR_NOTIFICATION_ID, notification)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error showing error notification: ${e.message}", e)
+        }
     }
 
     /**
      * Показывает уведомление о фото
      */
     fun showPhotoNotification(text: String) {
-        Log.d(TAG, "Показ уведомления о фото: $text")
-
+        Log.d(TAG, "Showing photo notification: $text")
+        
         try {
-            val notification = createNotification(text, false, ACTION_NONE, isError = false, isPhoto = true)
+            val notification = createNotification(
+                text, false, ACTION_NONE, isError = false, isPhoto = true
+            )
             notificationManager.notify(PHOTO_NOTIFICATION_ID, notification)
-
-            // Автоматически скрываем уведомление о фото через 3 секунды
-            handler.postDelayed({
-                clearPhotoNotifications()
-            }, 3000)
+            
+            // Auto-hide photo notification after 3 seconds
+            handler.postDelayed({ clearPhotoNotifications() }, 3000)
         } catch (e: Exception) {
-            Log.e(TAG, "Ошибка при отображении уведомления о фото: ${e.message}", e)
+            Log.e(TAG, "Error showing photo notification: ${e.message}", e)
         }
     }
 
@@ -285,22 +279,20 @@ class NotificationManager private constructor(private val context: Context) {
      */
     fun clearStreamingNotifications() {
         try {
-            Log.d(TAG, "Очистка уведомлений о стриминге")
             notificationManager.cancel(NOTIFICATION_ID)
         } catch (e: Exception) {
-            Log.e(TAG, "Ошибка при очистке уведомлений о стриминге: ${e.message}", e)
+            Log.e(TAG, "Error clearing streaming notifications: ${e.message}", e)
         }
     }
 
     /**
      * Очищает уведомления об ошибках
      */
-    private fun clearErrorNotifications() {
+    fun clearErrorNotifications() {
         try {
-            Log.d(TAG, "Очистка уведомлений об ошибках")
             notificationManager.cancel(ERROR_NOTIFICATION_ID)
         } catch (e: Exception) {
-            Log.e(TAG, "Ошибка при очистке уведомлений об ошибках: ${e.message}", e)
+            Log.e(TAG, "Error clearing error notifications: ${e.message}", e)
         }
     }
 
@@ -309,10 +301,9 @@ class NotificationManager private constructor(private val context: Context) {
      */
     private fun clearPhotoNotifications() {
         try {
-            Log.d(TAG, "Очистка уведомлений о фото")
             notificationManager.cancel(PHOTO_NOTIFICATION_ID)
         } catch (e: Exception) {
-            Log.e(TAG, "Ошибка при очистке уведомлений о фото: ${e.message}", e)
+            Log.e(TAG, "Error clearing photo notifications: ${e.message}", e)
         }
     }
 
@@ -321,15 +312,11 @@ class NotificationManager private constructor(private val context: Context) {
      */
     fun clearAllNotifications() {
         try {
-            Log.d(TAG, "Очистка всех уведомлений")
             notificationManager.cancel(NOTIFICATION_ID)
             notificationManager.cancel(ERROR_NOTIFICATION_ID)
             notificationManager.cancel(PHOTO_NOTIFICATION_ID)
-            clearStreamingNotifications()
-            clearErrorNotifications()
-            clearPhotoNotifications()
         } catch (e: Exception) {
-            Log.e(TAG, "Ошибка при очистке всех уведомлений: ${e.message}", e)
+            Log.e(TAG, "Error clearing all notifications: ${e.message}", e)
         }
     }
 

@@ -27,14 +27,17 @@ class ErrorHandler(private val context: Context) {
             else -> context.getString(R.string.unknown_error) + ": " + e.message
         }
         
+        _errorState.value = ErrorState.Error(errorMessage)
         notificationManager.showErrorNotification(errorMessage)
     }
 
     fun clearError() {
         _errorState.value = ErrorState.None
+        notificationManager.clearErrorNotifications()
     }
 }
 
 sealed class ErrorState(val message: String) {
     data object None : ErrorState("")
+    data class Error(val errorMessage: String) : ErrorState(errorMessage)
 }
