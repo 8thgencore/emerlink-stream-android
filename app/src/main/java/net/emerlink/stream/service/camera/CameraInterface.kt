@@ -34,8 +34,8 @@ interface CameraInterface {
     fun enableAudio()
     fun disableAudio()
     fun hasCongestion(): Boolean
-    fun enableLantern(): Boolean
-    fun disableLantern(): Boolean
+    fun enableLantern()
+    fun disableLantern()
 
     fun setAuthorization(username: String, password: String)
     fun setProtocol(tcp: Boolean)
