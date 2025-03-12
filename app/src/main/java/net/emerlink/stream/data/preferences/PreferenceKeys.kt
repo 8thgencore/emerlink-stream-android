@@ -83,10 +83,6 @@ object PreferenceKeys {
     const val AUDIO_CODEC = "audio_codec"
     const val AUDIO_CODEC_DEFAULT = "aac"
 
-    // Overlay settings
-    const val TEXT_OVERLAY = "text_overlay"
-    const val TEXT_OVERLAY_DEFAULT = ""
-
     // User settings
     const val UID = "uid"
     const val UID_DEFAULT = "emerlink-stream"

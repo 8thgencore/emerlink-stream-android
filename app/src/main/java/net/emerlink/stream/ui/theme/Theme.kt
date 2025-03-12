@@ -10,65 +10,69 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val LightColorScheme =
     lightColorScheme(
-        primary = primary,
-        onPrimary = Color.White,
-        primaryContainer = primaryLight,
-        onPrimaryContainer = primaryDark,
-        secondary = accent,
-        onSecondary = Color.White,
-        secondaryContainer = Color(0xFFFCE4EC),
-        onSecondaryContainer = Color(0xFFC2185B),
-        tertiary = Color(0xFF4CAF50),
-        onTertiary = Color.White,
-        tertiaryContainer = Color(0xFFE8F5E9),
-        onTertiaryContainer = Color(0xFF1B5E20),
-        error = Color(0xFFB00020),
-        onError = Color.White,
-        errorContainer = Color(0xFFFDECEF),
-        onErrorContainer = Color(0xFF96000F),
-        background = Color.White,
-        onBackground = primaryText,
-        surface = Color.White,
-        onSurface = primaryText,
-        surfaceVariant = Color(0xFFF5F5F5),
-        onSurfaceVariant = secondaryText,
-        outline = divider,
+        primary = md_theme_light_primary,
+        onPrimary = md_theme_light_onPrimary,
+        primaryContainer = md_theme_light_primaryContainer,
+        onPrimaryContainer = md_theme_light_onPrimaryContainer,
+        secondary = md_theme_light_secondary,
+        onSecondary = md_theme_light_onSecondary,
+        secondaryContainer = md_theme_light_secondaryContainer,
+        onSecondaryContainer = md_theme_light_onSecondaryContainer,
+        tertiary = md_theme_light_tertiary,
+        onTertiary = md_theme_light_onTertiary,
+        tertiaryContainer = md_theme_light_tertiaryContainer,
+        onTertiaryContainer = md_theme_light_onTertiaryContainer,
+        error = md_theme_light_error,
+        errorContainer = md_theme_light_errorContainer,
+        onError = md_theme_light_onError,
+        onErrorContainer = md_theme_light_onErrorContainer,
+        background = md_theme_light_background,
+        onBackground = md_theme_light_onBackground,
+        surface = md_theme_light_surface,
+        onSurface = md_theme_light_onSurface,
+        surfaceVariant = md_theme_light_surfaceVariant,
+        onSurfaceVariant = md_theme_light_onSurfaceVariant,
+        outline = md_theme_light_outline,
+        inverseOnSurface = md_theme_light_inverseOnSurface,
+        inverseSurface = md_theme_light_inverseSurface
     )
 
 private val DarkColorScheme =
     darkColorScheme(
-        primary = Color(0xFF90CAF9),
-        onPrimary = Color(0xFF0D47A1),
-        primaryContainer = Color(0xFF1565C0),
-        onPrimaryContainer = Color(0xFFBBDEFB),
-        secondary = Color(0xFFFF80AB),
-        onSecondary = Color(0xFF880E4F),
-        secondaryContainer = Color(0xFFC2185B),
-        onSecondaryContainer = Color(0xFFFCE4EC),
-        tertiary = Color(0xFF81C784),
-        onTertiary = Color(0xFF1B5E20),
-        tertiaryContainer = Color(0xFF2E7D32),
-        onTertiaryContainer = Color(0xFFE8F5E9),
-        error = Color(0xFFEF9A9A),
-        onError = Color(0xFF7F0000),
-        errorContainer = Color(0xFFB71C1C),
-        onErrorContainer = Color(0xFFFFEBEE),
-        background = Color(0xFF121212),
-        onBackground = Color.White,
-        surface = Color(0xFF121212),
-        onSurface = Color.White,
-        surfaceVariant = Color(0xFF2D2D2D),
-        onSurfaceVariant = Color(0xFFBDBDBD),
-        outline = Color(0xFF757575),
+        primary = md_theme_dark_primary,
+        onPrimary = md_theme_dark_onPrimary,
+        primaryContainer = md_theme_dark_primaryContainer,
+        onPrimaryContainer = md_theme_dark_onPrimaryContainer,
+        secondary = md_theme_dark_secondary,
+        onSecondary = md_theme_dark_onSecondary,
+        secondaryContainer = md_theme_dark_secondaryContainer,
+        onSecondaryContainer = md_theme_dark_onSecondaryContainer,
+        tertiary = md_theme_dark_tertiary,
+        onTertiary = md_theme_dark_onTertiary,
+        tertiaryContainer = md_theme_dark_tertiaryContainer,
+        onTertiaryContainer = md_theme_dark_onTertiaryContainer,
+        error = md_theme_dark_error,
+        errorContainer = md_theme_dark_errorContainer,
+        onError = md_theme_dark_onError,
+        onErrorContainer = md_theme_dark_onErrorContainer,
+        background = md_theme_dark_background,
+        onBackground = md_theme_dark_onBackground,
+        surface = md_theme_dark_surface,
+        onSurface = md_theme_dark_onSurface,
+        surfaceVariant = md_theme_dark_surfaceVariant,
+        onSurfaceVariant = md_theme_dark_onSurfaceVariant,
+        outline = md_theme_dark_outline,
+        inverseOnSurface = md_theme_dark_inverseOnSurface,
+        inverseSurface = md_theme_dark_inverseSurface
     )
 
+@Suppress("ktlint:standard:function-naming")
 @Composable
 fun EmerlinkStreamTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -82,7 +86,6 @@ fun EmerlinkStreamTheme(
                 val context = LocalContext.current
                 if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
             }
-
             darkTheme -> DarkColorScheme
             else -> LightColorScheme
         }
@@ -91,6 +94,7 @@ fun EmerlinkStreamTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
+            // Set edge-to-edge display
             WindowCompat.setDecorFitsSystemWindows(window, false)
             val windowInsetsController = WindowCompat.getInsetsController(window, view)
             windowInsetsController.isAppearanceLightStatusBars = !darkTheme
@@ -101,6 +105,6 @@ fun EmerlinkStreamTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
-        content = content,
+        content = content
     )
 }

@@ -2,18 +2,76 @@ package net.emerlink.stream.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// Primary colors
+val md_theme_light_primary = Color(0xFF0061A4)
+val md_theme_light_onPrimary = Color(0xFFFFFFFF)
+val md_theme_light_primaryContainer = Color(0xFFD1E4FF)
+val md_theme_light_onPrimaryContainer = Color(0xFF001D36)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+// Secondary colors
+val md_theme_light_secondary = Color(0xFF535F70)
+val md_theme_light_onSecondary = Color(0xFFFFFFFF)
+val md_theme_light_secondaryContainer = Color(0xFFD7E3F7)
+val md_theme_light_onSecondaryContainer = Color(0xFF101C2B)
 
-val primary = Color(0xFF2196F3)
-val primaryDark = Color(0xFF1976D2)
-val primaryLight = Color(0xFFBBDEFB)
-val accent = Color(0xFFFF4081)
-val primaryText = Color(0xFF212121)
-val secondaryText = Color(0xFF757575)
-val divider = Color(0xFFBDBDBD)
+// Tertiary colors
+val md_theme_light_tertiary = Color(0xFF6B5778)
+val md_theme_light_onTertiary = Color(0xFFFFFFFF)
+val md_theme_light_tertiaryContainer = Color(0xFFF2DAFF)
+val md_theme_light_onTertiaryContainer = Color(0xFF251431)
+
+// Error colors
+val md_theme_light_error = Color(0xFFBA1A1A)
+val md_theme_light_errorContainer = Color(0xFFFFDAD6)
+val md_theme_light_onError = Color(0xFFFFFFFF)
+val md_theme_light_onErrorContainer = Color(0xFF410002)
+
+// Background colors
+val md_theme_light_background = Color(0xFFFDFCFF)
+val md_theme_light_onBackground = Color(0xFF1A1C1E)
+val md_theme_light_surface = Color(0xFFFDFCFF)
+val md_theme_light_onSurface = Color(0xFF1A1C1E)
+val md_theme_light_surfaceVariant = Color(0xFFDFE2EB)
+val md_theme_light_onSurfaceVariant = Color(0xFF43474E)
+val md_theme_light_outline = Color(0xFF73777F)
+val md_theme_light_inverseOnSurface = Color(0xFFF1F0F4)
+val md_theme_light_inverseSurface = Color(0xFF2F3033)
+
+// Dark theme colors
+val md_theme_dark_primary = Color(0xFF9ECAFF)
+val md_theme_dark_onPrimary = Color(0xFF003258)
+val md_theme_dark_primaryContainer = Color(0xFF00497D)
+val md_theme_dark_onPrimaryContainer = Color(0xFFD1E4FF)
+
+val md_theme_dark_secondary = Color(0xFFBBC7DB)
+val md_theme_dark_onSecondary = Color(0xFF253140)
+val md_theme_dark_secondaryContainer = Color(0xFF3B4858)
+val md_theme_dark_onSecondaryContainer = Color(0xFFD7E3F7)
+
+val md_theme_dark_tertiary = Color(0xFFD6BEE4)
+val md_theme_dark_onTertiary = Color(0xFF3B2948)
+val md_theme_dark_tertiaryContainer = Color(0xFF523F5F)
+val md_theme_dark_onTertiaryContainer = Color(0xFFF2DAFF)
+
+val md_theme_dark_error = Color(0xFFFFB4AB)
+val md_theme_dark_errorContainer = Color(0xFF93000A)
+val md_theme_dark_onError = Color(0xFF690005)
+val md_theme_dark_onErrorContainer = Color(0xFFFFDAD6)
+
+val md_theme_dark_background = Color(0xFF1A1C1E)
+val md_theme_dark_onBackground = Color(0xFFE2E2E6)
+val md_theme_dark_surface = Color(0xFF1A1C1E)
+val md_theme_dark_onSurface = Color(0xFFE2E2E6)
+val md_theme_dark_surfaceVariant = Color(0xFF43474E)
+val md_theme_dark_onSurfaceVariant = Color(0xFFC3C7CF)
+val md_theme_dark_outline = Color(0xFF8D9199)
+val md_theme_dark_inverseOnSurface = Color(0xFF1A1C1E)
+val md_theme_dark_inverseSurface = Color(0xFFE2E2E6)
+
+// Special streaming app colors
+val streamBlue = Color(0xFF2196F3)
+val streamRed = Color(0xFFE53935)
+val streamGreen = Color(0xFF43A047)
+val streamAccent = Color(0xFFFF4081)
+val streamOverlay = Color(0x80000000)
+val streamBackground = Color(0xFF121212)

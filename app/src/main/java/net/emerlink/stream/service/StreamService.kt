@@ -490,7 +490,7 @@ class StreamService :
 
             if (glInterface is com.pedro.library.view.GlInterface) {
                 glInterface.takePhoto { bitmap ->
-                    val handlerThread = android.os.HandlerThread("HandlerThread")
+                    val handlerThread = HandlerThread("HandlerThread")
                     handlerThread.start()
                     Handler(handlerThread.looper).post { saveBitmapToGallery(bitmap) }
                 }
@@ -511,7 +511,7 @@ class StreamService :
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val contentValues =
-                    android.content.ContentValues().apply {
+                    ContentValues().apply {
                         put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, filename)
                         put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
                         put(
