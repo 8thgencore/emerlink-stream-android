@@ -3,6 +3,7 @@ package net.emerlink.stream.data.preferences
 import android.content.SharedPreferences
 import android.util.Log
 import android.util.Size
+import net.emerlink.stream.model.ConnectionSettings
 import net.emerlink.stream.model.StreamSettings
 import net.emerlink.stream.model.StreamType
 
@@ -20,18 +21,24 @@ class PreferencesLoader {
     fun loadPreferences(preferences: SharedPreferences): StreamSettings {
         Log.d(TAG, "Загрузка настроек")
 
-        return StreamSettings(
-            // Stream settings
+        // Get port string from preferences and convert to Int
+        val portString = preferences.getString(PreferenceKeys.STREAM_PORT, PreferenceKeys.STREAM_PORT_DEFAULT)
+            ?: PreferenceKeys.STREAM_PORT_DEFAULT
+        val portInt = portString.takeIf { it.isNotEmpty() }?.toIntOrNull() ?: 0
+
+
+        val connection = ConnectionSettings(
             protocol = StreamType.fromString(
                 preferences.getString(PreferenceKeys.STREAM_PROTOCOL, PreferenceKeys.STREAM_PROTOCOL_DEFAULT)
                     ?: PreferenceKeys.STREAM_PROTOCOL_DEFAULT
             ),
             address = preferences.getString(PreferenceKeys.STREAM_ADDRESS, PreferenceKeys.STREAM_ADDRESS_DEFAULT)
                 ?: PreferenceKeys.STREAM_ADDRESS_DEFAULT,
-            port = preferences.getString(PreferenceKeys.STREAM_PORT, PreferenceKeys.STREAM_PORT_DEFAULT)?.toIntOrNull()
-                ?: 1935,
+            port = portInt,
             path = preferences.getString(PreferenceKeys.STREAM_PATH, PreferenceKeys.STREAM_PATH_DEFAULT)
                 ?: PreferenceKeys.STREAM_PATH_DEFAULT,
+            streamKey = preferences.getString(PreferenceKeys.STREAM_KEY, PreferenceKeys.STREAM_KEY_DEFAULT)
+                ?: PreferenceKeys.STREAM_KEY_DEFAULT,
             tcp = preferences.getBoolean(PreferenceKeys.STREAM_USE_TCP, PreferenceKeys.STREAM_USE_TCP_DEFAULT),
             username = preferences.getString(PreferenceKeys.STREAM_USERNAME, PreferenceKeys.STREAM_USERNAME_DEFAULT)
                 ?: PreferenceKeys.STREAM_USERNAME_DEFAULT,
@@ -46,6 +53,12 @@ class PreferencesLoader {
             certPassword = preferences.getString(
                 PreferenceKeys.STREAM_CERTIFICATE_PASSWORD, PreferenceKeys.STREAM_CERTIFICATE_PASSWORD_DEFAULT
             ) ?: PreferenceKeys.STREAM_CERTIFICATE_PASSWORD_DEFAULT,
+
+            )
+
+        return StreamSettings(
+            // Connection settings
+            connection = connection,
 
             // Audio settings
             sampleRate = preferences.getString(
@@ -135,7 +148,7 @@ class PreferencesLoader {
         return if (parts.size == 2) {
             try {
                 Size(parts[0].toInt(), parts[1].toInt())
-            } catch (e: NumberFormatException) {
+            } catch (_: NumberFormatException) {
                 Size(1920, 1080) // Default if parsing fails
             }
         } else {

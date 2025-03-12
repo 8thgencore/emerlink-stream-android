@@ -35,6 +35,9 @@ object PreferenceKeys {
     const val STREAM_VIDEO = "stream_video"
     const val STREAM_VIDEO_DEFAULT = true
 
+    const val STREAM_KEY = "stream_key"
+    const val STREAM_KEY_DEFAULT = ""
+
     // Video settings
     const val VIDEO_RESOLUTION = "video_resolution"
     const val VIDEO_RESOLUTION_DEFAULT = "1920х1080"

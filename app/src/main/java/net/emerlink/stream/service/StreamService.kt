@@ -126,7 +126,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         loadPreferences()
 
         streamManager = StreamManager(this, this, errorHandler)
-        streamManager.setStreamType(streamSettings.protocol)
+        streamManager.setStreamType(streamSettings.connection.protocol)
 
         cameraManager = CameraManager(this, { streamManager.getVideoSource() }, { streamManager.getCameraInterface() })
 
@@ -140,8 +140,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         accelerometer = sensorManager.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER)!!
 
         getCameraIds()
-
-        initializeStream()
 
         val intentFilter = IntentFilter().apply {
             addAction(AppIntentActions.ACTION_START_STREAM)
@@ -575,12 +573,12 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     private fun loadPreferences() {
         val preferencesLoader = PreferencesLoader()
 
-        val oldProtocol = streamSettings.protocol
+        val oldProtocol = streamSettings.connection.protocol
 
         streamSettings = preferencesLoader.loadPreferences(preferences)
 
-        if (streamSettings.protocol != oldProtocol && ::streamManager.isInitialized) {
-            streamManager.setStreamType(streamSettings.protocol)
+        if (streamSettings.connection.protocol != oldProtocol && ::streamManager.isInitialized) {
+            streamManager.setStreamType(streamSettings.connection.protocol)
         }
     }
 
@@ -637,12 +635,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         try {
             Log.d(TAG, "Starting streaming")
 
-            val streamUrl = streamSettings.protocol.buildStreamUrl(
-                address = streamSettings.address,
-                port = streamSettings.port.toString(),
-                path = streamSettings.path,
-                username = streamSettings.username.ifEmpty { null },
-                password = streamSettings.password.ifEmpty { null })
+            val streamUrl = streamSettings.connection.buildStreamUrl();
             // Log the URL (remove sensitive info in production)
             Log.d(TAG, "Stream URL: ${streamUrl.replace(Regex(":[^:/]*:[^:/]*"), ":****:****")}")
 
@@ -650,10 +643,10 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
             streamManager.startStream(
                 streamUrl,
-                streamSettings.protocol.toString(),
-                streamSettings.username,
-                streamSettings.password,
-                streamSettings.tcp
+                streamSettings.connection.protocol.toString(),
+                streamSettings.connection.username,
+                streamSettings.connection.password,
+                streamSettings.connection.tcp
             )
 
             notificationManager.showStreamingNotification(
@@ -759,11 +752,6 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             // Forward error to handler
             errorHandler.handleStreamError(e)
         }
-    }
-
-    private fun initializeStream() {
-        streamManager.setStreamType(streamSettings.protocol)
-        getCameraIds()
     }
 
     inner class LocalBinder : Binder() {

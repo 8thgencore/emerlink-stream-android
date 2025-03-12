@@ -248,7 +248,7 @@ fun CameraScreen(
         streamService?.let { service ->
             val settings = service.streamSettings
             streamInfo = StreamInfo(
-                protocol = settings.protocol.toString(),
+                protocol = settings.connection.protocol.toString(),
                 resolution = settings.resolution.toString(),
                 bitrate = "${settings.bitrate} kbps",
                 fps = "${settings.fps} fps"

@@ -6,17 +6,8 @@ import android.util.Size
  * Класс для хранения всех настроек потоковой передачи
  */
 data class StreamSettings(
-    // Stream settings
-    var protocol: StreamType = StreamType.RTMP,
-    var address: String = "",
-    var port: Int = 0,
-    var path: String = "",
-    var tcp: Boolean = false,
-    var username: String = "",
-    var password: String = "",
-    var streamSelfSignedCert: Boolean = false,
-    var certFile: String? = null,
-    var certPassword: String = "",
+    // Stream connection settings
+    var connection: ConnectionSettings = ConnectionSettings(),
 
     // Audio settings
     var sampleRate: Int = 0,

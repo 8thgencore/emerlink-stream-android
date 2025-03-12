@@ -120,6 +120,13 @@ fun StreamSettingsScreen(onBackClick: () -> Unit) {
             ) ?: PreferenceKeys.STREAM_CERTIFICATE_PASSWORD_DEFAULT
         )
     }
+    var streamKey by remember {
+        mutableStateOf(
+            preferences.getString(
+                PreferenceKeys.STREAM_KEY, PreferenceKeys.STREAM_KEY_DEFAULT
+            ) ?: PreferenceKeys.STREAM_KEY_DEFAULT
+        )
+    }
 
     // Get current stream type
     val currentStreamType = StreamType.entries.find {
@@ -227,6 +234,23 @@ fun StreamSettingsScreen(onBackClick: () -> Unit) {
                         enabled = streamVideo
                     )
 
+                    // Show stream key field for protocols that support it (like RTMP)
+                    if (currentStreamType.supportsStreamKey) {
+                        InputPreference(
+                            title = stringResource(id = R.string.stream_key),
+                            summary = stringResource(id = R.string.stream_key_summary),
+                            value = streamKey,
+                            onValueChange = { value ->
+                                val filteredValue = value.filterNot { it.isWhitespace() }
+                                streamKey = filteredValue
+                                preferences.edit {
+                                    putString(PreferenceKeys.STREAM_KEY, value)
+                                }
+                            },
+                            enabled = streamVideo
+                        )
+                    }
+
                     // Show TCP switch only for RTSP/RTSPS
                     if (currentStreamType in listOf(StreamType.RTSP, StreamType.RTSPs)) {
                         SwitchPreference(
@@ -244,7 +268,7 @@ fun StreamSettingsScreen(onBackClick: () -> Unit) {
                     }
 
                     // Show authentication fields only for protocols that support it
-                    if (currentStreamType.requiresAuth) {
+                    if (currentStreamType.supportAuth) {
                         InputPreference(
                             title = stringResource(id = R.string.username),
                             summary = stringResource(id = R.string.username_summary),

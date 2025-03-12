@@ -62,6 +62,8 @@
     <string name="certificate_summary">Путь к файлу сертификата</string>
     <string name="certificate_password">Пароль для сертификата</string>
     <string name="certificate_password_summary">Пароль для сертификата</string>
+    <string name="stream_key">Ключ стрима</string>
+    <string name="stream_key_summary">Введите ключ стрима, предоставленный вашим сервисом стриминга</string>
     
     <!-- Video Settings -->
     <string name="video_settings">Настройки видео</string>
