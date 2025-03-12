@@ -31,8 +31,8 @@ class OnboardingActivity : AppIntro() {
                 title = getString(R.string.welcome_to_emerlink),
                 description = getString(R.string.welcome_description),
                 imageDrawable = R.drawable.ic_welcome,
-                backgroundColorRes = R.color.primary
-            )
+                backgroundColorRes = R.color.primary,
+            ),
         )
 
         // Camera and Microphone permissions slide (объединенный слайд 1)
@@ -41,8 +41,8 @@ class OnboardingActivity : AppIntro() {
                 title = getString(R.string.camera_and_mic_permissions),
                 description = getString(R.string.camera_and_mic_permissions_description),
                 imageDrawable = R.drawable.ic_camera,
-                backgroundColorRes = R.color.primary
-            )
+                backgroundColorRes = R.color.primary,
+            ),
         )
 
         // Location permission slide (слайд 2)
@@ -51,8 +51,8 @@ class OnboardingActivity : AppIntro() {
                 title = getString(R.string.location_permission),
                 description = getString(R.string.location_permission_description),
                 imageDrawable = R.drawable.ic_location,
-                backgroundColorRes = R.color.primary
-            )
+                backgroundColorRes = R.color.primary,
+            ),
         )
 
         // Storage permission slide (слайд 3, только для Android < 10)
@@ -62,8 +62,8 @@ class OnboardingActivity : AppIntro() {
                     title = getString(R.string.storage_permission),
                     description = getString(R.string.storage_permission_description),
                     imageDrawable = R.drawable.ic_storage,
-                    backgroundColorRes = R.color.primary
-                )
+                    backgroundColorRes = R.color.primary,
+                ),
             )
         }
 
@@ -74,8 +74,8 @@ class OnboardingActivity : AppIntro() {
                     title = getString(R.string.notification_permission),
                     description = getString(R.string.notification_permission_description),
                     imageDrawable = R.drawable.ic_notification,
-                    backgroundColorRes = R.color.primary
-                )
+                    backgroundColorRes = R.color.primary,
+                ),
             )
         }
 
@@ -85,26 +85,27 @@ class OnboardingActivity : AppIntro() {
                 title = getString(R.string.all_set),
                 description = getString(R.string.ready_to_start_description),
                 imageDrawable = R.drawable.ic_welcome,
-                backgroundColorRes = R.color.primary
-            )
+                backgroundColorRes = R.color.primary,
+            ),
         )
 
         // Настраиваем запросы разрешений для каждого слайда
         // Запрос разрешений для камеры и микрофона (на слайде 1)
         askForPermissions(
-            permissions = arrayOf(
-                Manifest.permission.CAMERA,
-                Manifest.permission.RECORD_AUDIO
-            ),
+            permissions =
+                arrayOf(
+                    Manifest.permission.CAMERA,
+                    Manifest.permission.RECORD_AUDIO,
+                ),
             slideNumber = 2,
-            required = false
+            required = false,
         )
 
         // Запрос разрешения для местоположения (на слайде 2)
         askForPermissions(
             permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
             slideNumber = 3,
-            required = false
+            required = false,
         )
 
         // Запрос разрешения для хранилища (на слайде 3, только для Android < 10)
@@ -112,7 +113,7 @@ class OnboardingActivity : AppIntro() {
             askForPermissions(
                 permissions = arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
                 slideNumber = 4,
-                required = false
+                required = false,
             )
         }
 
@@ -122,7 +123,7 @@ class OnboardingActivity : AppIntro() {
             askForPermissions(
                 permissions = arrayOf(Manifest.permission.POST_NOTIFICATIONS),
                 slideNumber = notificationSlideNumber,
-                required = false
+                required = false,
             )
         }
     }
@@ -154,10 +155,11 @@ class OnboardingActivity : AppIntro() {
         }
 
         // Start main activity
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
+        val intent =
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
         startActivity(intent)
         finish()
     }
-} 
+}

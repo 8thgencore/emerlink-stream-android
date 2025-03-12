@@ -6,19 +6,20 @@ import net.emerlink.stream.util.ErrorHandler
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
-val appModule = module {
-    // Repositories
+val appModule =
+    module {
+        // Repositories
 
-    // ViewModels
+        // ViewModels
 
-    // Use cases
+        // Use cases
 
-    // Services
-    single { StreamService() }
+        // Services
+        single { StreamService() }
 
-    // Utils
-    single { ErrorHandler(androidContext()) }
+        // Utils
+        single { ErrorHandler(androidContext()) }
 
-    // Providers
-    factory { (context: Context) -> ErrorHandler(context) }
-} 
+        // Providers
+        factory { (context: Context) -> ErrorHandler(context) }
+    }

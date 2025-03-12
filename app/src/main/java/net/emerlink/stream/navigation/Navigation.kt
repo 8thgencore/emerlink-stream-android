@@ -33,35 +33,35 @@ object NavigationRoutes {
 fun AppNavigation(streamService: StreamService?) {
     val navController = rememberNavController()
     LocalContext.current
-    
+
     // Handle screen orientation based on current route
     HandleScreenOrientation(navController)
-    
+
     NavHost(navController = navController, startDestination = NavigationRoutes.CAMERA) {
         composable(NavigationRoutes.CAMERA) {
             CameraScreen(
                 onSettingsClick = { navController.navigate(NavigationRoutes.SETTINGS) },
-                streamService = streamService
+                streamService = streamService,
             )
         }
-        
+
         composable(NavigationRoutes.SETTINGS) {
             SettingsScreen(
                 onBackClick = { navController.popBackStack() },
                 onAdvancedSettingsClick = { navController.navigate(NavigationRoutes.ADVANCED_SETTINGS) },
-                onStreamSettingsClick = { navController.navigate(NavigationRoutes.STREAM_SETTINGS) }
+                onStreamSettingsClick = { navController.navigate(NavigationRoutes.STREAM_SETTINGS) },
             )
         }
-        
+
         composable(NavigationRoutes.STREAM_SETTINGS) {
             StreamSettingsScreen(
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
             )
         }
-        
+
         composable(NavigationRoutes.ADVANCED_SETTINGS) {
             AdvancedSettingsScreen(
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
             )
         }
     }
@@ -70,7 +70,12 @@ fun AppNavigation(streamService: StreamService?) {
 @Composable
 private fun HandleScreenOrientation(navController: NavHostController) {
     val context = LocalContext.current
-    val currentDestination = navController.currentBackStackEntryAsState().value?.destination?.route
+    val currentDestination =
+        navController
+            .currentBackStackEntryAsState()
+            .value
+            ?.destination
+            ?.route
 
     DisposableEffect(currentDestination) {
         val activity = context as? ComponentActivity
@@ -79,16 +84,18 @@ private fun HandleScreenOrientation(navController: NavHostController) {
             NavigationRoutes.CAMERA -> {
                 // For camera screen, use the orientation from preferences
                 val preferences = PreferenceManager.getDefaultSharedPreferences(context)
-                val orientation = preferences.getString(
-                    PreferenceKeys.SCREEN_ORIENTATION,
-                    PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
-                ) ?: PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
+                val orientation =
+                    preferences.getString(
+                        PreferenceKeys.SCREEN_ORIENTATION,
+                        PreferenceKeys.SCREEN_ORIENTATION_DEFAULT,
+                    ) ?: PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
 
-                activity?.requestedOrientation = when (orientation) {
-                    "landscape" -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-                    "portrait" -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                    else -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-                }
+                activity?.requestedOrientation =
+                    when (orientation) {
+                        "landscape" -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                        "portrait" -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                        else -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                    }
             }
 
             NavigationRoutes.SETTINGS, NavigationRoutes.ADVANCED_SETTINGS, NavigationRoutes.STREAM_SETTINGS -> {
@@ -99,4 +106,4 @@ private fun HandleScreenOrientation(navController: NavHostController) {
 
         onDispose {}
     }
-} 
+}

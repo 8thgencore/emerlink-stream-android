@@ -11,7 +11,7 @@ import com.pedro.encoder.input.sources.video.Camera2Source
 class CameraManager(
     private val context: Context,
     private val videoSourceProvider: () -> Any,
-    private val cameraInterfaceProvider: () -> CameraInterface
+    private val cameraInterfaceProvider: () -> CameraInterface,
 ) : ICameraManager {
     companion object {
         private const val TAG = "CameraManager"
@@ -39,7 +39,10 @@ class CameraManager(
     /**
      * Executes an action with Camera2Source if it's available
      */
-    private fun <T> withCamera2Source(action: (Camera2Source) -> T, defaultValue: T): T {
+    private fun <T> withCamera2Source(
+        action: (Camera2Source) -> T,
+        defaultValue: T,
+    ): T {
         val videoSource = videoSourceProvider()
         if (videoSource is Camera2Source) {
             return action(videoSource)
@@ -54,19 +57,20 @@ class CameraManager(
     override fun switchCamera(): Boolean {
         try {
             // First try using the Camera2Source approach
-            val camera2Result = withCamera2Source({ camera2Source ->
-                Log.d(TAG, "Switching camera using Camera2Source")
+            val camera2Result =
+                withCamera2Source({ camera2Source ->
+                    Log.d(TAG, "Switching camera using Camera2Source")
 
-                if (cameraIds.isEmpty()) getCameraIds()
-                if (cameraIds.isEmpty()) return@withCamera2Source false
+                    if (cameraIds.isEmpty()) getCameraIds()
+                    if (cameraIds.isEmpty()) return@withCamera2Source false
 
-                // Switch the camera
-                currentCameraId = (currentCameraId + 1) % cameraIds.size
+                    // Switch the camera
+                    currentCameraId = (currentCameraId + 1) % cameraIds.size
 
-                Log.d(TAG, "Switching to camera ${cameraIds[currentCameraId]}")
-                camera2Source.openCameraId(cameraIds[currentCameraId])
-                true
-            }, false)
+                    Log.d(TAG, "Switching to camera ${cameraIds[currentCameraId]}")
+                    camera2Source.openCameraId(cameraIds[currentCameraId])
+                    true
+                }, false)
 
             // If Camera2Source approach failed, try using the CameraInterface directly
             if (!camera2Result) {
@@ -90,23 +94,24 @@ class CameraManager(
     override fun toggleLantern(): Boolean {
         try {
             // First try using the Camera2Source approach
-            val camera2Result = withCamera2Source({ camera2Source ->
-                try {
-                    Log.d(TAG, "Toggling lantern using Camera2Source")
-                    val wasEnabled = camera2Source.isLanternEnabled()
-                    if (wasEnabled) {
-                        camera2Source.disableLantern()
-                        Log.d(TAG, "Lantern disabled")
-                    } else {
-                        camera2Source.enableLantern()
-                        Log.d(TAG, "Lantern enabled")
+            val camera2Result =
+                withCamera2Source({ camera2Source ->
+                    try {
+                        Log.d(TAG, "Toggling lantern using Camera2Source")
+                        val wasEnabled = camera2Source.isLanternEnabled()
+                        if (wasEnabled) {
+                            camera2Source.disableLantern()
+                            Log.d(TAG, "Lantern disabled")
+                        } else {
+                            camera2Source.enableLantern()
+                            Log.d(TAG, "Lantern enabled")
+                        }
+                        camera2Source.isLanternEnabled()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to toggle lantern with Camera2Source: ${e.localizedMessage}", e)
+                        false
                     }
-                    camera2Source.isLanternEnabled()
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to toggle lantern with Camera2Source: ${e.localizedMessage}", e)
-                    false
-                }
-            }, false)
+                }, false)
 
             // If Camera2Source approach failed, try using the CameraInterface directly
             if (!camera2Result) {
@@ -143,12 +148,13 @@ class CameraManager(
             val camManager = context.getSystemService(Context.CAMERA_SERVICE) as android.hardware.camera2.CameraManager
 
             // Find a camera that supports flash
-            val cameraId = camManager.cameraIdList.firstOrNull { id ->
-                val characteristics = camManager.getCameraCharacteristics(id)
-                val flashAvailable =
-                    characteristics.get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE)
-                flashAvailable == true
-            }
+            val cameraId =
+                camManager.cameraIdList.firstOrNull { id ->
+                    val characteristics = camManager.getCameraCharacteristics(id)
+                    val flashAvailable =
+                        characteristics.get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE)
+                    flashAvailable == true
+                }
 
             if (cameraId != null) {
                 lanternEnabled = !lanternEnabled
@@ -188,8 +194,8 @@ class CameraManager(
      * Gets the current zoom level
      * @return current zoom level or 0 if not available
      */
-    override fun getZoom(): Float {
-        return withCamera2Source({ camera2Source ->
+    override fun getZoom(): Float =
+        withCamera2Source({ camera2Source ->
             Log.d(TAG, "Zoom is ${camera2Source.getZoom()}")
             val zoomRange = camera2Source.getZoomRange()
             if (camera2Source.getZoom() < zoomRange.lower || camera2Source.getZoom() > zoomRange.upper) {
@@ -198,7 +204,6 @@ class CameraManager(
                 camera2Source.getZoom()
             }
         }, 0f)
-    }
 
     /**
      * Gets the current camera ID
@@ -209,4 +214,4 @@ class CameraManager(
      * Checks if the lantern/flashlight is currently enabled
      */
     override fun isLanternEnabled(): Boolean = withCamera2Source({ it.isLanternEnabled() }, lanternEnabled)
-} 
+}

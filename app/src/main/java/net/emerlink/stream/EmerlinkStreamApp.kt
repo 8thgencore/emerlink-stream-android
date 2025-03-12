@@ -14,21 +14,24 @@ import org.koin.core.context.startKoin
 import org.koin.core.logger.Level
 
 class EmerlinkStreamApp : Application() {
+    private val serviceConnection =
+        object : ServiceConnection {
+            override fun onServiceConnected(
+                name: ComponentName?,
+                service: IBinder?,
+            ) {
+                Log.d(TAG, "Service connected")
+                val binder = service as StreamService.LocalBinder
+                streamService = binder.getService()
+                isServiceBound = true
+            }
 
-    private val serviceConnection = object : ServiceConnection {
-        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            Log.d(TAG, "Service connected")
-            val binder = service as StreamService.LocalBinder
-            streamService = binder.getService()
-            isServiceBound = true
+            override fun onServiceDisconnected(name: ComponentName?) {
+                Log.d(TAG, "Service disconnected")
+                streamService = null
+                isServiceBound = false
+            }
         }
-
-        override fun onServiceDisconnected(name: ComponentName?) {
-            Log.d(TAG, "Service disconnected")
-            streamService = null
-            isServiceBound = false
-        }
-    }
 
     override fun onCreate() {
         super.onCreate()
@@ -65,11 +68,11 @@ class EmerlinkStreamApp : Application() {
 
     companion object {
         private const val TAG = "EmerlinkStreamApp"
-        
+
         // Переменные для доступа к сервису
         private var streamService: StreamService? = null
         private var isServiceBound = false
-        
+
         fun getStreamService(): StreamService? = streamService
     }
-} 
+}

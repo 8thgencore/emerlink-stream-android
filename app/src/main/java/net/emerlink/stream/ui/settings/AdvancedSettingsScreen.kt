@@ -30,9 +30,7 @@ import net.emerlink.stream.ui.settings.components.SwitchPreference
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdvancedSettingsScreen(
-    onBackClick: () -> Unit
-) {
+fun AdvancedSettingsScreen(onBackClick: () -> Unit) {
     val context = LocalContext.current
     val preferences = PreferenceManager.getDefaultSharedPreferences(context)
     val scrollState = rememberScrollState()
@@ -43,81 +41,98 @@ fun AdvancedSettingsScreen(
                 IconButton(onClick = onBackClick) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(id = R.string.back)
+                        contentDescription = stringResource(id = R.string.back),
                     )
                 }
             })
-        }) { paddingValues ->
+        },
+    ) { paddingValues ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp)
-                .verticalScroll(scrollState)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 16.dp)
+                    .verticalScroll(scrollState),
         ) {
             // Advanced Video Settings
             PreferenceCategory(title = stringResource(id = R.string.advanced_video_settings)) {
                 InputPreference(
                     title = stringResource(id = R.string.keyframe_interval),
                     summary = stringResource(id = R.string.keyframe_interval_summary),
-                    value = preferences.getString(
-                        PreferenceKeys.VIDEO_KEYFRAME_INTERVAL, PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT
-                    ) ?: PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT,
+                    value =
+                        preferences.getString(
+                            PreferenceKeys.VIDEO_KEYFRAME_INTERVAL,
+                            PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT,
+                        ) ?: PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT,
                     onValueChange = { value ->
                         preferences.edit {
                             putString(
-                                PreferenceKeys.VIDEO_KEYFRAME_INTERVAL, value
+                                PreferenceKeys.VIDEO_KEYFRAME_INTERVAL,
+                                value,
                             )
                         }
                     },
-                    keyboardType = KeyboardType.Number
+                    keyboardType = KeyboardType.Number,
                 )
 
                 DropdownPreference(
                     title = stringResource(id = R.string.video_profile),
                     summary = stringResource(id = R.string.video_profile_summary),
-                    selectedValue = preferences.getString(
-                        PreferenceKeys.VIDEO_PROFILE, PreferenceKeys.VIDEO_PROFILE_DEFAULT
-                    ) ?: PreferenceKeys.VIDEO_PROFILE_DEFAULT,
+                    selectedValue =
+                        preferences.getString(
+                            PreferenceKeys.VIDEO_PROFILE,
+                            PreferenceKeys.VIDEO_PROFILE_DEFAULT,
+                        ) ?: PreferenceKeys.VIDEO_PROFILE_DEFAULT,
                     options = listOf("baseline", "main", "high"),
                     onValueSelected = { value ->
                         preferences.edit { putString(PreferenceKeys.VIDEO_PROFILE, value) }
-                    })
+                    },
+                )
 
                 DropdownPreference(
                     title = stringResource(id = R.string.video_level),
                     summary = stringResource(id = R.string.video_level_summary),
-                    selectedValue = preferences.getString(
-                        PreferenceKeys.VIDEO_LEVEL, PreferenceKeys.VIDEO_LEVEL_DEFAULT
-                    ) ?: PreferenceKeys.VIDEO_LEVEL_DEFAULT,
+                    selectedValue =
+                        preferences.getString(
+                            PreferenceKeys.VIDEO_LEVEL,
+                            PreferenceKeys.VIDEO_LEVEL_DEFAULT,
+                        ) ?: PreferenceKeys.VIDEO_LEVEL_DEFAULT,
                     options = listOf("3.0", "3.1", "4.0", "4.1", "4.2"),
                     onValueSelected = { value ->
                         preferences.edit { putString(PreferenceKeys.VIDEO_LEVEL, value) }
-                    })
+                    },
+                )
 
                 DropdownPreference(
                     title = stringResource(id = R.string.bitrate_mode),
                     summary = stringResource(id = R.string.bitrate_mode_summary),
-                    selectedValue = preferences.getString(
-                        PreferenceKeys.VIDEO_BITRATE_MODE, PreferenceKeys.VIDEO_BITRATE_MODE_DEFAULT
-                    ) ?: PreferenceKeys.VIDEO_BITRATE_MODE_DEFAULT,
+                    selectedValue =
+                        preferences.getString(
+                            PreferenceKeys.VIDEO_BITRATE_MODE,
+                            PreferenceKeys.VIDEO_BITRATE_MODE_DEFAULT,
+                        ) ?: PreferenceKeys.VIDEO_BITRATE_MODE_DEFAULT,
                     options = listOf("vbr", "cbr", "cq"),
                     onValueSelected = { value ->
                         preferences.edit {
                             putString(PreferenceKeys.VIDEO_BITRATE_MODE, value)
                         }
-                    })
+                    },
+                )
 
                 DropdownPreference(
                     title = stringResource(id = R.string.encoding_quality),
                     summary = stringResource(id = R.string.encoding_quality_summary),
-                    selectedValue = preferences.getString(
-                        PreferenceKeys.VIDEO_QUALITY, PreferenceKeys.VIDEO_QUALITY_DEFAULT
-                    ) ?: PreferenceKeys.VIDEO_QUALITY_DEFAULT,
+                    selectedValue =
+                        preferences.getString(
+                            PreferenceKeys.VIDEO_QUALITY,
+                            PreferenceKeys.VIDEO_QUALITY_DEFAULT,
+                        ) ?: PreferenceKeys.VIDEO_QUALITY_DEFAULT,
                     options = listOf("fastest", "fast", "medium", "slow", "slowest"),
                     onValueSelected = { value ->
                         preferences.edit { putString(PreferenceKeys.VIDEO_QUALITY, value) }
-                    })
+                    },
+                )
             }
 
             // Network Settings
@@ -125,23 +140,27 @@ fun AdvancedSettingsScreen(
                 InputPreference(
                     title = stringResource(id = R.string.buffer_size),
                     summary = stringResource(id = R.string.buffer_size_summary),
-                    value = preferences.getString(
-                        PreferenceKeys.NETWORK_BUFFER_SIZE, PreferenceKeys.NETWORK_BUFFER_SIZE_DEFAULT
-                    ) ?: PreferenceKeys.NETWORK_BUFFER_SIZE_DEFAULT,
+                    value =
+                        preferences.getString(
+                            PreferenceKeys.NETWORK_BUFFER_SIZE,
+                            PreferenceKeys.NETWORK_BUFFER_SIZE_DEFAULT,
+                        ) ?: PreferenceKeys.NETWORK_BUFFER_SIZE_DEFAULT,
                     onValueChange = { value ->
                         preferences.edit {
                             putString(PreferenceKeys.NETWORK_BUFFER_SIZE, value)
                         }
                     },
-                    keyboardType = KeyboardType.Number
+                    keyboardType = KeyboardType.Number,
                 )
 
                 InputPreference(
                     title = stringResource(id = R.string.connection_timeout),
                     summary = stringResource(id = R.string.connection_timeout_summary),
-                    value = preferences.getString(
-                        PreferenceKeys.NETWORK_TIMEOUT, PreferenceKeys.NETWORK_TIMEOUT_DEFAULT
-                    ) ?: PreferenceKeys.NETWORK_TIMEOUT_DEFAULT,
+                    value =
+                        preferences.getString(
+                            PreferenceKeys.NETWORK_TIMEOUT,
+                            PreferenceKeys.NETWORK_TIMEOUT_DEFAULT,
+                        ) ?: PreferenceKeys.NETWORK_TIMEOUT_DEFAULT,
                     onValueChange = { value ->
                         preferences.edit { putString(PreferenceKeys.NETWORK_TIMEOUT, value) }
                     },
@@ -151,21 +170,26 @@ fun AdvancedSettingsScreen(
                 SwitchPreference(
                     title = stringResource(id = R.string.auto_reconnect),
                     summary = stringResource(id = R.string.auto_reconnect_summary),
-                    checked = preferences.getBoolean(
-                        PreferenceKeys.NETWORK_RECONNECT, PreferenceKeys.NETWORK_RECONNECT_DEFAULT
-                    ),
+                    checked =
+                        preferences.getBoolean(
+                            PreferenceKeys.NETWORK_RECONNECT,
+                            PreferenceKeys.NETWORK_RECONNECT_DEFAULT,
+                        ),
                     onCheckedChange = { checked ->
                         preferences.edit {
                             putBoolean(PreferenceKeys.NETWORK_RECONNECT, checked)
                         }
-                    })
+                    },
+                )
 
                 InputPreference(
                     title = stringResource(id = R.string.reconnect_delay),
                     summary = stringResource(id = R.string.reconnect_delay_summary),
-                    value = preferences.getString(
-                        PreferenceKeys.NETWORK_RECONNECT_DELAY, PreferenceKeys.NETWORK_RECONNECT_DELAY_DEFAULT
-                    ) ?: PreferenceKeys.NETWORK_RECONNECT_DELAY_DEFAULT,
+                    value =
+                        preferences.getString(
+                            PreferenceKeys.NETWORK_RECONNECT_DELAY,
+                            PreferenceKeys.NETWORK_RECONNECT_DELAY_DEFAULT,
+                        ) ?: PreferenceKeys.NETWORK_RECONNECT_DELAY_DEFAULT,
                     onValueChange = { value ->
                         preferences.edit {
                             putString(PreferenceKeys.NETWORK_RECONNECT_DELAY, value)
@@ -177,10 +201,11 @@ fun AdvancedSettingsScreen(
                 InputPreference(
                     title = stringResource(id = R.string.max_reconnect_attempts),
                     summary = stringResource(id = R.string.max_reconnect_attempts_summary),
-                    value = preferences.getString(
-                        PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS,
-                        PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS_DEFAULT
-                    ) ?: PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS_DEFAULT,
+                    value =
+                        preferences.getString(
+                            PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS,
+                            PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS_DEFAULT,
+                        ) ?: PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS_DEFAULT,
                     onValueChange = { value ->
                         preferences.edit {
                             putString(PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS, value)
@@ -195,39 +220,48 @@ fun AdvancedSettingsScreen(
                 SwitchPreference(
                     title = stringResource(id = R.string.low_latency_mode),
                     summary = stringResource(id = R.string.low_latency_mode_summary),
-                    checked = preferences.getBoolean(
-                        PreferenceKeys.STABILITY_LOW_LATENCY, PreferenceKeys.STABILITY_LOW_LATENCY_DEFAULT
-                    ),
+                    checked =
+                        preferences.getBoolean(
+                            PreferenceKeys.STABILITY_LOW_LATENCY,
+                            PreferenceKeys.STABILITY_LOW_LATENCY_DEFAULT,
+                        ),
                     onCheckedChange = { checked ->
                         preferences.edit {
                             putBoolean(PreferenceKeys.STABILITY_LOW_LATENCY, checked)
                         }
-                    })
+                    },
+                )
 
                 SwitchPreference(
                     title = stringResource(id = R.string.hardware_rotation),
                     summary = stringResource(id = R.string.hardware_rotation_summary),
-                    checked = preferences.getBoolean(
-                        PreferenceKeys.STABILITY_HARDWARE_ROTATION, PreferenceKeys.STABILITY_HARDWARE_ROTATION_DEFAULT
-                    ),
+                    checked =
+                        preferences.getBoolean(
+                            PreferenceKeys.STABILITY_HARDWARE_ROTATION,
+                            PreferenceKeys.STABILITY_HARDWARE_ROTATION_DEFAULT,
+                        ),
                     onCheckedChange = { checked ->
                         preferences.edit {
                             putBoolean(PreferenceKeys.STABILITY_HARDWARE_ROTATION, checked)
                         }
-                    })
+                    },
+                )
 
                 SwitchPreference(
                     title = stringResource(id = R.string.dynamic_fps),
                     summary = stringResource(id = R.string.dynamic_fps_summary),
-                    checked = preferences.getBoolean(
-                        PreferenceKeys.STABILITY_DYNAMIC_FPS, PreferenceKeys.STABILITY_DYNAMIC_FPS_DEFAULT
-                    ),
+                    checked =
+                        preferences.getBoolean(
+                            PreferenceKeys.STABILITY_DYNAMIC_FPS,
+                            PreferenceKeys.STABILITY_DYNAMIC_FPS_DEFAULT,
+                        ),
                     onCheckedChange = { checked ->
                         preferences.edit {
                             putBoolean(PreferenceKeys.STABILITY_DYNAMIC_FPS, checked)
                         }
-                    })
+                    },
+                )
             }
         }
     }
-} 
+}

@@ -16,7 +16,9 @@ import net.emerlink.stream.service.camera.CameraInterface
 import net.emerlink.stream.util.ErrorHandler
 
 class StreamManager(
-    private val context: Context, private val connectChecker: ConnectChecker, private val errorHandler: ErrorHandler
+    private val context: Context,
+    private val connectChecker: ConnectChecker,
+    private val errorHandler: ErrorHandler,
 ) {
     companion object {
         private const val TAG = "StreamManager"
@@ -71,7 +73,13 @@ class StreamManager(
         }
     }
 
-    fun startStream(url: String, protocol: String, username: String, password: String, tcp: Boolean) {
+    fun startStream(
+        url: String,
+        protocol: String,
+        username: String,
+        password: String,
+        tcp: Boolean,
+    ) {
         try {
             Log.d(TAG, "Starting stream with protocol: $protocol, tcp: $tcp")
 
@@ -79,7 +87,10 @@ class StreamManager(
                 cameraInterface.setProtocol(tcp)
             }
 
-            if (username.isNotEmpty() && password.isNotEmpty() && (protocol.startsWith("rtmp") || protocol.startsWith("rtsp"))) {
+            if (username.isNotEmpty() &&
+                password.isNotEmpty() &&
+                (protocol.startsWith("rtmp") || protocol.startsWith("rtsp"))
+            ) {
                 cameraInterface.setAuthorization(username, password)
             }
 
@@ -134,7 +145,6 @@ class StreamManager(
             val resolution = Resolution.parseFromPreferences(sharedPreferences)
             cameraInterface.prepareVideo(resolution.width, resolution.height, DEFAULT_FPS, bitrate)
 
-
             val rotation = CameraHelper.getCameraOrientation(context)
             cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
 
@@ -173,12 +183,18 @@ class StreamManager(
     fun prepareVideo(): Boolean {
         try {
             val resolution = Resolution.parseFromPreferences(sharedPreferences)
-            val fps = sharedPreferences.getString(
-                PreferenceKeys.VIDEO_FPS, PreferenceKeys.VIDEO_FPS_DEFAULT
-            )?.toIntOrNull() ?: 30
-            val videoBitrate = sharedPreferences.getString(
-                PreferenceKeys.VIDEO_BITRATE, PreferenceKeys.VIDEO_BITRATE_DEFAULT
-            )?.toIntOrNull() ?: 2500
+            val fps =
+                sharedPreferences
+                    .getString(
+                        PreferenceKeys.VIDEO_FPS,
+                        PreferenceKeys.VIDEO_FPS_DEFAULT
+                    )?.toIntOrNull() ?: 30
+            val videoBitrate =
+                sharedPreferences
+                    .getString(
+                        PreferenceKeys.VIDEO_BITRATE,
+                        PreferenceKeys.VIDEO_BITRATE_DEFAULT
+                    )?.toIntOrNull() ?: 2500
 
             Log.d(TAG, "Подготовка видео: ${resolution.width}x${resolution.height}, FPS=$fps, битрейт=${videoBitrate}k")
 
@@ -193,10 +209,13 @@ class StreamManager(
     }
 
     fun isStreaming(): Boolean = cameraInterface.isStreaming
+
     fun isRecording(): Boolean = cameraInterface.isRecording
+
     fun isOnPreview(): Boolean = cameraInterface.isOnPreview
 
     fun getVideoSource(): Any = cameraInterface
+
     fun getGlInterface(): Any = cameraInterface.glInterface
 
     fun setVideoBitrateOnFly(bitrate: Int) = cameraInterface.setVideoBitrateOnFly(bitrate)
@@ -208,9 +227,12 @@ class StreamManager(
             val resolution = Resolution.parseFromPreferences(sharedPreferences)
 
             val bitrate = cameraInterface.bitrate.takeIf { it > 0 } ?: DEFAULT_BITRATE
-            val fps = sharedPreferences.getString(
-                PreferenceKeys.VIDEO_FPS, PreferenceKeys.VIDEO_FPS_DEFAULT
-            )?.toIntOrNull() ?: DEFAULT_FPS
+            val fps =
+                sharedPreferences
+                    .getString(
+                        PreferenceKeys.VIDEO_FPS,
+                        PreferenceKeys.VIDEO_FPS_DEFAULT
+                    )?.toIntOrNull() ?: DEFAULT_FPS
 
             if (isOnPreview()) {
                 val rotation = CameraHelper.getCameraOrientation(context)

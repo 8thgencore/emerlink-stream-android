@@ -46,92 +46,105 @@ fun StreamSettingsScreen(onBackClick: () -> Unit) {
     var streamVideo by remember {
         mutableStateOf(
             preferences.getBoolean(
-                PreferenceKeys.STREAM_VIDEO, PreferenceKeys.STREAM_VIDEO_DEFAULT
+                PreferenceKeys.STREAM_VIDEO,
+                PreferenceKeys.STREAM_VIDEO_DEFAULT
             )
         )
     }
     var streamProtocol by remember {
         mutableStateOf(
             preferences.getString(
-                PreferenceKeys.STREAM_PROTOCOL, PreferenceKeys.STREAM_PROTOCOL_DEFAULT
+                PreferenceKeys.STREAM_PROTOCOL,
+                PreferenceKeys.STREAM_PROTOCOL_DEFAULT
             ) ?: PreferenceKeys.STREAM_PROTOCOL_DEFAULT
         )
     }
     var streamAddress by remember {
         mutableStateOf(
             preferences.getString(
-                PreferenceKeys.STREAM_ADDRESS, PreferenceKeys.STREAM_ADDRESS_DEFAULT
+                PreferenceKeys.STREAM_ADDRESS,
+                PreferenceKeys.STREAM_ADDRESS_DEFAULT
             ) ?: PreferenceKeys.STREAM_ADDRESS_DEFAULT
         )
     }
     var streamPort by remember {
         mutableStateOf(
             preferences.getString(
-                PreferenceKeys.STREAM_PORT, PreferenceKeys.STREAM_PORT_DEFAULT
+                PreferenceKeys.STREAM_PORT,
+                PreferenceKeys.STREAM_PORT_DEFAULT
             ) ?: PreferenceKeys.STREAM_PORT_DEFAULT
         )
     }
     var streamPath by remember {
         mutableStateOf(
             preferences.getString(
-                PreferenceKeys.STREAM_PATH, PreferenceKeys.STREAM_PATH_DEFAULT
+                PreferenceKeys.STREAM_PATH,
+                PreferenceKeys.STREAM_PATH_DEFAULT
             ) ?: PreferenceKeys.STREAM_PATH_DEFAULT
         )
     }
     var streamUseTcp by remember {
         mutableStateOf(
             preferences.getBoolean(
-                PreferenceKeys.STREAM_USE_TCP, PreferenceKeys.STREAM_USE_TCP_DEFAULT
+                PreferenceKeys.STREAM_USE_TCP,
+                PreferenceKeys.STREAM_USE_TCP_DEFAULT
             )
         )
     }
     var streamUsername by remember {
         mutableStateOf(
             preferences.getString(
-                PreferenceKeys.STREAM_USERNAME, PreferenceKeys.STREAM_USERNAME_DEFAULT
+                PreferenceKeys.STREAM_USERNAME,
+                PreferenceKeys.STREAM_USERNAME_DEFAULT
             ) ?: PreferenceKeys.STREAM_USERNAME_DEFAULT
         )
     }
     var streamPassword by remember {
         mutableStateOf(
             preferences.getString(
-                PreferenceKeys.STREAM_PASSWORD, PreferenceKeys.STREAM_PASSWORD_DEFAULT
+                PreferenceKeys.STREAM_PASSWORD,
+                PreferenceKeys.STREAM_PASSWORD_DEFAULT
             ) ?: PreferenceKeys.STREAM_PASSWORD_DEFAULT
         )
     }
     var streamSelfSignedCert by remember {
         mutableStateOf(
             preferences.getBoolean(
-                PreferenceKeys.STREAM_SELF_SIGNED_CERT, PreferenceKeys.STREAM_SELF_SIGNED_CERT_DEFAULT
+                PreferenceKeys.STREAM_SELF_SIGNED_CERT,
+                PreferenceKeys.STREAM_SELF_SIGNED_CERT_DEFAULT
             )
         )
     }
     var streamCertificate by remember {
         mutableStateOf(
             preferences.getString(
-                PreferenceKeys.STREAM_CERTIFICATE, PreferenceKeys.STREAM_CERTIFICATE_DEFAULT
+                PreferenceKeys.STREAM_CERTIFICATE,
+                PreferenceKeys.STREAM_CERTIFICATE_DEFAULT
             ) ?: PreferenceKeys.STREAM_CERTIFICATE_DEFAULT
         )
     }
     var streamCertificatePassword by remember {
         mutableStateOf(
             preferences.getString(
-                PreferenceKeys.STREAM_CERTIFICATE_PASSWORD, PreferenceKeys.STREAM_CERTIFICATE_PASSWORD_DEFAULT
+                PreferenceKeys.STREAM_CERTIFICATE_PASSWORD,
+                PreferenceKeys.STREAM_CERTIFICATE_PASSWORD_DEFAULT
             ) ?: PreferenceKeys.STREAM_CERTIFICATE_PASSWORD_DEFAULT
         )
     }
     var streamKey by remember {
         mutableStateOf(
             preferences.getString(
-                PreferenceKeys.STREAM_KEY, PreferenceKeys.STREAM_KEY_DEFAULT
+                PreferenceKeys.STREAM_KEY,
+                PreferenceKeys.STREAM_KEY_DEFAULT
             ) ?: PreferenceKeys.STREAM_KEY_DEFAULT
         )
     }
 
     // Get current stream type
-    val currentStreamType = StreamType.entries.find {
-        it.toString() == streamProtocol
-    } ?: StreamType.RTMP
+    val currentStreamType =
+        StreamType.entries.find {
+            it.toString() == streamProtocol
+        } ?: StreamType.RTMP
 
     Scaffold(
         topBar = {
@@ -143,17 +156,21 @@ fun StreamSettingsScreen(onBackClick: () -> Unit) {
                     )
                 }
             })
-        }) { paddingValues ->
+        }
+    ) { paddingValues ->
         Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues), color = MaterialTheme.colorScheme.background
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+            color = MaterialTheme.colorScheme.background
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .padding(16.dp)
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
+                        .padding(16.dp)
             ) {
                 // Stream Settings
                 PreferenceCategory(title = stringResource(id = R.string.stream_settings)) {
@@ -166,7 +183,8 @@ fun StreamSettingsScreen(onBackClick: () -> Unit) {
                             preferences.edit {
                                 putBoolean(PreferenceKeys.STREAM_VIDEO, checked)
                             }
-                        })
+                        }
+                    )
 
                     DropdownPreference(
                         title = stringResource(id = R.string.stream_protocol),

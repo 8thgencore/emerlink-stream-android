@@ -1,7 +1,6 @@
 package net.emerlink.stream.service.camera
 
 import android.content.Context
-import android.util.Log
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.video.CameraHelper
 import com.pedro.library.rtmp.RtmpCamera2
@@ -14,7 +13,7 @@ import com.pedro.rtsp.rtsp.Protocol
 
 class RtmpCameraImpl(
     private val context: Context,
-    private val connectChecker: ConnectChecker
+    private val connectChecker: ConnectChecker,
 ) : CameraInterface {
     override val camera = RtmpCamera2(context, connectChecker)
 
@@ -25,34 +24,50 @@ class RtmpCameraImpl(
     override val glInterface: GlInterface get() = camera.glInterface
 
     override fun prepareAudio() = camera.prepareAudio()
+
     override fun prepareVideo(
         width: Int,
         height: Int,
         fps: Int,
         bitrate: Int,
-        rotation: Int
-    ) =
-        camera.prepareVideo(width, height, fps, bitrate, rotation)
+        rotation: Int,
+    ) = camera.prepareVideo(width, height, fps, bitrate, rotation)
 
     override fun startStream(url: String) = camera.startStream(url)
+
     override fun stopStream() = camera.stopStream()
+
     override fun startRecord(filePath: String) = camera.startRecord(filePath)
+
     override fun stopRecord() = camera.stopRecord()
-    override fun startPreview(facing: CameraHelper.Facing, rotation: Int) =
-        camera.startPreview(facing, rotation)
+
+    override fun startPreview(
+        facing: CameraHelper.Facing,
+        rotation: Int,
+    ) = camera.startPreview(facing, rotation)
 
     override fun stopPreview() = camera.stopPreview()
+
     override fun replaceView(view: OpenGlView) = camera.replaceView(view)
+
     override fun switchCamera() = camera.switchCamera()
+
     override fun setVideoBitrateOnFly(bitrate: Int) = camera.setVideoBitrateOnFly(bitrate)
+
     override fun enableAudio() = camera.enableAudio()
+
     override fun disableAudio() = camera.disableAudio()
+
     override fun hasCongestion(): Boolean = camera.getStreamClient().hasCongestion()
 
     override fun enableLantern() = camera.enableLantern()
+
     override fun disableLantern() = camera.disableLantern()
 
-    override fun setAuthorization(username: String, password: String) {
+    override fun setAuthorization(
+        username: String,
+        password: String,
+    ) {
         camera.getStreamClient().setAuthorization(username, password)
     }
 
@@ -63,7 +78,7 @@ class RtmpCameraImpl(
 
 class RtspCameraImpl(
     private val context: Context,
-    private val connectChecker: ConnectChecker
+    private val connectChecker: ConnectChecker,
 ) : CameraInterface {
     override val camera = RtspCamera2(context, connectChecker)
 
@@ -74,34 +89,50 @@ class RtspCameraImpl(
     override val glInterface: GlInterface get() = camera.glInterface
 
     override fun prepareAudio() = camera.prepareAudio()
+
     override fun prepareVideo(
         width: Int,
         height: Int,
         fps: Int,
         bitrate: Int,
-        rotation: Int
-    ) =
-        camera.prepareVideo(width, height, fps, bitrate, rotation)
+        rotation: Int,
+    ) = camera.prepareVideo(width, height, fps, bitrate, rotation)
 
     override fun startStream(url: String) = camera.startStream(url)
+
     override fun stopStream() = camera.stopStream()
+
     override fun startRecord(filePath: String) = camera.startRecord(filePath)
+
     override fun stopRecord() = camera.stopRecord()
-    override fun startPreview(facing: CameraHelper.Facing, rotation: Int) =
-        camera.startPreview(facing, rotation)
+
+    override fun startPreview(
+        facing: CameraHelper.Facing,
+        rotation: Int,
+    ) = camera.startPreview(facing, rotation)
 
     override fun stopPreview() = camera.stopPreview()
+
     override fun replaceView(view: OpenGlView) = camera.replaceView(view)
+
     override fun switchCamera() = camera.switchCamera()
+
     override fun setVideoBitrateOnFly(bitrate: Int) = camera.setVideoBitrateOnFly(bitrate)
+
     override fun enableAudio() = camera.enableAudio()
+
     override fun disableAudio() = camera.disableAudio()
+
     override fun hasCongestion(): Boolean = camera.getStreamClient().hasCongestion()
 
     override fun enableLantern() = camera.enableLantern()
+
     override fun disableLantern() = camera.disableLantern()
 
-    override fun setAuthorization(username: String, password: String) {
+    override fun setAuthorization(
+        username: String,
+        password: String,
+    ) {
         camera.getStreamClient().setAuthorization(username, password)
     }
 
@@ -112,7 +143,7 @@ class RtspCameraImpl(
 
 class SrtCameraImpl(
     private val context: Context,
-    private val connectChecker: ConnectChecker
+    private val connectChecker: ConnectChecker,
 ) : CameraInterface {
     override val camera = SrtCamera2(context, connectChecker)
 
@@ -123,34 +154,50 @@ class SrtCameraImpl(
     override val glInterface: GlInterface get() = camera.glInterface
 
     override fun prepareAudio() = camera.prepareAudio()
+
     override fun prepareVideo(
         width: Int,
         height: Int,
         fps: Int,
         bitrate: Int,
-        rotation: Int
-    ) =
-        camera.prepareVideo(width, height, fps, bitrate, rotation)
+        rotation: Int,
+    ) = camera.prepareVideo(width, height, fps, bitrate, rotation)
 
     override fun startStream(url: String) = camera.startStream(url)
+
     override fun stopStream() = camera.stopStream()
+
     override fun startRecord(filePath: String) = camera.startRecord(filePath)
+
     override fun stopRecord() = camera.stopRecord()
-    override fun startPreview(facing: CameraHelper.Facing, rotation: Int) =
-        camera.startPreview(facing, rotation)
+
+    override fun startPreview(
+        facing: CameraHelper.Facing,
+        rotation: Int,
+    ) = camera.startPreview(facing, rotation)
 
     override fun stopPreview() = camera.stopPreview()
+
     override fun replaceView(view: OpenGlView) = camera.replaceView(view)
+
     override fun switchCamera() = camera.switchCamera()
+
     override fun setVideoBitrateOnFly(bitrate: Int) = camera.setVideoBitrateOnFly(bitrate)
+
     override fun enableAudio() = camera.enableAudio()
+
     override fun disableAudio() = camera.disableAudio()
+
     override fun hasCongestion(): Boolean = camera.getStreamClient().hasCongestion()
 
     override fun enableLantern() = camera.enableLantern()
+
     override fun disableLantern() = camera.disableLantern()
 
-    override fun setAuthorization(username: String, password: String) {
+    override fun setAuthorization(
+        username: String,
+        password: String,
+    ) {
         // Не применимо для SRT
     }
 
@@ -161,7 +208,7 @@ class SrtCameraImpl(
 
 class UdpCameraImpl(
     private val context: Context,
-    private val connectChecker: ConnectChecker
+    private val connectChecker: ConnectChecker,
 ) : CameraInterface {
     override val camera = UdpCamera2(context, connectChecker)
 
@@ -172,38 +219,54 @@ class UdpCameraImpl(
     override val glInterface: GlInterface get() = camera.glInterface
 
     override fun prepareAudio() = camera.prepareAudio()
+
     override fun prepareVideo(
         width: Int,
         height: Int,
         fps: Int,
         bitrate: Int,
-        rotation: Int
-    ) =
-        camera.prepareVideo(width, height, fps, bitrate, rotation)
+        rotation: Int,
+    ) = camera.prepareVideo(width, height, fps, bitrate, rotation)
 
     override fun startStream(url: String) = camera.startStream(url)
+
     override fun stopStream() = camera.stopStream()
+
     override fun startRecord(filePath: String) = camera.startRecord(filePath)
+
     override fun stopRecord() = camera.stopRecord()
-    override fun startPreview(facing: CameraHelper.Facing, rotation: Int) =
-        camera.startPreview(facing, rotation)
+
+    override fun startPreview(
+        facing: CameraHelper.Facing,
+        rotation: Int,
+    ) = camera.startPreview(facing, rotation)
 
     override fun stopPreview() = camera.stopPreview()
+
     override fun replaceView(view: OpenGlView) = camera.replaceView(view)
+
     override fun switchCamera() = camera.switchCamera()
+
     override fun setVideoBitrateOnFly(bitrate: Int) = camera.setVideoBitrateOnFly(bitrate)
+
     override fun enableAudio() = camera.enableAudio()
+
     override fun disableAudio() = camera.disableAudio()
+
     override fun hasCongestion(): Boolean = camera.getStreamClient().hasCongestion()
 
     override fun enableLantern() = camera.enableLantern()
+
     override fun disableLantern() = camera.disableLantern()
 
-    override fun setAuthorization(username: String, password: String) {
+    override fun setAuthorization(
+        username: String,
+        password: String,
+    ) {
         // Не применимо для UDP
     }
 
     override fun setProtocol(tcp: Boolean) {
         // Не применимо для UDP
     }
-} 
+}

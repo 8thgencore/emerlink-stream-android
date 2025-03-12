@@ -14,7 +14,7 @@ data class ConnectionSettings(
     var password: String = "",
     var streamSelfSignedCert: Boolean = false,
     var certFile: String? = null,
-    var certPassword: String = ""
+    var certPassword: String = "",
 ) {
     /**
      * Builds a stream URL based on the connection settings
@@ -35,16 +35,20 @@ data class ConnectionSettings(
 
         return when (protocol) {
             StreamType.RTMP, StreamType.RTMPs -> {
-                val auth = if (username.isNotEmpty() && password.isNotEmpty()) {
-                    "$username:$password@"
-                } else ""
+                val auth =
+                    if (username.isNotEmpty() && password.isNotEmpty()) {
+                        "$username:$password@"
+                    } else {
+                        ""
+                    }
 
                 // Append stream key to path if provided
-                val fullPath = if (streamKey.isNotEmpty()) {
-                    if (safePath.endsWith("/")) "$safePath$streamKey" else "$safePath/$streamKey"
-                } else {
-                    safePath
-                }
+                val fullPath =
+                    if (streamKey.isNotEmpty()) {
+                        if (safePath.endsWith("/")) "$safePath$streamKey" else "$safePath/$streamKey"
+                    } else {
+                        safePath
+                    }
 
                 // Handle empty path
                 val pathSegment = if (fullPath.isNotEmpty()) "/$fullPath" else ""
@@ -53,9 +57,12 @@ data class ConnectionSettings(
             }
 
             StreamType.RTSP, StreamType.RTSPs -> {
-                val auth = if (username.isNotEmpty() && password.isNotEmpty()) {
-                    "$username:$password@"
-                } else ""
+                val auth =
+                    if (username.isNotEmpty() && password.isNotEmpty()) {
+                        "$username:$password@"
+                    } else {
+                        ""
+                    }
 
                 // Handle empty path
                 val pathSegment = if (safePath.isNotEmpty()) "/$safePath" else ""
@@ -65,11 +72,12 @@ data class ConnectionSettings(
 
             StreamType.SRT -> {
                 // Format the streamid according to the required format
-                val streamId = if (username.isNotEmpty() && password.isNotEmpty()) {
-                    "publish:$safePath:$username:$password"
-                } else {
-                    "publish:$safePath"
-                }
+                val streamId =
+                    if (username.isNotEmpty() && password.isNotEmpty()) {
+                        "publish:$safePath:$username:$password"
+                    } else {
+                        "publish:$safePath"
+                    }
 
                 val srtParams = StringBuilder()
                 srtParams.append("streamid=$streamId")
@@ -81,4 +89,4 @@ data class ConnectionSettings(
             StreamType.UDP -> "udp://$formattedAddress$formattedPort"
         }
     }
-} 
+}

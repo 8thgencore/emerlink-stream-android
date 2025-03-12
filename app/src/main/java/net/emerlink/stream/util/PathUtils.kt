@@ -6,19 +6,19 @@ import android.os.Environment
 import java.io.File
 
 object PathUtils {
-    fun getRecordPath(context: Context): File {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+    fun getRecordPath(context: Context): File =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
                 ?: File(context.filesDir, "recordings")
         } else {
-            val folder = File(
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES),
-                "EmerlinkStream"
-            )
+            val folder =
+                File(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES),
+                    "EmerlinkStream",
+                )
             if (!folder.exists()) {
                 folder.mkdirs()
             }
             folder
         }
-    }
-} 
+}

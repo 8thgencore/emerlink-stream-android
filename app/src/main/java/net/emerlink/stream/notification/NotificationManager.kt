@@ -19,8 +19,9 @@ import net.emerlink.stream.util.AppIntentActions
  * Класс для управления уведомлениями приложения.
  * Реализует паттерн Singleton для обеспечения единой точки доступа к уведомлениям.
  */
-class NotificationManager private constructor(private val context: Context) {
-
+class NotificationManager private constructor(
+    private val context: Context,
+) {
     companion object {
         private const val TAG = "NotificationManager"
 
@@ -43,11 +44,10 @@ class NotificationManager private constructor(private val context: Context) {
         @Volatile
         private var INSTANCE: NotificationManager? = null
 
-        fun getInstance(context: Context): NotificationManager {
-            return INSTANCE ?: synchronized(this) {
+        fun getInstance(context: Context): NotificationManager =
+            INSTANCE ?: synchronized(this) {
                 INSTANCE ?: NotificationManager(context.applicationContext).also { INSTANCE = it }
             }
-        }
     }
 
     private val notificationManager =
@@ -63,37 +63,40 @@ class NotificationManager private constructor(private val context: Context) {
      */
     private fun createNotificationChannels() {
         // Канал для сервиса стриминга
-        val serviceChannel = NotificationChannel(
-            NOTIFICATION_CHANNEL_ID,
-            context.getString(R.string.notification_channel_stream_service),
-            android.app.NotificationManager.IMPORTANCE_HIGH
-        ).apply {
-            description = context.getString(R.string.notification_channel_stream_service_description)
-            setShowBadge(true)
-        }
+        val serviceChannel =
+            NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                context.getString(R.string.notification_channel_stream_service),
+                android.app.NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                description = context.getString(R.string.notification_channel_stream_service_description)
+                setShowBadge(true)
+            }
 
         // Канал для ошибок
-        val errorChannel = NotificationChannel(
-            ERROR_CHANNEL_ID,
-            context.getString(R.string.notification_channel_errors),
-            android.app.NotificationManager.IMPORTANCE_HIGH
-        ).apply {
-            description = context.getString(R.string.notification_channel_errors_description)
-            enableLights(true)
-            enableVibration(true)
-            setShowBadge(true)
-            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-        }
+        val errorChannel =
+            NotificationChannel(
+                ERROR_CHANNEL_ID,
+                context.getString(R.string.notification_channel_errors),
+                android.app.NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                description = context.getString(R.string.notification_channel_errors_description)
+                enableLights(true)
+                enableVibration(true)
+                setShowBadge(true)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            }
 
         // Канал для уведомлений о фото
-        val photoChannel = NotificationChannel(
-            PHOTO_CHANNEL_ID,
-            context.getString(R.string.notification_channel_photos),
-            android.app.NotificationManager.IMPORTANCE_DEFAULT
-        ).apply {
-            description = context.getString(R.string.notification_channel_photos_description)
-            setShowBadge(true)
-        }
+        val photoChannel =
+            NotificationChannel(
+                PHOTO_CHANNEL_ID,
+                context.getString(R.string.notification_channel_photos),
+                android.app.NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = context.getString(R.string.notification_channel_photos_description)
+                setShowBadge(true)
+            }
 
         // Регистрируем все каналы
         notificationManager.createNotificationChannels(listOf(serviceChannel, errorChannel, photoChannel))
@@ -107,41 +110,47 @@ class NotificationManager private constructor(private val context: Context) {
         ongoing: Boolean,
         actionType: Int = ACTION_ALL,
         isError: Boolean = false,
-        isPhoto: Boolean = false
+        isPhoto: Boolean = false,
     ): Notification {
         // Создаем Intent для открытия приложения при нажатии на уведомление
-        val notificationIntent = Intent(context, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        }
+        val notificationIntent =
+            Intent(context, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
 
         // Настраиваем флаги для PendingIntent
-        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        } else {
-            PendingIntent.FLAG_UPDATE_CURRENT
-        }
+        val flags =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
 
         val pendingIntent = PendingIntent.getActivity(context, 0, notificationIntent, flags)
 
         // Выбираем канал в зависимости от типа уведомления
-        val channelId = when {
-            isError -> ERROR_CHANNEL_ID
-            isPhoto -> PHOTO_CHANNEL_ID
-            else -> NOTIFICATION_CHANNEL_ID
-        }
+        val channelId =
+            when {
+                isError -> ERROR_CHANNEL_ID
+                isPhoto -> PHOTO_CHANNEL_ID
+                else -> NOTIFICATION_CHANNEL_ID
+            }
 
         // Строим базовое уведомление
-        val builder = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(context.getString(R.string.app_name))
-            .setContentText(text)
-            .setContentIntent(pendingIntent)
-            .setOngoing(ongoing)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+        val builder =
+            NotificationCompat
+                .Builder(context, channelId)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(context.getString(R.string.app_name))
+                .setContentText(text)
+                .setContentIntent(pendingIntent)
+                .setOngoing(ongoing)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
 
         // Настраиваем специфические параметры для ошибок
         if (isError) {
-            builder.setCategory(NotificationCompat.CATEGORY_ERROR)
+            builder
+                .setCategory(NotificationCompat.CATEGORY_ERROR)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setAutoCancel(false)
                 .setDefaults(NotificationCompat.DEFAULT_ALL)
@@ -151,32 +160,40 @@ class NotificationManager private constructor(private val context: Context) {
         when (actionType) {
             ACTION_ALL -> {
                 // Действие "Стоп"
-                val stopIntent = Intent(AppIntentActions.ACTION_STOP_STREAM).apply {
-                    // Явно указываем компонент для Intent
-                    setPackage(context.packageName)
-                }
-                val stopPendingIntent = PendingIntent.getBroadcast(
-                    context, 0, stopIntent, 
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                    } else {
-                        PendingIntent.FLAG_UPDATE_CURRENT
+                val stopIntent =
+                    Intent(AppIntentActions.ACTION_STOP_STREAM).apply {
+                        // Явно указываем компонент для Intent
+                        setPackage(context.packageName)
                     }
-                )
+                val stopPendingIntent =
+                    PendingIntent.getBroadcast(
+                        context,
+                        0,
+                        stopIntent,
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                        } else {
+                            PendingIntent.FLAG_UPDATE_CURRENT
+                        },
+                    )
 
                 // Действие "Выход"
-                val exitIntent = Intent(AppIntentActions.ACTION_EXIT_APP).apply {
-                    // Явно указываем компонент для Intent
-                    setPackage(context.packageName)
-                }
-                val exitPendingIntent = PendingIntent.getBroadcast(
-                    context, 1, exitIntent, 
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                    } else {
-                        PendingIntent.FLAG_UPDATE_CURRENT
+                val exitIntent =
+                    Intent(AppIntentActions.ACTION_EXIT_APP).apply {
+                        // Явно указываем компонент для Intent
+                        setPackage(context.packageName)
                     }
-                )
+                val exitPendingIntent =
+                    PendingIntent.getBroadcast(
+                        context,
+                        1,
+                        exitIntent,
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                        } else {
+                            PendingIntent.FLAG_UPDATE_CURRENT
+                        },
+                    )
 
                 // Добавляем обе кнопки
                 builder.addAction(R.drawable.ic_stop, context.getString(R.string.stop), stopPendingIntent)
@@ -185,40 +202,48 @@ class NotificationManager private constructor(private val context: Context) {
 
             ACTION_STOP_ONLY -> {
                 // Только действие "Стоп"
-                val stopIntent = Intent(AppIntentActions.ACTION_STOP_STREAM).apply {
-                    // Явно указываем компонент для Intent
-                    setPackage(context.packageName)
-                }
-                val stopPendingIntent = PendingIntent.getBroadcast(
-                    context, 0, stopIntent, 
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                    } else {
-                        PendingIntent.FLAG_UPDATE_CURRENT
+                val stopIntent =
+                    Intent(AppIntentActions.ACTION_STOP_STREAM).apply {
+                        // Явно указываем компонент для Intent
+                        setPackage(context.packageName)
                     }
-                )
+                val stopPendingIntent =
+                    PendingIntent.getBroadcast(
+                        context,
+                        0,
+                        stopIntent,
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                        } else {
+                            PendingIntent.FLAG_UPDATE_CURRENT
+                        },
+                    )
                 builder.addAction(R.drawable.ic_stop, context.getString(R.string.stop), stopPendingIntent)
             }
 
             ACTION_NONE -> {
                 // Для ошибок добавляем кнопку "ОК" для скрытия уведомления
                 if (isError) {
-                    val dismissIntent = Intent(AppIntentActions.ACTION_DISMISS_ERROR).apply {
-                        // Явно указываем компонент для Intent
-                        setPackage(context.packageName)
-                    }
-                    val dismissPendingIntent = PendingIntent.getBroadcast(
-                        context, 2, dismissIntent, 
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                        } else {
-                            PendingIntent.FLAG_UPDATE_CURRENT
+                    val dismissIntent =
+                        Intent(AppIntentActions.ACTION_DISMISS_ERROR).apply {
+                            // Явно указываем компонент для Intent
+                            setPackage(context.packageName)
                         }
-                    )
+                    val dismissPendingIntent =
+                        PendingIntent.getBroadcast(
+                            context,
+                            2,
+                            dismissIntent,
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                            } else {
+                                PendingIntent.FLAG_UPDATE_CURRENT
+                            },
+                        )
                     builder.addAction(
                         android.R.drawable.ic_menu_close_clear_cancel,
                         context.getString(android.R.string.ok),
-                        dismissPendingIntent
+                        dismissPendingIntent,
                     )
                 }
             }
@@ -230,9 +255,13 @@ class NotificationManager private constructor(private val context: Context) {
     /**
      * Показывает уведомление о стриминге
      */
-    fun showStreamingNotification(text: String, ongoing: Boolean, actionType: Int = ACTION_ALL) {
+    fun showStreamingNotification(
+        text: String,
+        ongoing: Boolean,
+        actionType: Int = ACTION_ALL,
+    ) {
         Log.d(TAG, "Showing streaming notification: $text")
-        
+
         try {
             val notification = createNotification(text, ongoing, actionType)
             notificationManager.notify(NOTIFICATION_ID, notification)
@@ -244,9 +273,12 @@ class NotificationManager private constructor(private val context: Context) {
     /**
      * Показывает уведомление об ошибке
      */
-    fun showErrorNotification(text: String, actionType: Int = ACTION_NONE) {
+    fun showErrorNotification(
+        text: String,
+        actionType: Int = ACTION_NONE,
+    ) {
         Log.d(TAG, "Showing error notification: $text")
-        
+
         try {
             val notification = createNotification(text, false, actionType, true)
             notificationManager.notify(ERROR_NOTIFICATION_ID, notification)
@@ -260,13 +292,18 @@ class NotificationManager private constructor(private val context: Context) {
      */
     fun showPhotoNotification(text: String) {
         Log.d(TAG, "Showing photo notification: $text")
-        
+
         try {
-            val notification = createNotification(
-                text, false, ACTION_NONE, isError = false, isPhoto = true
-            )
+            val notification =
+                createNotification(
+                    text,
+                    false,
+                    ACTION_NONE,
+                    isError = false,
+                    isPhoto = true,
+                )
             notificationManager.notify(PHOTO_NOTIFICATION_ID, notification)
-            
+
             // Auto-hide photo notification after 3 seconds
             handler.postDelayed({ clearPhotoNotifications() }, 3000)
         } catch (e: Exception) {
@@ -319,5 +356,4 @@ class NotificationManager private constructor(private val context: Context) {
             Log.e(TAG, "Error clearing all notifications: ${e.message}", e)
         }
     }
-
 }

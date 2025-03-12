@@ -2,9 +2,9 @@ package net.emerlink.stream
 
 import android.Manifest
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.os.Build
 import android.os.Bundle
-import android.content.pm.ActivityInfo
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -24,32 +24,28 @@ import net.emerlink.stream.ui.theme.EmerlinkStreamTheme
 import net.emerlink.stream.util.PermissionUtil
 
 class MainActivity : ComponentActivity() {
+    private val requiredPermissions =
+        mutableListOf(
+            Manifest.permission.CAMERA,
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ).apply {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }.toTypedArray()
 
-    private val requiredPermissions = mutableListOf(
-        Manifest.permission.CAMERA,
-        Manifest.permission.RECORD_AUDIO,
-        Manifest.permission.ACCESS_FINE_LOCATION
-    ).apply {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            add(Manifest.permission.POST_NOTIFICATIONS)
-        }
-    }.toTypedArray()
-
-    // Регистрируем обработчик для множественного запроса разрешений
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    private val requestPermissionsLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { _ ->
-        // Если все необходимые разрешения получены или пользователь отказал
-        // Всё равно запускаем интерфейс
-        startMainUI()
-    }
+    private val requestPermissionsLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { _ -> startMainUI() }
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,35 +54,31 @@ class MainActivity : ComponentActivity() {
 
         // Set default orientation based on preferences
         val preferences = PreferenceManager.getDefaultSharedPreferences(this)
-        val orientation = preferences.getString(
-            PreferenceKeys.SCREEN_ORIENTATION,
-            PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
-        ) ?: PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
+        val orientation =
+            preferences.getString(
+                PreferenceKeys.SCREEN_ORIENTATION,
+                PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
+            ) ?: PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
 
         // Apply orientation
-        requestedOrientation = when (orientation) {
-            "landscape" -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-            "portrait" -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-            else -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-        }
+        requestedOrientation =
+            when (orientation) {
+                "landscape" -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                "portrait" -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                else -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            }
 
-        // Получаем флаг, прошел ли пользователь онбординг
         val isFirstRun = preferences.getBoolean(PreferenceKeys.FIRST_RUN, true)
-
-        // Запускаем онбординг только если это первый запуск
         if (isFirstRun) {
             startOnboarding()
             return
         }
 
-        // Проверяем разрешения после онбординга
         if (!PermissionUtil.hasPermissions(this, requiredPermissions)) {
-            // Запрашиваем разрешения с помощью нового API
             requestPermissionsLauncher.launch(requiredPermissions)
             return
         }
 
-        // Если все разрешения уже есть, запускаем обычный интерфейс
         startMainUI()
     }
 

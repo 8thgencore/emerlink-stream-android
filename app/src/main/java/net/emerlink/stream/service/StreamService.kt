@@ -2,22 +2,14 @@ package net.emerlink.stream.service
 
 import android.annotation.SuppressLint
 import android.app.Service
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import android.content.SharedPreferences
+import android.content.*
 import android.graphics.Bitmap
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.location.LocationManager
 import android.media.MediaScannerConnection
-import android.os.Binder
-import android.os.Build
-import android.os.Handler
-import android.os.IBinder
-import android.os.Looper
+import android.os.*
 import android.util.Log
 import android.view.MotionEvent
 import androidx.lifecycle.MutableLiveData
@@ -40,10 +32,12 @@ import net.emerlink.stream.util.ErrorHandler
 import net.emerlink.stream.util.PathUtils
 import java.io.File
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.util.*
 
-class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPreferenceChangeListener,
+class StreamService :
+    Service(),
+    ConnectChecker,
+    SharedPreferences.OnSharedPreferenceChangeListener,
     SensorEventListener {
     companion object {
         private const val TAG = "StreamService"
@@ -141,51 +135,50 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
         getCameraIds()
 
-        val intentFilter = IntentFilter().apply {
-            addAction(AppIntentActions.ACTION_START_STREAM)
-            addAction(AppIntentActions.ACTION_STOP_STREAM)
-            addAction(AppIntentActions.ACTION_EXIT_APP)
-            addAction(AppIntentActions.ACTION_DISMISS_ERROR)
-        }
+        val intentFilter =
+            IntentFilter().apply {
+                addAction(AppIntentActions.ACTION_START_STREAM)
+                addAction(AppIntentActions.ACTION_STOP_STREAM)
+                addAction(AppIntentActions.ACTION_EXIT_APP)
+                addAction(AppIntentActions.ACTION_DISMISS_ERROR)
+            }
 
-        val commandReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) {
-                Log.d(TAG, "Получен интент: ${intent.action}")
-                try {
-                    when (intent.action) {
-                        AppIntentActions.ACTION_START_STREAM -> startStream()
-                        AppIntentActions.ACTION_STOP_STREAM -> {
-                            Log.d(
-                                TAG, "Обработка команды остановки стрима из BroadcastReceiver"
-                            )
-                            notificationManager.clearStreamingNotifications()
-                            stopStream(null, null)
-                        }
+        val commandReceiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(
+                    context: Context,
+                    intent: Intent,
+                ) {
+                    Log.d(TAG, "Received intent: ${intent.action}")
+                    try {
+                        when (intent.action) {
+                            AppIntentActions.ACTION_START_STREAM -> startStream()
 
-                        AppIntentActions.ACTION_EXIT_APP -> {
-                            Log.d(
-                                TAG, "Обработка команды выхода из приложения из BroadcastReceiver"
-                            )
-                            exiting = true
-                            notificationManager.clearAllNotifications()
-                            stopStream(null, null)
-                            stopSelf()
-                        }
+                            AppIntentActions.ACTION_STOP_STREAM -> {
+                                notificationManager.clearStreamingNotifications()
+                                stopStream(null, null)
+                            }
 
-                        AppIntentActions.ACTION_DISMISS_ERROR -> {
-                            Log.d(
-                                TAG, "Обработка команды скрытия ошибки из BroadcastReceiver"
-                            )
-                            notificationManager.clearErrorNotifications()
+                            AppIntentActions.ACTION_EXIT_APP -> {
+                                exiting = true
+                                notificationManager.clearAllNotifications()
+                                stopStream(null, null)
+                                stopSelf()
+                            }
+
+                            AppIntentActions.ACTION_DISMISS_ERROR -> {
+                                notificationManager.clearErrorNotifications()
+                            }
                         }
+                    } catch (e: Exception) {
+                        Log.e(
+                            TAG,
+                            "Error processing intent in BroadcastReceiver: ${e.message}",
+                            e
+                        )
                     }
-                } catch (e: Exception) {
-                    Log.e(
-                        TAG, "Ошибка при обработке интента в BroadcastReceiver: ${e.message}", e
-                    )
                 }
             }
-        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(commandReceiver, intentFilter, RECEIVER_NOT_EXPORTED)
@@ -196,20 +189,24 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         this.commandReceiver = commandReceiver
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    override fun onStartCommand(
+        intent: Intent?,
+        flags: Int,
+        startId: Int,
+    ): Int {
         Log.d(TAG, "onStartCommand: ${intent?.action}")
-        
+
         intent?.action?.let { action ->
             Log.d(TAG, "Processing action: $action")
             try {
                 when (action) {
                     AppIntentActions.ACTION_START_STREAM -> startStream()
-                    
+
                     AppIntentActions.ACTION_STOP_STREAM -> {
                         Log.d(TAG, "Processing stop stream command")
                         stopStream(null, null)
                     }
-                    
+
                     AppIntentActions.ACTION_EXIT_APP -> {
                         Log.d(TAG, "Processing exit app command")
                         exiting = true
@@ -217,12 +214,12 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                         stopStream(null, null)
                         stopSelf()
                     }
-                    
+
                     AppIntentActions.ACTION_DISMISS_ERROR -> {
                         Log.d(TAG, "Processing dismiss error command")
                         notificationManager.clearErrorNotifications()
                     }
-                    
+
                     else -> Log.d(TAG, "Unknown command: $action")
                 }
             } catch (e: Exception) {
@@ -278,15 +275,17 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             if (streamManager.isStreaming()) {
                 Log.d(TAG, "Принудительная остановка стрима из-за ошибки подключения")
                 streamManager.stopStream()
-                
+
                 // Send broadcast to update UI immediately
-                LocalBroadcastManager.getInstance(this)
+                LocalBroadcastManager
+                    .getInstance(this)
                     .sendBroadcast(Intent(AppIntentActions.BROADCAST_STREAM_STOPPED))
 
-                val errorText = when {
-                    reason.contains("461") -> getString(R.string.error_unsupported_transport)
-                    else -> getString(R.string.connection_failed) + ": " + reason
-                }
+                val errorText =
+                    when {
+                        reason.contains("461") -> getString(R.string.error_unsupported_transport)
+                        else -> getString(R.string.connection_failed) + ": " + reason
+                    }
 
                 Log.d(TAG, "Создание уведомления об ошибке: $errorText")
 
@@ -296,7 +295,8 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 applicationContext.sendBroadcast(intent)
 
                 Handler(Looper.getMainLooper()).postDelayed(
-                    { stopStream(null, null, false) }, 500
+                    { stopStream(null, null, false) },
+                    500
                 )
             }
 
@@ -307,9 +307,10 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
             try {
                 streamManager.stopStream()
-                
+
                 // Send broadcast even in case of error
-                LocalBroadcastManager.getInstance(this)
+                LocalBroadcastManager
+                    .getInstance(this)
                     .sendBroadcast(Intent(AppIntentActions.BROADCAST_STREAM_STOPPED))
 
                 notificationManager.showErrorNotification("Критическая ошибка: ${e.message}")
@@ -324,9 +325,10 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     override fun onConnectionSuccess() {
         if (streamSettings.adaptiveBitrate) {
             Log.d(TAG, "Setting adaptive bitrate")
-            bitrateAdapter = BitrateAdapter { bitrate ->
-                streamManager.setVideoBitrateOnFly(bitrate)
-            }
+            bitrateAdapter =
+                BitrateAdapter { bitrate ->
+                    streamManager.setVideoBitrateOnFly(bitrate)
+                }
             bitrateAdapter?.setMaxBitrate(streamSettings.bitrate * 1024)
         } else {
             Log.d(TAG, "Not doing adaptive bitrate")
@@ -360,9 +362,13 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         if (hasGravityData && hasGeomagneticData) {
             val identityMatrix = FloatArray(9)
             val rotationMatrix = FloatArray(9)
-            val success = SensorManager.getRotationMatrix(
-                rotationMatrix, identityMatrix, gravityData, geomagneticData
-            )
+            val success =
+                SensorManager.getRotationMatrix(
+                    rotationMatrix,
+                    identityMatrix,
+                    gravityData,
+                    geomagneticData
+                )
 
             if (success) {
                 val orientationMatrix = FloatArray(3)
@@ -380,9 +386,16 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         }
     }
 
-    override fun onAccuracyChanged(sensor: android.hardware.Sensor?, accuracy: Int) {}
+    override fun onAccuracyChanged(
+        sensor: android.hardware.Sensor?,
+        accuracy: Int,
+    ) {
+    }
 
-    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences, key: String?) {
+    override fun onSharedPreferenceChanged(
+        sharedPreferences: SharedPreferences,
+        key: String?,
+    ) {
         when (key) {
             PreferenceKeys.VIDEO_RESOLUTION -> {
                 Log.d(TAG, "Обнаружено изменение разрешения в настройках")
@@ -497,18 +510,22 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             val filePath = "${folder.absolutePath}/$filename"
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val contentValues = android.content.ContentValues().apply {
-                    put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, filename)
-                    put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-                    put(
-                        android.provider.MediaStore.Images.Media.RELATIVE_PATH, "Pictures/EmerlinkStream"
-                    )
-                }
+                val contentValues =
+                    android.content.ContentValues().apply {
+                        put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, filename)
+                        put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                        put(
+                            android.provider.MediaStore.Images.Media.RELATIVE_PATH,
+                            "Pictures/EmerlinkStream"
+                        )
+                    }
 
                 val resolver = applicationContext.contentResolver
-                val uri = resolver.insert(
-                    android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues
-                )
+                val uri =
+                    resolver.insert(
+                        android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                        contentValues
+                    )
 
                 uri?.let {
                     resolver.openOutputStream(it)?.use { outputStream ->
@@ -530,7 +547,10 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
                 fos.close()
 
                 MediaScannerConnection.scanFile(
-                    applicationContext, arrayOf(file.absolutePath), arrayOf("image/jpeg"), null
+                    applicationContext,
+                    arrayOf(file.absolutePath),
+                    arrayOf("image/jpeg"),
+                    null
                 )
 
                 Log.d(TAG, "Отправка бродкаста ACTION_TOOK_PICTURE")
@@ -614,7 +634,10 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             try {
                 if (hasLocationPermission()) {
                     locManager?.requestLocationUpdates(
-                        LocationManager.GPS_PROVIDER, 1000, 1f, locListener!!
+                        LocationManager.GPS_PROVIDER,
+                        1000,
+                        1f,
+                        locListener!!
                     )
                 } else {
                     Log.w(TAG, "Отсутствуют разрешения на местоположение, отслеживание отключено")
@@ -635,7 +658,7 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
         try {
             Log.d(TAG, "Starting streaming")
 
-            val streamUrl = streamSettings.connection.buildStreamUrl();
+            val streamUrl = streamSettings.connection.buildStreamUrl()
             // Log the URL (remove sensitive info in production)
             Log.d(TAG, "Stream URL: ${streamUrl.replace(Regex(":[^:/]*:[^:/]*"), ":****:****")}")
 
@@ -650,7 +673,9 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             )
 
             notificationManager.showStreamingNotification(
-                getString(R.string.streaming), true, NotificationManager.ACTION_STOP_ONLY
+                getString(R.string.streaming),
+                true,
+                NotificationManager.ACTION_STOP_ONLY
             )
         } catch (e: Exception) {
             Log.e(TAG, "Error starting streaming: ${e.message}", e)
@@ -676,11 +701,17 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
 
         streamManager.startRecord(filePath)
         notificationManager.showStreamingNotification(
-            getString(R.string.recording), true, NotificationManager.ACTION_STOP_ONLY
+            getString(R.string.recording),
+            true,
+            NotificationManager.ACTION_STOP_ONLY
         )
     }
 
-    fun stopStream(message: String?, action: String?, isError: Boolean = false) {
+    fun stopStream(
+        message: String?,
+        action: String?,
+        isError: Boolean = false,
+    ) {
         Log.d(TAG, "Stopping stream with message: $message, isError: $isError")
 
         try {
@@ -691,9 +722,10 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             if (streamManager.isStreaming()) {
                 Log.d(TAG, "Stopping active stream")
                 streamManager.stopStream()
-                
+
                 // Notify UI about stream stop
-                LocalBroadcastManager.getInstance(this)
+                LocalBroadcastManager
+                    .getInstance(this)
                     .sendBroadcast(Intent(AppIntentActions.BROADCAST_STREAM_STOPPED))
             }
 
@@ -740,15 +772,16 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error in stopStream: ${e.message}", e)
-            
+
             // Send broadcast to update UI even on error
-            LocalBroadcastManager.getInstance(this)
+            LocalBroadcastManager
+                .getInstance(this)
                 .sendBroadcast(Intent(AppIntentActions.BROADCAST_STREAM_STOPPED))
-            
+
             // Show error notification
             val errorMsg = message?.let { "$it (${e.message})" } ?: e.message ?: "Unknown error"
             notificationManager.showErrorNotification(errorMsg)
-            
+
             // Forward error to handler
             errorHandler.handleStreamError(e)
         }
@@ -773,11 +806,14 @@ class StreamService : Service(), ConnectChecker, SharedPreferences.OnSharedPrefe
     }
 
     /** Проверяет наличие разрешений на доступ к местоположению */
-    private fun hasLocationPermission(): Boolean {
-        return (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED || checkSelfPermission(
-            android.Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED)
-    }
+    private fun hasLocationPermission(): Boolean =
+        (
+            checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED ||
+                checkSelfPermission(
+                    android.Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        )
 
     /** Полностью останавливает камеру и освобождает все ресурсы */
     fun releaseCamera() {

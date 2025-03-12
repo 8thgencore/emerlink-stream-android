@@ -43,4 +43,4 @@ interface ICameraManager {
      * Checks if the lantern/flashlight is currently enabled
      */
     fun isLanternEnabled(): Boolean
-} 
+}

@@ -7,7 +7,9 @@ import android.location.LocationListener
 import android.os.Bundle
 import android.util.Log
 
-class StreamLocationListener(private val context: Context) : LocationListener {
+class StreamLocationListener(
+    private val context: Context,
+) : LocationListener {
     companion object {
         private const val TAG = "StreamLocationListener"
         const val ACTION_LOCATION_CHANGE = "net.emerlink.stream.LOCATION_CHANGE"
@@ -35,7 +37,11 @@ class StreamLocationListener(private val context: Context) : LocationListener {
     }
 
     @Deprecated("Deprecated in Java")
-    override fun onStatusChanged(provider: String, status: Int, extras: Bundle?) {
+    override fun onStatusChanged(
+        provider: String,
+        status: Int,
+        extras: Bundle?,
+    ) {
         Log.d(TAG, "Provider status changed: $provider, status: $status")
     }
 }

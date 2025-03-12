@@ -139,4 +139,4 @@ object PreferenceKeys {
     // New constants
     const val SCREEN_ORIENTATION = "screen_orientation"
     const val SCREEN_ORIENTATION_DEFAULT = "landscape"
-} 
+}

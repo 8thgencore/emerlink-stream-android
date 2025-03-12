@@ -12,7 +12,7 @@ import net.emerlink.stream.util.ErrorState
 fun ErrorDialog(
     errorState: ErrorState,
     onDismiss: () -> Unit,
-    onRetry: (() -> Unit)? = null
+    onRetry: (() -> Unit)? = null,
 ) {
     if (errorState !is ErrorState.None) {
         AlertDialog(
@@ -33,7 +33,7 @@ fun ErrorDialog(
                 Button(onClick = onDismiss) {
                     Text(text = stringResource(id = R.string.dismiss))
                 }
-            }
+            },
         )
     }
-} 
+}
