@@ -5,12 +5,10 @@ package net.emerlink.stream.service
 import android.annotation.SuppressLint
 import android.app.Service
 import android.content.*
-import android.graphics.Bitmap
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.location.LocationManager
-import android.media.MediaScannerConnection
 import android.os.*
 import android.util.Log
 import android.view.MotionEvent
@@ -28,13 +26,10 @@ import net.emerlink.stream.notification.NotificationManager
 import net.emerlink.stream.service.camera.CameraManager
 import net.emerlink.stream.service.camera.ICameraManager
 import net.emerlink.stream.service.location.StreamLocationListener
+import net.emerlink.stream.service.media.MediaManager
 import net.emerlink.stream.service.stream.StreamManager
 import net.emerlink.stream.util.AppIntentActions
 import net.emerlink.stream.util.ErrorHandler
-import net.emerlink.stream.util.PathUtils
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.*
 
 class StreamService :
     Service(),
@@ -44,8 +39,8 @@ class StreamService :
     companion object {
         private const val TAG = "StreamService"
 
+        // TODO: зачем нужена эта переменная
         val observer = MutableLiveData<StreamService?>()
-        val screenshotTaken = MutableLiveData<Boolean>()
     }
 
     private lateinit var preferences: SharedPreferences
@@ -53,25 +48,23 @@ class StreamService :
     private lateinit var errorHandler: ErrorHandler
     internal lateinit var streamManager: StreamManager
     private lateinit var cameraManager: ICameraManager
+    private lateinit var mediaManager: MediaManager
 
     lateinit var streamSettings: StreamSettings
 
     private var bitrateAdapter: BitrateAdapter? = null
 
+    // TODO: зачем нужена эта переменная
     private var exiting = false
+
+    // TODO: зачем нуженен binder
     private val binder = LocalBinder()
 
     private var currentCameraId = 0
-    private var isFlashOn = false
-
-    private lateinit var folder: File
-    private var currentDateAndTime: String = ""
 
     private var locListener: StreamLocationListener? = null
     private var locManager: LocationManager? = null
 
-    private var prepareAudio = false
-    private var prepareVideo = false
     private var openGlView: OpenGlView? = null
     private val cameraIds = ArrayList<String>()
 
@@ -99,8 +92,6 @@ class StreamService :
         preferences = PreferenceManager.getDefaultSharedPreferences(this)
         preferences.registerOnSharedPreferenceChangeListener(this)
 
-        folder = PathUtils.getRecordPath(this)
-
         streamSettings = StreamSettings()
 
         loadPreferences()
@@ -109,6 +100,7 @@ class StreamService :
         streamManager.setStreamType(streamSettings.connection.protocol)
 
         cameraManager = CameraManager(this, { streamManager.getVideoSource() }, { streamManager.getCameraInterface() })
+        mediaManager = MediaManager(this, streamManager, notificationManager)
 
         observer.postValue(this)
 
@@ -285,9 +277,6 @@ class StreamService :
                     500
                 )
             }
-
-            prepareAudio = false
-            prepareVideo = false
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при обработке сбоя подключения: ${e.message}", e)
 
@@ -413,7 +402,6 @@ class StreamService :
         }
     }
 
-    /** Останавливает предпросмотр камеры */
     fun stopPreview() {
         if (!isPreviewActive) {
             Log.d(TAG, "Предпросмотр не активен, игнорируем запрос остановки")
@@ -430,17 +418,8 @@ class StreamService :
         }
     }
 
-    fun toggleLantern(): Boolean {
-        Log.d(TAG, "Calling toggleLantern")
-        val result = cameraManager.toggleLantern()
-        isFlashOn = result
-        return result
-    }
+    fun toggleLantern(): Boolean = cameraManager.toggleLantern()
 
-    /**
-     * Switches between front and back cameras
-     * @return true if camera switched successfully, false otherwise
-     */
     fun switchCamera(): Boolean {
         try {
             Log.d(TAG, "Service: Switching camera")
@@ -460,101 +439,11 @@ class StreamService :
         }
     }
 
-    fun setZoom(motionEvent: MotionEvent) {
-        cameraManager.setZoom(motionEvent)
-    }
+    fun setZoom(motionEvent: MotionEvent) = cameraManager.setZoom(motionEvent)
 
-    fun tapToFocus(motionEvent: MotionEvent) {
-        cameraManager.tapToFocus(motionEvent)
-    }
+    fun tapToFocus(motionEvent: MotionEvent) = cameraManager.tapToFocus(motionEvent)
 
-    fun takePhoto() {
-        try {
-            Log.d(TAG, "Делаем снимок")
-
-            val glInterface = streamManager.getGlInterface()
-
-            if (glInterface is com.pedro.library.view.GlInterface) {
-                glInterface.takePhoto { bitmap ->
-                    val handlerThread = HandlerThread("HandlerThread")
-                    handlerThread.start()
-                    Handler(handlerThread.looper).post { saveBitmapToGallery(bitmap) }
-                }
-            } else {
-                Log.e(TAG, "glInterface неправильного типа: ${glInterface.javaClass.name}")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка при создании снимка: ${e.message}", e)
-        }
-    }
-
-    private fun saveBitmapToGallery(bitmap: Bitmap) {
-        try {
-            val dateFormat = SimpleDateFormat("yyyy-MM-dd_HH:mm:ss", Locale.getDefault())
-            val currentDateAndTime = dateFormat.format(Date())
-            val filename = "EmerlinkStream_$currentDateAndTime.jpg"
-            val filePath = "${folder.absolutePath}/$filename"
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val contentValues =
-                    ContentValues().apply {
-                        put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, filename)
-                        put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-                        put(
-                            android.provider.MediaStore.Images.Media.RELATIVE_PATH,
-                            "Pictures/EmerlinkStream"
-                        )
-                    }
-
-                val resolver = applicationContext.contentResolver
-                val uri =
-                    resolver.insert(
-                        android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                        contentValues
-                    )
-
-                uri?.let {
-                    resolver.openOutputStream(it)?.use { outputStream ->
-                        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
-                        Log.d(TAG, "Отправка бродкаста ACTION_TOOK_PICTURE")
-                        applicationContext.sendBroadcast(Intent(AppIntentActions.ACTION_TOOK_PICTURE))
-                        notificationManager.showPhotoNotification(getString(R.string.saved_photo))
-                    } ?: run {
-                        notificationManager.showErrorNotification(
-                            getString(R.string.saved_photo_failed)
-                        )
-                    }
-                }
-            } else {
-                val file = File(filePath)
-                val fos = java.io.FileOutputStream(file)
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos)
-                fos.flush()
-                fos.close()
-
-                MediaScannerConnection.scanFile(
-                    applicationContext,
-                    arrayOf(file.absolutePath),
-                    arrayOf("image/jpeg"),
-                    null
-                )
-
-                Log.d(TAG, "Отправка бродкаста ACTION_TOOK_PICTURE")
-                applicationContext.sendBroadcast(Intent(AppIntentActions.ACTION_TOOK_PICTURE))
-                notificationManager.showPhotoNotification(getString(R.string.saved_photo))
-            }
-
-            Handler(Looper.getMainLooper()).post {
-                Log.d(TAG, "Уведомление через LiveData о скриншоте")
-                screenshotTaken.value = true
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка при сохранении фото: ${e.message}", e)
-            notificationManager.showErrorNotification(
-                getString(R.string.saved_photo_failed) + ": " + e.message
-            )
-        }
-    }
+    fun takePhoto() = mediaManager.takePhoto()
 
     private fun getCameraIds() {
         if (streamSettings.videoSource == PreferenceKeys.VIDEO_SOURCE_DEFAULT) {
@@ -601,20 +490,13 @@ class StreamService :
         }
 
         if (streamManager.prepareAudio() && streamManager.prepareVideo()) {
-            prepareAudio = true
-            prepareVideo = true
-
-            val dateFormat = SimpleDateFormat("yyyy-MM-dd_HH:mm:ss", Locale.getDefault())
-            currentDateAndTime = dateFormat.format(Date())
-
-            // Make sure to apply the correct orientation before starting the stream
             streamManager.switchStreamResolution()
 
             if (streamSettings.stream) {
                 startStreaming()
             }
             if (streamSettings.record) {
-                startRecording()
+                mediaManager.startRecording()
             }
 
             try {
@@ -669,30 +551,6 @@ class StreamService :
         }
     }
 
-    private fun startRecording() {
-        Log.d(TAG, "Starting recording")
-
-        if (!folder.exists()) {
-            if (!folder.mkdirs()) {
-                Log.e(TAG, "Failed to create folder: ${folder.absolutePath}")
-                notificationManager.showErrorNotification(getString(R.string.failed_to_record))
-                return
-            }
-        }
-
-        val filename = "EmerlinkStream_$currentDateAndTime.mp4"
-        val filePath = "${folder.absolutePath}/$filename"
-
-        Log.d(TAG, "Recording to: $filePath")
-
-        streamManager.startRecord(filePath)
-        notificationManager.showStreamingNotification(
-            getString(R.string.recording),
-            true,
-            NotificationManager.ACTION_STOP_ONLY
-        )
-    }
-
     fun stopStream(
         message: String?,
         action: String?,
@@ -718,12 +576,8 @@ class StreamService :
             // Stop recording if active
             if (streamManager.isRecording()) {
                 Log.d(TAG, "Stopping active recording")
-                streamManager.stopRecord()
+                mediaManager.stopRecording()
             }
-
-            // Reset preparation flags
-            prepareAudio = false
-            prepareVideo = false
 
             // Stop location updates
             locListener?.let {
