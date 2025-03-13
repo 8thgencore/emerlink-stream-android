@@ -6,10 +6,12 @@
     <string name="settings">Настройки</string>
     <string name="stop">Стоп</string>
     <string name="exit">Выход</string>
+    <string name="yes">Да</string>
+    <string name="cancel">Отмена</string>
     
     <!-- Notifications -->
     <string name="ready_to_stream">Готов к стримингу</string>
-    <string name="streaming">Стриминг</string>
+    <string name="streaming">Стрим начался</string>
     <string name="recording">Запись</string>
     <string name="failed_to_prepare">Не удалось подготовить аудио или видео</string>
     <string name="failed_to_record">Не удалось начать запись</string>
@@ -25,15 +27,19 @@
     <string name="camera_permission_description">Для стриминга видео необходим доступ к камере устройства</string>
     <string name="microphone_permission">Доступ к микрофону</string>
     <string name="microphone_permission_description">Для стриминга аудио необходим доступ к микрофону устройства</string>
+    <string name="camera_and_mic_permissions">Доступ к камере и микрофону</string>
+    <string name="camera_and_mic_permissions_description">Для стриминга видео и аудио необходим доступ к камере и микрофону устройства</string>
     <string name="location_permission">Доступ к местоположению</string>
     <string name="location_permission_description">Для отслеживания местоположения необходим доступ к GPS</string>
     <string name="storage_permission">Доступ к хранилищу</string>
     <string name="storage_permission_description">Для сохранения записей и фото необходим доступ к хранилищу</string>
     <string name="notification_permission">Доступ к уведомлениям</string>
     <string name="notification_permission_description">Для отображения статуса стриминга необходим доступ к уведомлениям</string>
+    <string name="all_set">Всё готово!</string>
+    <string name="ready_to_start_description">Теперь вы можете начать использовать Emerlink Stream для трансляции видео</string>
     
     <!-- Stream Settings -->
-    <string name="stream_settings">Настройки стриминга</string>
+    <string name="stream_settings">Настройка стриминга</string>
     <string name="enable_streaming">Включить стриминг</string>
     <string name="enable_streaming_summary">Включить передачу видео на сервер</string>
     <string name="stream_protocol">Протокол</string>
@@ -46,10 +52,18 @@
     <string name="stream_path_summary">Путь на сервере (например, live/stream)</string>
     <string name="use_tcp">Использовать TCP</string>
     <string name="use_tcp_summary">Использовать TCP вместо UDP для RTSP</string>
-    <string name="username">Имя пользователя</string>
+    <string name="username">Имя пользователя (необязательно)</string>
     <string name="username_summary">Имя пользователя для авторизации на сервере</string>
-    <string name="password">Пароль</string>
+    <string name="password">Пароль (необязательно)</string>
     <string name="password_summary">Пароль для авторизации на сервере</string>
+    <string name="self_signed_certificate">Самоподписанный сертификат (необязательно)</string>
+    <string name="self_signed_certificate_summary">Использовать самоподписанный сертификат для безопасных соединений</string>
+    <string name="certificate">Сертификат</string>
+    <string name="certificate_summary">Путь к файлу сертификата</string>
+    <string name="certificate_password">Пароль для сертификата</string>
+    <string name="certificate_password_summary">Пароль для сертификата</string>
+    <string name="stream_key">Ключ стрима</string>
+    <string name="stream_key_summary">Ключ стрима, предоставленный вашим сервисом стриминга</string>
     
     <!-- Video Settings -->
     <string name="video_settings">Настройки видео</string>
@@ -84,8 +98,12 @@
     <string name="audio_codec_summary">Кодек для сжатия аудио</string>
     
     <!-- Error messages -->
+    <string name="error_wrong_address">Неверный адрес сервера</string>
+    <string name="error_connection_timeout">Превышено время ожидания подключения</string>
+    <string name="error_unauthorized">Ошибка авторизации</string>
+    <string name="error_permission_denied">Отказано в доступе</string>
+    <string name="error_unknown">Неизвестная ошибка</string>
     <string name="unknown_error">Неизвестная ошибка</string>
-    <string name="connection_failed">Ошибка подключения к серверу</string>
     <string name="unknown_host">Не удалось найти сервер</string>
     <string name="ssl_error">Ошибка SSL-соединения</string>
     <string name="io_error">Ошибка ввода/вывода</string>
@@ -94,6 +112,7 @@
     <string name="memory_error">Недостаточно памяти</string>
     <string name="retry">Повторить</string>
     <string name="dismiss">Закрыть</string>
+    <string name="error_unsupported_transport">Сервер не поддерживает выбранный транспортный протокол</string>
     
     <!-- Advanced Settings -->
     <string name="advanced_settings">Расширенные настройки</string>
@@ -133,4 +152,22 @@
     <string name="hardware_rotation_summary">Использовать аппаратный поворот вместо программного</string>
     <string name="dynamic_fps">Динамический FPS</string>
     <string name="dynamic_fps_summary">Автоматически регулировать частоту кадров в зависимости от нагрузки</string>
+    
+    <!-- Screen Orientation -->
+    <string name="screen_orientation">Ориентация экрана</string>
+    <string name="screen_orientation_summary">Установите предпочтительную ориентацию экрана</string>
+
+    <!-- Camera -->
+    <string name="screenshot_saved">Скриншот сохранен</string>
+    <string name="stop_streaming">Остановить стриминг</string>
+    <string name="stop_streaming_confirmation">Остановить стриминг и перейти в настройки?</string>
+    <string name="loading_camera">Загрузка камеры...</string>
+
+    <!-- Notification Channels -->
+    <string name="notification_channel_stream_service">Сервис стриминга</string>
+    <string name="notification_channel_stream_service_description">Уведомления о состоянии стриминга</string>
+    <string name="notification_channel_errors">Ошибки</string>
+    <string name="notification_channel_errors_description">Уведомления об ошибках стриминга</string>
+    <string name="notification_channel_photos">Фотографии</string>
+    <string name="notification_channel_photos_description">Уведомления о сделанных фотографиях</string>
 </resources>

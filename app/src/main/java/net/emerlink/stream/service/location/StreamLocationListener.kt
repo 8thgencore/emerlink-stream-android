@@ -1,12 +1,15 @@
-package net.emerlink.stream.service
+package net.emerlink.stream.service.location
 
 import android.content.Context
 import android.content.Intent
 import android.location.Location
 import android.location.LocationListener
+import android.os.Bundle
 import android.util.Log
 
-class StreamLocationListener(private val context: Context) : LocationListener {
+class StreamLocationListener(
+    private val context: Context,
+) : LocationListener {
     companion object {
         private const val TAG = "StreamLocationListener"
         const val ACTION_LOCATION_CHANGE = "net.emerlink.stream.LOCATION_CHANGE"
@@ -22,5 +25,23 @@ class StreamLocationListener(private val context: Context) : LocationListener {
         intent.putExtra("bearing", location.bearing)
         intent.putExtra("accuracy", location.accuracy)
         context.sendBroadcast(intent)
+    }
+
+    // Необходимые методы для совместимости со всеми версиями Android
+    override fun onProviderDisabled(provider: String) {
+        Log.d(TAG, "Provider disabled: $provider")
+    }
+
+    override fun onProviderEnabled(provider: String) {
+        Log.d(TAG, "Provider enabled: $provider")
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onStatusChanged(
+        provider: String,
+        status: Int,
+        extras: Bundle?,
+    ) {
+        Log.d(TAG, "Provider status changed: $provider, status: $status")
     }
 }
