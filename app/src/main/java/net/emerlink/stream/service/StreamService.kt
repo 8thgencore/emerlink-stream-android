@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package net.emerlink.stream.service
 
 import android.annotation.SuppressLint
@@ -82,22 +84,6 @@ class StreamService :
     private var hasGeomagneticData = false
     private var rotationInDegrees: Double = 0.0
 
-    private var keyframeInterval: Int = 0
-    private var videoProfile: String = ""
-    private var videoLevel: String = ""
-    private var bitrateMode: String = ""
-    private var encodingQuality: String = ""
-
-    private var bufferSize: Int = 0
-    private var connectionTimeout: Int = 0
-    private var autoReconnect: Boolean = false
-    private var reconnectDelay: Int = 0
-    private var maxReconnectAttempts: Int = 0
-
-    private var lowLatencyMode: Boolean = false
-    private var hardwareRotation: Boolean = false
-    private var dynamicFps: Boolean = false
-
     private var commandReceiver: BroadcastReceiver? = null
 
     private var isPreviewActive = false
@@ -119,7 +105,7 @@ class StreamService :
 
         loadPreferences()
 
-        streamManager = StreamManager(this, this, errorHandler)
+        streamManager = StreamManager(this, this, errorHandler, streamSettings)
         streamManager.setStreamType(streamSettings.connection.protocol)
 
         cameraManager = CameraManager(this, { streamManager.getVideoSource() }, { streamManager.getCameraInterface() })

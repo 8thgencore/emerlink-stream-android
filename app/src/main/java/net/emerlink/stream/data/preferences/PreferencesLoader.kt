@@ -74,72 +74,12 @@ class PreferencesLoader {
                 preferences.getString(PreferenceKeys.VIDEO_SOURCE, PreferenceKeys.VIDEO_SOURCE_DEFAULT)
                     ?: PreferenceKeys.VIDEO_SOURCE_DEFAULT,
             // Advanced Video Settings
-            keyframeInterval =
+            iFrameInterval =
                 preferences
                     .getString(
                         PreferenceKeys.VIDEO_KEYFRAME_INTERVAL,
                         PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT
-                    )?.toIntOrNull() ?: 2,
-            videoProfile =
-                preferences.getString(PreferenceKeys.VIDEO_PROFILE, PreferenceKeys.VIDEO_PROFILE_DEFAULT)
-                    ?: PreferenceKeys.VIDEO_PROFILE_DEFAULT,
-            videoLevel =
-                preferences.getString(PreferenceKeys.VIDEO_LEVEL, PreferenceKeys.VIDEO_LEVEL_DEFAULT)
-                    ?: PreferenceKeys.VIDEO_LEVEL_DEFAULT,
-            bitrateMode =
-                preferences.getString(
-                    PreferenceKeys.VIDEO_BITRATE_MODE,
-                    PreferenceKeys.VIDEO_BITRATE_MODE_DEFAULT
-                ) ?: PreferenceKeys.VIDEO_BITRATE_MODE_DEFAULT,
-            encodingQuality =
-                preferences.getString(PreferenceKeys.VIDEO_QUALITY, PreferenceKeys.VIDEO_QUALITY_DEFAULT)
-                    ?: PreferenceKeys.VIDEO_QUALITY_DEFAULT,
-            // Network Settings
-            bufferSize =
-                preferences
-                    .getString(
-                        PreferenceKeys.NETWORK_BUFFER_SIZE,
-                        PreferenceKeys.NETWORK_BUFFER_SIZE_DEFAULT
-                    )?.toIntOrNull() ?: 0,
-            connectionTimeout =
-                preferences
-                    .getString(
-                        PreferenceKeys.NETWORK_TIMEOUT,
-                        PreferenceKeys.NETWORK_TIMEOUT_DEFAULT
-                    )?.toIntOrNull() ?: 5000,
-            autoReconnect =
-                preferences.getBoolean(
-                    PreferenceKeys.NETWORK_RECONNECT,
-                    PreferenceKeys.NETWORK_RECONNECT_DEFAULT
-                ),
-            reconnectDelay =
-                preferences
-                    .getString(
-                        PreferenceKeys.NETWORK_RECONNECT_DELAY,
-                        PreferenceKeys.NETWORK_RECONNECT_DELAY_DEFAULT
-                    )?.toIntOrNull() ?: 3000,
-            maxReconnectAttempts =
-                preferences
-                    .getString(
-                        PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS,
-                        PreferenceKeys.NETWORK_MAX_RECONNECT_ATTEMPTS_DEFAULT
-                    )?.toIntOrNull() ?: 5,
-            // Stability Settings
-            lowLatencyMode =
-                preferences.getBoolean(
-                    PreferenceKeys.STABILITY_LOW_LATENCY,
-                    PreferenceKeys.STABILITY_LOW_LATENCY_DEFAULT
-                ),
-            hardwareRotation =
-                preferences.getBoolean(
-                    PreferenceKeys.STABILITY_HARDWARE_ROTATION,
-                    PreferenceKeys.STABILITY_HARDWARE_ROTATION_DEFAULT
-                ),
-            dynamicFps =
-                preferences.getBoolean(
-                    PreferenceKeys.STABILITY_DYNAMIC_FPS,
-                    PreferenceKeys.STABILITY_DYNAMIC_FPS_DEFAULT
-                )
+                    )?.toIntOrNull() ?: 2
         )
     }
 

@@ -27,6 +27,7 @@ interface CameraInterface {
         height: Int,
         fps: Int,
         bitrate: Int,
+        iFrameInterval: Int = 2,
         rotation: Int = 0,
     ): Boolean
 

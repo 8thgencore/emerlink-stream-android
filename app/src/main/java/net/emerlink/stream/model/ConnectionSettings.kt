@@ -21,7 +21,7 @@ data class ConnectionSettings(
      */
     fun buildStreamUrl(): String {
         // Check if address is provided
-        val formattedAddress = if (address.isNotEmpty()) address else return ""
+        val formattedAddress = address.ifEmpty { return "" }
 
         // Format port only if it's not empty
         val formattedPort = if (port != 0) ":$port" else ""

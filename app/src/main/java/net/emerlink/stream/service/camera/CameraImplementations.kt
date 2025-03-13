@@ -12,8 +12,8 @@ import com.pedro.library.view.OpenGlView
 import com.pedro.rtsp.rtsp.Protocol
 
 class RtmpCameraImpl(
-    private val context: Context,
-    private val connectChecker: ConnectChecker,
+    context: Context,
+    connectChecker: ConnectChecker,
 ) : CameraInterface {
     override val camera = RtmpCamera2(context, connectChecker)
 
@@ -30,6 +30,7 @@ class RtmpCameraImpl(
         height: Int,
         fps: Int,
         bitrate: Int,
+        iFrameInterval: Int,
         rotation: Int,
     ) = camera.prepareVideo(width, height, fps, bitrate, rotation)
 
@@ -77,8 +78,8 @@ class RtmpCameraImpl(
 }
 
 class RtspCameraImpl(
-    private val context: Context,
-    private val connectChecker: ConnectChecker,
+    context: Context,
+    connectChecker: ConnectChecker,
 ) : CameraInterface {
     override val camera = RtspCamera2(context, connectChecker)
 
@@ -95,6 +96,7 @@ class RtspCameraImpl(
         height: Int,
         fps: Int,
         bitrate: Int,
+        iFrameInterval: Int,
         rotation: Int,
     ) = camera.prepareVideo(width, height, fps, bitrate, rotation)
 
@@ -142,8 +144,8 @@ class RtspCameraImpl(
 }
 
 class SrtCameraImpl(
-    private val context: Context,
-    private val connectChecker: ConnectChecker,
+    context: Context,
+    connectChecker: ConnectChecker,
 ) : CameraInterface {
     override val camera = SrtCamera2(context, connectChecker)
 
@@ -160,6 +162,7 @@ class SrtCameraImpl(
         height: Int,
         fps: Int,
         bitrate: Int,
+        iFrameInterval: Int,
         rotation: Int,
     ) = camera.prepareVideo(width, height, fps, bitrate, rotation)
 
@@ -207,8 +210,8 @@ class SrtCameraImpl(
 }
 
 class UdpCameraImpl(
-    private val context: Context,
-    private val connectChecker: ConnectChecker,
+    context: Context,
+    connectChecker: ConnectChecker,
 ) : CameraInterface {
     override val camera = UdpCamera2(context, connectChecker)
 
@@ -225,6 +228,7 @@ class UdpCameraImpl(
         height: Int,
         fps: Int,
         bitrate: Int,
+        iFrameInterval: Int,
         rotation: Int,
     ) = camera.prepareVideo(width, height, fps, bitrate, rotation)
 

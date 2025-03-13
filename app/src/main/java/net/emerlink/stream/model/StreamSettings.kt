@@ -25,22 +25,7 @@ data class StreamSettings(
     var bitrate: Int = 0,
     var codec: String = "",
     var uid: String = "",
+    val iFrameInterval: Int = 2,
     // Camera
     var videoSource: String = "",
-    // Advanced Video Settings
-    var keyframeInterval: Int = 0,
-    var videoProfile: String = "",
-    var videoLevel: String = "",
-    var bitrateMode: String = "",
-    var encodingQuality: String = "",
-    // Network Settings
-    var bufferSize: Int = 0,
-    var connectionTimeout: Int = 0,
-    var autoReconnect: Boolean = false,
-    var reconnectDelay: Int = 0,
-    var maxReconnectAttempts: Int = 0,
-    // Stability Settings
-    var lowLatencyMode: Boolean = false,
-    var hardwareRotation: Boolean = false,
-    var dynamicFps: Boolean = false,
 )
