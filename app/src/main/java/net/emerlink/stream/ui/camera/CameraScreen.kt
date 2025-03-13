@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:function-naming")
+
 package net.emerlink.stream.ui.camera
 
 import android.content.BroadcastReceiver
@@ -202,7 +204,11 @@ fun CameraScreen(
                     Lifecycle.Event.ON_RESUME -> {
                         Log.d("CameraScreen", "Lifecycle.Event.ON_RESUME")
                         // Запускаем камеру только если предпросмотр не активен и OpenGlView готов
-                        if (!isPreviewActive && openGlView != null && streamService != null && !streamService.isPreviewRunning()) {
+                        if (!isPreviewActive &&
+                            openGlView != null &&
+                            streamService != null &&
+                            !streamService.isPreviewRunning()
+                        ) {
                             openGlView?.let { view ->
                                 if (view.holder.surface?.isValid == true) {
                                     Log.d("CameraScreen", "Запуск камеры из ON_RESUME")
@@ -231,25 +237,6 @@ fun CameraScreen(
         }
     }
 
-    // Наблюдаем за LiveData для скриншотов
-    DisposableEffect(Unit) {
-        val observer =
-            androidx.lifecycle.Observer<Boolean> { taken ->
-                if (taken) {
-                    Log.d("CameraScreen", "Получено уведомление о скриншоте через LiveData")
-                    Handler(android.os.Looper.getMainLooper()).postDelayed({
-                        StreamService.screenshotTaken.value = false
-                    }, 3000)
-                }
-            }
-
-        StreamService.screenshotTaken.observeForever(observer)
-
-        onDispose {
-            StreamService.screenshotTaken.removeObserver(observer)
-        }
-    }
-
     // Обновляем информацию о стриме при подключении к сервису
     DisposableEffect(streamService) {
         streamService?.let { service ->
@@ -259,7 +246,7 @@ fun CameraScreen(
                     protocol = settings.connection.protocol.toString(),
                     resolution = settings.resolution.toString(),
                     bitrate = "${settings.bitrate} kbps",
-                    fps = "${settings.fps} fps",
+                    fps = "${settings.fps} fps"
                 )
         }
         onDispose { }
@@ -309,21 +296,21 @@ fun CameraScreen(
             onOpenGlViewCreated = { view ->
                 openGlView = view
                 initializeCamera(view)
-            },
+            }
         )
 
         // Stream Status Indicator
         StreamStatusIndicator(
             isStreaming = isStreaming,
             isLandscape = isLandscape,
-            onInfoClick = { showStreamInfo = !showStreamInfo },
+            onInfoClick = { showStreamInfo = !showStreamInfo }
         )
 
         // Stream Info Panel (отображается по нажатию на индикатор статуса)
         if (showStreamInfo) {
             StreamInfoPanel(
                 streamInfo = streamInfo,
-                isLandscape = isLandscape,
+                isLandscape = isLandscape
             )
         }
 
@@ -349,7 +336,7 @@ fun CameraScreen(
                         Log.e("CameraScreen", "Ошибка при остановке предпросмотра: ${e.message}", e)
                     }
                 }
-            },
+            }
         )
     }
 
@@ -368,7 +355,7 @@ fun CameraScreen(
                 } catch (e: Exception) {
                     Log.e("CameraScreen", "Ошибка при переходе в настройки: ${e.message}", e)
                 }
-            },
+            }
         )
     }
 }
@@ -428,7 +415,7 @@ private fun CameraPreview(
 
                         else -> false
                     }
-                },
+                }
     )
 }
 
@@ -447,9 +434,9 @@ private fun StreamStatusIndicator(
                         Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
                     } else {
                         Modifier
-                    },
+                    }
                 ).padding(16.dp),
-        contentAlignment = Alignment.TopStart,
+        contentAlignment = Alignment.TopStart
     ) {
         Surface(
             shape = RoundedCornerShape(16.dp),
@@ -457,11 +444,11 @@ private fun StreamStatusIndicator(
             modifier =
                 Modifier
                     .padding(top = 8.dp)
-                    .clickable { onInfoClick() },
+                    .clickable { onInfoClick() }
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Box(
                     modifier =
@@ -474,14 +461,14 @@ private fun StreamStatusIndicator(
                                     } else {
                                         MaterialTheme.colorScheme.surfaceVariant
                                     },
-                                shape = CircleShape,
-                            ),
+                                shape = CircleShape
+                            )
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = if (isStreaming) "LIVE" else "OFF",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 // Добавляем иконку для подсказки, что можно нажать
                 Spacer(modifier = Modifier.width(8.dp))
@@ -489,7 +476,7 @@ private fun StreamStatusIndicator(
                     imageVector = Icons.Default.Info,
                     contentDescription = "Stream Info",
                     modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             }
         }
@@ -517,9 +504,9 @@ private fun CameraControls(
                         Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
                     } else {
                         Modifier
-                    },
+                    }
                 ).padding(16.dp),
-        contentAlignment = Alignment.BottomCenter,
+        contentAlignment = Alignment.BottomCenter
     ) {
         if (isLandscape) {
             LandscapeCameraControls(
@@ -530,7 +517,7 @@ private fun CameraControls(
                 onStreamingToggle = onStreamingToggle,
                 onFlashToggle = onFlashToggle,
                 onMuteToggle = onMuteToggle,
-                onSettingsClick = onSettingsClick,
+                onSettingsClick = onSettingsClick
             )
         } else {
             PortraitCameraControls(
@@ -541,7 +528,7 @@ private fun CameraControls(
                 onStreamingToggle = onStreamingToggle,
                 onFlashToggle = onFlashToggle,
                 onMuteToggle = onMuteToggle,
-                onSettingsClick = onSettingsClick,
+                onSettingsClick = onSettingsClick
             )
         }
     }
@@ -563,7 +550,7 @@ private fun LandscapeCameraControls(
         Column(
             modifier = Modifier.padding(end = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Top controls
             SettingsButton(onClick = onSettingsClick)
@@ -572,7 +559,7 @@ private fun LandscapeCameraControls(
                 onClick = {
                     streamService?.toggleMute(!isMuted)
                     onMuteToggle(!isMuted)
-                },
+                }
             )
 
             // Record button in the middle
@@ -587,7 +574,7 @@ private fun LandscapeCameraControls(
                         streamService?.startStream()
                         onStreamingToggle(true)
                     }
-                },
+                }
             )
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -595,14 +582,14 @@ private fun LandscapeCameraControls(
             PhotoButton(
                 onClick = {
                     streamService?.takePhoto()
-                },
+                }
             )
             FlashButton(
                 isFlashOn = isFlashOn,
                 onClick = {
                     val newState = streamService?.toggleLantern() == true
                     onFlashToggle(newState)
-                },
+                }
             )
         }
     }
@@ -637,7 +624,7 @@ private fun PortraitCameraControls(
                 streamService?.startStream()
                 onStreamingToggle(true)
             }
-        },
+        }
     )
 
     // Left Controls
@@ -647,20 +634,20 @@ private fun PortraitCameraControls(
                 .fillMaxSize()
                 .padding(bottom = 6.dp),
         horizontalArrangement = Arrangement.Start,
-        verticalAlignment = Alignment.Bottom,
+        verticalAlignment = Alignment.Bottom
     ) {
         FlashButton(
             isFlashOn = isFlashOn,
             onClick = {
                 val newState = streamService?.toggleLantern() == true
                 onFlashToggle(newState)
-            },
+            }
         )
         Spacer(modifier = Modifier.width(16.dp))
         PhotoButton(
             onClick = {
                 streamService?.takePhoto()
-            },
+            }
         )
     }
 
@@ -671,14 +658,14 @@ private fun PortraitCameraControls(
                 .fillMaxSize()
                 .padding(bottom = 6.dp),
         horizontalArrangement = Arrangement.End,
-        verticalAlignment = Alignment.Bottom,
+        verticalAlignment = Alignment.Bottom
     ) {
         MuteButton(
             isMuted = isMuted,
             onClick = {
                 streamService?.toggleMute(!isMuted)
                 onMuteToggle(!isMuted)
-            },
+            }
         )
         Spacer(modifier = Modifier.width(16.dp))
         SettingsButton(onClick = onSettingsClick)
@@ -690,7 +677,7 @@ private fun PortraitCameraControls(
             Modifier
                 .fillMaxSize()
                 .padding(bottom = 16.dp, start = 0.dp),
-        contentAlignment = Alignment.CenterStart,
+        contentAlignment = Alignment.CenterStart
     ) {
         SwitchCameraButton(onClick = { streamService?.switchCamera() })
     }
@@ -704,11 +691,11 @@ private fun RecordButton(
     FloatingActionButton(
         onClick = onClick,
         containerColor = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary,
+        contentColor = MaterialTheme.colorScheme.onPrimary
     ) {
         Icon(
             imageVector = if (isStreaming) Icons.Default.VideocamOff else Icons.Default.Videocam,
-            contentDescription = if (isStreaming) "Stop Streaming" else "Start Streaming",
+            contentDescription = if (isStreaming) "Stop Streaming" else "Start Streaming"
         )
     }
 }
@@ -721,11 +708,11 @@ private fun FlashButton(
     SmallFloatingActionButton(
         onClick = onClick,
         containerColor = MaterialTheme.colorScheme.secondary,
-        contentColor = MaterialTheme.colorScheme.onSecondary,
+        contentColor = MaterialTheme.colorScheme.onSecondary
     ) {
         Icon(
             imageVector = if (isFlashOn) Icons.Default.FlashOn else Icons.Default.FlashOff,
-            contentDescription = if (isFlashOn) "Turn Flash Off" else "Turn Flash On",
+            contentDescription = if (isFlashOn) "Turn Flash Off" else "Turn Flash On"
         )
     }
 }
@@ -738,11 +725,11 @@ private fun PhotoButton(onClick: () -> Unit) {
             onClick()
         },
         containerColor = MaterialTheme.colorScheme.secondary,
-        contentColor = MaterialTheme.colorScheme.onSecondary,
+        contentColor = MaterialTheme.colorScheme.onSecondary
     ) {
         Icon(
             imageVector = Icons.Default.PhotoCamera,
-            contentDescription = "Take Photo",
+            contentDescription = "Take Photo"
         )
     }
 }
@@ -755,11 +742,11 @@ private fun MuteButton(
     SmallFloatingActionButton(
         onClick = onClick,
         containerColor = MaterialTheme.colorScheme.secondary,
-        contentColor = MaterialTheme.colorScheme.onSecondary,
+        contentColor = MaterialTheme.colorScheme.onSecondary
     ) {
         Icon(
             imageVector = if (isMuted) Icons.Default.MicOff else Icons.Default.Mic,
-            contentDescription = if (isMuted) "Unmute" else "Mute",
+            contentDescription = if (isMuted) "Unmute" else "Mute"
         )
     }
 }
@@ -769,11 +756,11 @@ private fun SwitchCameraButton(onClick: () -> Unit) {
     SmallFloatingActionButton(
         onClick = onClick,
         containerColor = MaterialTheme.colorScheme.secondary,
-        contentColor = MaterialTheme.colorScheme.onSecondary,
+        contentColor = MaterialTheme.colorScheme.onSecondary
     ) {
         Icon(
             imageVector = Icons.Default.Cameraswitch,
-            contentDescription = "Switch Camera",
+            contentDescription = "Switch Camera"
         )
     }
 }
@@ -783,11 +770,11 @@ private fun SettingsButton(onClick: () -> Unit) {
     SmallFloatingActionButton(
         onClick = onClick,
         containerColor = MaterialTheme.colorScheme.secondary,
-        contentColor = MaterialTheme.colorScheme.onSecondary,
+        contentColor = MaterialTheme.colorScheme.onSecondary
     ) {
         Icon(
             imageVector = Icons.Default.Settings,
-            contentDescription = "Settings",
+            contentDescription = "Settings"
         )
     }
 }
@@ -811,7 +798,7 @@ private fun SettingsConfirmationDialog(
             androidx.compose.material3.TextButton(onClick = onDismiss) {
                 Text(context.getString(R.string.cancel))
             }
-        },
+        }
     )
 }
 
@@ -829,9 +816,9 @@ private fun StreamInfoPanel(
                         Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
                     } else {
                         Modifier
-                    },
+                    }
                 ).padding(16.dp),
-        contentAlignment = Alignment.TopCenter,
+        contentAlignment = Alignment.TopCenter
     ) {
         Surface(
             shape = RoundedCornerShape(16.dp),
@@ -839,11 +826,11 @@ private fun StreamInfoPanel(
             modifier =
                 Modifier
                     .padding(top = if (isLandscape) 16.dp else 48.dp)
-                    .then(if (isLandscape) Modifier.width(300.dp) else Modifier),
+                    .then(if (isLandscape) Modifier.width(300.dp) else Modifier)
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 InfoRow(label = "Protocol", value = streamInfo.protocol)
                 InfoRow(label = "Resolution", value = streamInfo.resolution)
@@ -861,17 +848,17 @@ private fun InfoRow(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }

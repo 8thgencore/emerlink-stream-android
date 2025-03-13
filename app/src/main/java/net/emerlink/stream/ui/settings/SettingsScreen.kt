@@ -1,4 +1,4 @@
-@file:Suppress("ktlint:standard:no-wildcard-imports")
+@file:Suppress("ktlint:standard:no-wildcard-imports", "ktlint:standard:function-naming")
 
 package net.emerlink.stream.ui.settings
 
@@ -339,6 +339,25 @@ fun SettingsScreen(
                         }
                     )
 
+                    InputPreference(
+                        title = stringResource(id = R.string.keyframe_interval),
+                        summary = stringResource(id = R.string.keyframe_interval_summary),
+                        value =
+                            preferences.getString(
+                                PreferenceKeys.VIDEO_KEYFRAME_INTERVAL,
+                                PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT
+                            ) ?: PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT,
+                        onValueChange = { value ->
+                            preferences.edit {
+                                putString(
+                                    PreferenceKeys.VIDEO_KEYFRAME_INTERVAL,
+                                    value
+                                )
+                            }
+                        },
+                        keyboardType = KeyboardType.Number
+                    )
+
                     SwitchPreference(
                         title = stringResource(id = R.string.record_video),
                         summary = stringResource(id = R.string.record_video_summary),
@@ -349,6 +368,10 @@ fun SettingsScreen(
                         }
                     )
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Audio Settings
                 PreferenceCategory(title = stringResource(id = R.string.audio_settings)) {

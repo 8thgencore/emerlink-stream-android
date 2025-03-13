@@ -12,7 +12,6 @@ import android.location.LocationManager
 import android.os.*
 import android.util.Log
 import android.view.MotionEvent
-import androidx.lifecycle.MutableLiveData
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.preference.PreferenceManager
 import com.pedro.common.ConnectChecker
@@ -38,9 +37,6 @@ class StreamService :
     SensorEventListener {
     companion object {
         private const val TAG = "StreamService"
-
-        // TODO: зачем нужена эта переменная
-        val observer = MutableLiveData<StreamService?>()
     }
 
     private lateinit var preferences: SharedPreferences
@@ -101,8 +97,6 @@ class StreamService :
 
         cameraManager = CameraManager(this, { streamManager.getVideoSource() }, { streamManager.getCameraInterface() })
         mediaManager = MediaManager(this, streamManager, notificationManager)
-
-        observer.postValue(this)
 
         locListener = StreamLocationListener(this)
         locManager = applicationContext.getSystemService(LOCATION_SERVICE) as LocationManager
@@ -228,8 +222,6 @@ class StreamService :
                 unregisterReceiver(commandReceiver)
                 commandReceiver = null
             }
-
-            observer.postValue(null)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при уничтожении сервиса: ${e.message}")
         }

@@ -16,7 +16,6 @@ import androidx.preference.PreferenceManager
 import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.service.StreamService
 import net.emerlink.stream.ui.camera.CameraScreen
-import net.emerlink.stream.ui.settings.AdvancedSettingsScreen
 import net.emerlink.stream.ui.settings.SettingsScreen
 import net.emerlink.stream.ui.settings.StreamSettingsScreen
 
@@ -41,7 +40,7 @@ fun AppNavigation(streamService: StreamService?) {
         composable(NavigationRoutes.CAMERA) {
             CameraScreen(
                 onSettingsClick = { navController.navigate(NavigationRoutes.SETTINGS) },
-                streamService = streamService,
+                streamService = streamService
             )
         }
 
@@ -49,21 +48,21 @@ fun AppNavigation(streamService: StreamService?) {
             SettingsScreen(
                 onBackClick = { navController.popBackStack() },
                 onAdvancedSettingsClick = { navController.navigate(NavigationRoutes.ADVANCED_SETTINGS) },
-                onStreamSettingsClick = { navController.navigate(NavigationRoutes.STREAM_SETTINGS) },
+                onStreamSettingsClick = { navController.navigate(NavigationRoutes.STREAM_SETTINGS) }
             )
         }
 
         composable(NavigationRoutes.STREAM_SETTINGS) {
             StreamSettingsScreen(
-                onBackClick = { navController.popBackStack() },
+                onBackClick = { navController.popBackStack() }
             )
         }
 
-        composable(NavigationRoutes.ADVANCED_SETTINGS) {
-            AdvancedSettingsScreen(
-                onBackClick = { navController.popBackStack() },
-            )
-        }
+//        composable(NavigationRoutes.ADVANCED_SETTINGS) {
+//            AdvancedSettingsScreen(
+//                onBackClick = { navController.popBackStack() },
+//            )
+//        }
     }
 }
 
@@ -87,7 +86,7 @@ private fun HandleScreenOrientation(navController: NavHostController) {
                 val orientation =
                     preferences.getString(
                         PreferenceKeys.SCREEN_ORIENTATION,
-                        PreferenceKeys.SCREEN_ORIENTATION_DEFAULT,
+                        PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
                     ) ?: PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
 
                 activity?.requestedOrientation =
