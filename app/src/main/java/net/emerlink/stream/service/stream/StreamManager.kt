@@ -1,15 +1,12 @@
 package net.emerlink.stream.service.stream
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import androidx.preference.PreferenceManager
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.video.CameraHelper
 import com.pedro.library.view.OpenGlView
-import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.model.Resolution
 import net.emerlink.stream.model.StreamSettings
 import net.emerlink.stream.model.StreamType
@@ -27,10 +24,6 @@ class StreamManager(
     }
 
     private var currentView: OpenGlView? = null
-
-    private val sharedPreferences: SharedPreferences by lazy {
-        PreferenceManager.getDefaultSharedPreferences(context)
-    }
 
     private var cameraInterface: CameraInterface
     private var streamType: StreamType = StreamType.RTMP
@@ -146,7 +139,7 @@ class StreamManager(
             cameraInterface.replaceView(view)
 
             val bitrate = cameraInterface.bitrate.takeIf { it > 0 } ?: streamSettings.bitrate
-            val resolution = Resolution.parseFromPreferences(sharedPreferences)
+            val resolution = Resolution.parseFromSize(streamSettings.resolution)
             cameraInterface.prepareVideo(
                 width = resolution.width,
                 height = resolution.height,
@@ -192,31 +185,13 @@ class StreamManager(
 
     fun prepareVideo(): Boolean {
         try {
-            val resolution = Resolution.parseFromPreferences(sharedPreferences)
-            val fps =
-                sharedPreferences
-                    .getString(PreferenceKeys.VIDEO_FPS, PreferenceKeys.VIDEO_FPS_DEFAULT)
-                    ?.toIntOrNull()
-                    ?: 30
-            val videoBitrate =
-                sharedPreferences
-                    .getString(
-                        PreferenceKeys.VIDEO_BITRATE,
-                        PreferenceKeys.VIDEO_BITRATE_DEFAULT
-                    )?.toIntOrNull()
-                    ?: 2500
-
-            Log.d(
-                TAG,
-                "Подготовка видео: ${resolution.width}x${resolution.height}, FPS=$fps, битрейт=${videoBitrate}k"
-            )
-
+            val resolution = Resolution.parseFromSize(streamSettings.resolution)
             val rotation = CameraHelper.getCameraOrientation(context)
             cameraInterface.prepareVideo(
                 width = resolution.width,
                 height = resolution.height,
-                fps = fps,
-                bitrate = videoBitrate * 1000,
+                fps = streamSettings.fps,
+                bitrate = streamSettings.bitrate * 1000,
                 rotation = rotation
             )
 
@@ -243,8 +218,7 @@ class StreamManager(
 
     fun switchStreamResolution() {
         try {
-            val resolution = Resolution.parseFromPreferences(sharedPreferences)
-
+            val resolution = Resolution.parseFromSize(streamSettings.resolution)
             if (isOnPreview()) {
                 val rotation = CameraHelper.getCameraOrientation(context)
 
