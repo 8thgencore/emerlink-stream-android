@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.video.CameraHelper
 import com.pedro.library.view.OpenGlView
@@ -138,14 +139,15 @@ class StreamManager(
 
             cameraInterface.replaceView(view)
 
-            val bitrate = cameraInterface.bitrate.takeIf { it > 0 } ?: streamSettings.bitrate
+            val bitrate = cameraInterface.bitrate.takeIf { it > 0 } ?: (streamSettings.bitrate * 1000)
             val resolution = Resolution.parseFromSize(streamSettings.resolution)
             cameraInterface.prepareVideo(
                 width = resolution.width,
                 height = resolution.height,
                 fps = streamSettings.fps,
                 iFrameInterval = streamSettings.iFrameInterval,
-                bitrate = bitrate
+                bitrate = bitrate,
+                rotation = CameraHelper.getCameraOrientation(context)
             )
 
             val rotation = CameraHelper.getCameraOrientation(context)
@@ -175,7 +177,23 @@ class StreamManager(
     fun prepareAudio(): Boolean {
         try {
             Log.d(TAG, "Подготовка аудио")
-            cameraInterface.prepareAudio()
+
+            // Базовая подготовка аудио
+            cameraInterface.prepareAudio(
+                bitrate = streamSettings.audioBitrate * 1000,
+                sampleRate = streamSettings.audioSampleRate.toInt(),
+                isStereo = streamSettings.audioStereo,
+                echoCanceler = streamSettings.audioEchoCancel,
+                noiseSuppressor = streamSettings.audioNoiseReduction
+            )
+
+            // Установка аудио кодека, если поддерживается
+            if (streamSettings.audioCodec == "opus") {
+                cameraInterface.setAudioCodec(AudioCodec.OPUS)
+            } else {
+                cameraInterface.setAudioCodec(AudioCodec.AAC)
+            }
+
             return true
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка подготовки аудио: ${e.message}", e)
@@ -192,6 +210,7 @@ class StreamManager(
                 height = resolution.height,
                 fps = streamSettings.fps,
                 bitrate = streamSettings.bitrate * 1000,
+                iFrameInterval = streamSettings.iFrameInterval,
                 rotation = rotation
             )
 
@@ -227,7 +246,7 @@ class StreamManager(
                     width = resolution.width,
                     height = resolution.height,
                     fps = streamSettings.fps,
-                    bitrate = streamSettings.bitrate,
+                    bitrate = streamSettings.bitrate * 1000,
                     iFrameInterval = streamSettings.iFrameInterval,
                     rotation = rotation
                 )

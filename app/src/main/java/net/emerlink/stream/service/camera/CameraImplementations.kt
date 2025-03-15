@@ -1,6 +1,7 @@
 package net.emerlink.stream.service.camera
 
 import android.content.Context
+import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.video.CameraHelper
 import com.pedro.library.rtmp.RtmpCamera2
@@ -23,7 +24,21 @@ class RtmpCameraImpl(
     override val bitrate: Int get() = camera.bitrate
     override val glInterface: GlInterface get() = camera.glInterface
 
-    override fun prepareAudio() = camera.prepareAudio()
+    override fun prepareAudio(
+        bitrate: Int,
+        sampleRate: Int,
+        isStereo: Boolean,
+        echoCanceler: Boolean,
+        noiseSuppressor: Boolean,
+    ) {
+        camera.prepareAudio(
+            bitrate,
+            sampleRate,
+            isStereo,
+            echoCanceler,
+            noiseSuppressor
+        )
+    }
 
     override fun prepareVideo(
         width: Int,
@@ -82,6 +97,8 @@ class RtmpCameraImpl(
     override fun setProtocol(tcp: Boolean) {
         // Not applicable for RTMP
     }
+
+    override fun setAudioCodec(codec: AudioCodec) = camera.setAudioCodec(codec)
 }
 
 class RtspCameraImpl(
@@ -96,7 +113,21 @@ class RtspCameraImpl(
     override val bitrate: Int get() = camera.bitrate
     override val glInterface: GlInterface get() = camera.glInterface
 
-    override fun prepareAudio() = camera.prepareAudio()
+    override fun prepareAudio(
+        bitrate: Int,
+        sampleRate: Int,
+        isStereo: Boolean,
+        echoCanceler: Boolean,
+        noiseSuppressor: Boolean,
+    ) {
+        camera.prepareAudio(
+            bitrate,
+            sampleRate,
+            isStereo,
+            echoCanceler,
+            noiseSuppressor
+        )
+    }
 
     override fun prepareVideo(
         width: Int,
@@ -155,6 +186,8 @@ class RtspCameraImpl(
     override fun setProtocol(tcp: Boolean) {
         camera.getStreamClient().setProtocol(if (tcp) Protocol.TCP else Protocol.UDP)
     }
+
+    override fun setAudioCodec(codec: AudioCodec) = camera.setAudioCodec(codec)
 }
 
 class SrtCameraImpl(
@@ -169,7 +202,21 @@ class SrtCameraImpl(
     override val bitrate: Int get() = camera.bitrate
     override val glInterface: GlInterface get() = camera.glInterface
 
-    override fun prepareAudio() = camera.prepareAudio()
+    override fun prepareAudio(
+        bitrate: Int,
+        sampleRate: Int,
+        isStereo: Boolean,
+        echoCanceler: Boolean,
+        noiseSuppressor: Boolean,
+    ) {
+        camera.prepareAudio(
+            bitrate,
+            sampleRate,
+            isStereo,
+            echoCanceler,
+            noiseSuppressor
+        )
+    }
 
     override fun prepareVideo(
         width: Int,
@@ -228,6 +275,8 @@ class SrtCameraImpl(
     override fun setProtocol(tcp: Boolean) {
         // Not applicable for SRT
     }
+
+    override fun setAudioCodec(codec: AudioCodec) = camera.setAudioCodec(codec)
 }
 
 class UdpCameraImpl(
@@ -242,7 +291,21 @@ class UdpCameraImpl(
     override val bitrate: Int get() = camera.bitrate
     override val glInterface: GlInterface get() = camera.glInterface
 
-    override fun prepareAudio() = camera.prepareAudio()
+    override fun prepareAudio(
+        bitrate: Int,
+        sampleRate: Int,
+        isStereo: Boolean,
+        echoCanceler: Boolean,
+        noiseSuppressor: Boolean,
+    ) {
+        camera.prepareAudio(
+            bitrate,
+            sampleRate,
+            isStereo,
+            echoCanceler,
+            noiseSuppressor
+        )
+    }
 
     override fun prepareVideo(
         width: Int,
@@ -301,4 +364,6 @@ class UdpCameraImpl(
     override fun setProtocol(tcp: Boolean) {
         // Not applicable for UDP
     }
+
+    override fun setAudioCodec(codec: AudioCodec) = camera.setAudioCodec(codec)
 }

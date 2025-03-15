@@ -1,60 +1,32 @@
-@file:Suppress("ktlint:standard:function-naming")
+@file:Suppress("ktlint:standard:function-naming", "ktlint:standard:no-wildcard-imports")
 
 package net.emerlink.stream.ui.camera
 
+import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.MotionEvent
 import android.view.SurfaceHolder
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cameraswitch
-import androidx.compose.material.icons.filled.FlashOff
-import androidx.compose.material.icons.filled.FlashOn
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MicOff
-import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Videocam
-import androidx.compose.material.icons.filled.VideocamOff
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SmallFloatingActionButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -63,6 +35,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -90,6 +63,7 @@ fun CameraScreen(
     var openGlView by remember { mutableStateOf<OpenGlView?>(null) }
     var screenWasOff by remember { mutableStateOf(false) }
     var isPreviewActive by remember { mutableStateOf(streamService?.isPreviewRunning() == true) }
+    var showPermissionDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(streamService) {
         streamService?.let { service ->
@@ -97,6 +71,7 @@ fun CameraScreen(
         }
     }
 
+    // Функция инициализации камеры должна быть объявлена до requestPermissionLauncher
     fun initializeCamera(view: OpenGlView) {
         if (streamService != null && !isPreviewActive && !streamService.isPreviewRunning()) {
             try {
@@ -108,6 +83,41 @@ fun CameraScreen(
             }
         } else {
             Log.d("CameraScreen", "Предпросмотр уже активен или сервис не готов")
+        }
+    }
+
+    // Создаем лаунчер для запроса разрешений
+    val requestPermissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted ->
+            if (isGranted) {
+                // Разрешение получено, можно инициализировать камеру
+                openGlView?.let { view ->
+                    initializeCamera(view)
+                }
+            } else {
+                // Разрешение не получено, показываем диалог
+                showPermissionDialog = true
+            }
+        }
+
+    // Добавляем функцию проверки разрешений
+    fun checkCameraPermissions() {
+        when {
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                // Разрешение уже есть, можно инициализировать камеру
+                openGlView?.let { view ->
+                    initializeCamera(view)
+                }
+            }
+            else -> {
+                // Запрашиваем разрешение
+                requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
         }
     }
 
@@ -123,21 +133,18 @@ fun CameraScreen(
                         Intent.ACTION_SCREEN_OFF -> {
                             Log.d("CameraScreen", "Экран выключен")
                             screenWasOff = true
-
-                            // При выключении экрана полностью освобождаем ресурсы камеры
                             streamService?.releaseCamera()
                         }
 
                         Intent.ACTION_SCREEN_ON -> {
                             Log.d("CameraScreen", "Экран включен")
-                            // Перезапуск камеры будет происходить в ACTION_USER_PRESENT
                         }
 
                         Intent.ACTION_USER_PRESENT -> {
                             Log.d("CameraScreen", "Пользователь разблокировал экран")
                             if (screenWasOff && openGlView != null && streamService != null) {
                                 // Перезапускаем камеру с задержкой, чтобы система успела подготовиться
-                                Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                Handler(Looper.getMainLooper()).postDelayed({
                                     try {
                                         // Полный перезапуск камеры с предпросмотром
                                         openGlView?.let { view ->
@@ -149,7 +156,7 @@ fun CameraScreen(
                                         Log.e("CameraScreen", "Ошибка перезапуска предпросмотра: ${e.message}", e)
 
                                         // При ошибке пытаемся повторить еще раз с большей задержкой
-                                        Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                        Handler(Looper.getMainLooper()).postDelayed({
                                             try {
                                                 openGlView?.let { view ->
                                                     streamService.restartPreview(view)
@@ -212,7 +219,7 @@ fun CameraScreen(
                             openGlView?.let { view ->
                                 if (view.holder.surface?.isValid == true) {
                                     Log.d("CameraScreen", "Запуск камеры из ON_RESUME")
-                                    Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                    Handler(Looper.getMainLooper()).postDelayed({
                                         try {
                                             streamService.restartPreview(view)
                                             screenWasOff = false
@@ -290,12 +297,11 @@ fun CameraScreen(
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Camera Preview
         CameraPreview(
             streamService = streamService,
             onOpenGlViewCreated = { view ->
                 openGlView = view
-                initializeCamera(view)
+                checkCameraPermissions()
             }
         )
 
@@ -354,6 +360,33 @@ fun CameraScreen(
                     onSettingsClick()
                 } catch (e: Exception) {
                     Log.e("CameraScreen", "Ошибка при переходе в настройки: ${e.message}", e)
+                }
+            }
+        )
+    }
+
+    // Добавляем диалог с объяснением необходимости разрешения
+    if (showPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showPermissionDialog = false },
+            title = { Text("Требуется разрешение") },
+            text = {
+                Text(
+                    "Для работы приложения необходим доступ к камере. Пожалуйста, предоставьте разрешение в настройках."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showPermissionDialog = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPermissionDialog = false }) {
+                    Text("Отмена")
                 }
             }
         )

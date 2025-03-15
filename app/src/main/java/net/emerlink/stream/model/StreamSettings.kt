@@ -9,11 +9,11 @@ data class StreamSettings(
     // Stream connection settings
     var connection: ConnectionSettings = ConnectionSettings(),
     // Audio settings
-    var sampleRate: Int = 0,
-    var stereo: Boolean = false,
-    var echoCancel: Boolean = false,
-    var noiseReduction: Boolean = false,
     var enableAudio: Boolean = false,
+    var audioSampleRate: Int = 0,
+    var audioStereo: Boolean = false,
+    var audioEchoCancel: Boolean = false,
+    var audioNoiseReduction: Boolean = false,
     var audioBitrate: Int = 0,
     var audioCodec: String = "",
     // Video settings

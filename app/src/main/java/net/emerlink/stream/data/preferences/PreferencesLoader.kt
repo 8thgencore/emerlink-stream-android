@@ -24,19 +24,19 @@ class PreferencesLoader {
             // Connection settings
             connection = loadConnectionSettings(preferences),
             // Audio settings
-            sampleRate =
+            audioSampleRate =
                 preferences
                     .getString(
                         PreferenceKeys.AUDIO_SAMPLE_RATE,
                         PreferenceKeys.AUDIO_SAMPLE_RATE_DEFAULT
                     )?.toIntOrNull() ?: 44100,
-            stereo = preferences.getBoolean(PreferenceKeys.AUDIO_STEREO, PreferenceKeys.AUDIO_STEREO_DEFAULT),
-            echoCancel =
+            audioStereo = preferences.getBoolean(PreferenceKeys.AUDIO_STEREO, PreferenceKeys.AUDIO_STEREO_DEFAULT),
+            audioEchoCancel =
                 preferences.getBoolean(
                     PreferenceKeys.AUDIO_ECHO_CANCEL,
                     PreferenceKeys.AUDIO_ECHO_CANCEL_DEFAULT
                 ),
-            noiseReduction =
+            audioNoiseReduction =
                 preferences.getBoolean(
                     PreferenceKeys.AUDIO_NOISE_REDUCTION,
                     PreferenceKeys.AUDIO_NOISE_REDUCTION_DEFAULT

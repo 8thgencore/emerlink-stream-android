@@ -1,9 +1,9 @@
 package net.emerlink.stream.service.camera
 
 import android.content.Context
+import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.video.CameraHelper
-import com.pedro.library.base.Camera2Base
 import com.pedro.library.view.GlInterface
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.model.StreamType
@@ -20,7 +20,13 @@ interface CameraInterface {
     val bitrate: Int
     val glInterface: GlInterface
 
-    fun prepareAudio(): Boolean
+    fun prepareAudio(
+        bitrate: Int = 128 * 1000,
+        sampleRate: Int = 44100,
+        isStereo: Boolean = true,
+        echoCanceler: Boolean = false,
+        noiseSuppressor: Boolean = false,
+    )
 
     fun prepareVideo(
         width: Int,
@@ -68,6 +74,8 @@ interface CameraInterface {
     )
 
     fun setProtocol(tcp: Boolean)
+
+    fun setAudioCodec(codec: AudioCodec)
 
     companion object {
         fun create(

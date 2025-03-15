@@ -147,6 +147,14 @@ fun SettingsScreen(
             )
         )
     }
+    var keyframeInterval by remember {
+        mutableStateOf(
+            preferences.getString(
+                PreferenceKeys.VIDEO_KEYFRAME_INTERVAL,
+                PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT
+            ) ?: PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT
+        )
+    }
 
     // Audio Settings
     var enableAudio by remember {
@@ -342,16 +350,14 @@ fun SettingsScreen(
                     InputPreference(
                         title = stringResource(id = R.string.keyframe_interval),
                         summary = stringResource(id = R.string.keyframe_interval_summary),
-                        value =
-                            preferences.getString(
-                                PreferenceKeys.VIDEO_KEYFRAME_INTERVAL,
-                                PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT
-                            ) ?: PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT,
+                        value = keyframeInterval,
                         onValueChange = { value ->
+                            val filteredValue = value.filterNot { it.isWhitespace() }
+                            keyframeInterval = filteredValue
                             preferences.edit {
                                 putString(
                                     PreferenceKeys.VIDEO_KEYFRAME_INTERVAL,
-                                    value
+                                    filteredValue
                                 )
                             }
                         },
