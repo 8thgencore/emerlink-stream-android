@@ -4,6 +4,7 @@ import android.content.Context
 import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.video.CameraHelper
+import com.pedro.library.base.Camera2Base
 import com.pedro.library.view.GlInterface
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.model.StreamType

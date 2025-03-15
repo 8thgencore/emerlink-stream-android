@@ -13,36 +13,20 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import android.view.MotionEvent
-import android.view.SurfaceHolder
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pedro.library.view.OpenGlView
-import net.emerlink.stream.R
 import net.emerlink.stream.model.StreamInfo
 import net.emerlink.stream.service.StreamService
+import net.emerlink.stream.ui.camera.components.*
 import net.emerlink.stream.util.AppIntentActions
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
@@ -114,6 +98,7 @@ fun CameraScreen(
                     initializeCamera(view)
                 }
             }
+
             else -> {
                 // Запрашиваем разрешение
                 requestPermissionLauncher.launch(Manifest.permission.CAMERA)
@@ -124,55 +109,21 @@ fun CameraScreen(
     // Регистрируем приемник событий экрана
     DisposableEffect(key1 = Unit) {
         val screenStateReceiver =
-            object : BroadcastReceiver() {
-                override fun onReceive(
-                    context: Context,
-                    intent: Intent,
-                ) {
-                    when (intent.action) {
-                        Intent.ACTION_SCREEN_OFF -> {
-                            Log.d("CameraScreen", "Экран выключен")
-                            screenWasOff = true
-                            streamService?.releaseCamera()
-                        }
-
-                        Intent.ACTION_SCREEN_ON -> {
-                            Log.d("CameraScreen", "Экран включен")
-                        }
-
-                        Intent.ACTION_USER_PRESENT -> {
-                            Log.d("CameraScreen", "Пользователь разблокировал экран")
-                            if (screenWasOff && openGlView != null && streamService != null) {
-                                // Перезапускаем камеру с задержкой, чтобы система успела подготовиться
-                                Handler(Looper.getMainLooper()).postDelayed({
-                                    try {
-                                        // Полный перезапуск камеры с предпросмотром
-                                        openGlView?.let { view ->
-                                            // Используем новый метод для полного перезапуска
-                                            streamService.restartPreview(view)
-                                        }
-                                        screenWasOff = false
-                                    } catch (e: Exception) {
-                                        Log.e("CameraScreen", "Ошибка перезапуска предпросмотра: ${e.message}", e)
-
-                                        // При ошибке пытаемся повторить еще раз с большей задержкой
-                                        Handler(Looper.getMainLooper()).postDelayed({
-                                            try {
-                                                openGlView?.let { view ->
-                                                    streamService.restartPreview(view)
-                                                }
-                                                screenWasOff = false
-                                            } catch (e: Exception) {
-                                                Log.e("CameraScreen", "Повторная ошибка перезапуска: ${e.message}", e)
-                                            }
-                                        }, 1000)
-                                    }
-                                }, 500)
-                            }
+            createScreenStateReceiver(
+                onScreenOff = {
+                    Log.d("CameraScreen", "Экран выключен")
+                    screenWasOff = true
+                    streamService?.releaseCamera()
+                },
+                onUserPresent = {
+                    Log.d("CameraScreen", "Пользователь разблокировал экран")
+                    if (screenWasOff && openGlView != null && streamService != null) {
+                        restartCameraAfterScreenOn(streamService, openGlView) {
+                            screenWasOff = false
                         }
                     }
                 }
-            }
+            )
 
         val filter =
             IntentFilter().apply {
@@ -194,48 +145,42 @@ fun CameraScreen(
     // Отслеживаем жизненный цикл для управления камерой
     DisposableEffect(key1 = lifecycleOwner) {
         val observer =
-            LifecycleEventObserver { _, event ->
-                when (event) {
-                    Lifecycle.Event.ON_PAUSE -> {
-                        Log.d("CameraScreen", "Lifecycle.Event.ON_PAUSE")
-                        streamService?.stopPreview()
-                        isPreviewActive = false
-                    }
-
-                    Lifecycle.Event.ON_STOP -> {
-                        Log.d("CameraScreen", "Lifecycle.Event.ON_STOP")
-                        streamService?.releaseCamera()
-                        isPreviewActive = false
-                    }
-
-                    Lifecycle.Event.ON_RESUME -> {
-                        Log.d("CameraScreen", "Lifecycle.Event.ON_RESUME")
-                        // Запускаем камеру только если предпросмотр не активен и OpenGlView готов
-                        if (!isPreviewActive &&
-                            openGlView != null &&
-                            streamService != null &&
-                            !streamService.isPreviewRunning()
-                        ) {
-                            openGlView?.let { view ->
-                                if (view.holder.surface?.isValid == true) {
-                                    Log.d("CameraScreen", "Запуск камеры из ON_RESUME")
-                                    Handler(Looper.getMainLooper()).postDelayed({
-                                        try {
-                                            streamService.restartPreview(view)
-                                            screenWasOff = false
-                                            isPreviewActive = true
-                                        } catch (e: Exception) {
-                                            Log.e("CameraScreen", "Ошибка перезапуска предпросмотра: ${e.message}", e)
-                                        }
-                                    }, 500)
-                                }
+            createLifecycleObserver(
+                onPause = {
+                    Log.d("CameraScreen", "Lifecycle.Event.ON_PAUSE")
+                    streamService?.stopPreview()
+                    isPreviewActive = false
+                },
+                onStop = {
+                    Log.d("CameraScreen", "Lifecycle.Event.ON_STOP")
+                    streamService?.releaseCamera()
+                    isPreviewActive = false
+                },
+                onResume = {
+                    Log.d("CameraScreen", "Lifecycle.Event.ON_RESUME")
+                    // Запускаем камеру только если предпросмотр не активен и OpenGlView готов
+                    if (!isPreviewActive &&
+                        openGlView != null &&
+                        streamService != null &&
+                        !streamService.isPreviewRunning()
+                    ) {
+                        openGlView?.let { view ->
+                            if (view.holder.surface?.isValid == true) {
+                                Log.d("CameraScreen", "Запуск камеры из ON_RESUME")
+                                Handler(Looper.getMainLooper()).postDelayed({
+                                    try {
+                                        streamService.restartPreview(view)
+                                        screenWasOff = false
+                                        isPreviewActive = true
+                                    } catch (e: Exception) {
+                                        Log.e("CameraScreen", "Ошибка перезапуска предпросмотра: ${e.message}", e)
+                                    }
+                                }, 500)
                             }
                         }
                     }
-
-                    else -> {}
                 }
-            }
+            )
 
         lifecycleOwner.lifecycle.addObserver(observer)
 
@@ -367,531 +312,8 @@ fun CameraScreen(
 
     // Добавляем диалог с объяснением необходимости разрешения
     if (showPermissionDialog) {
-        AlertDialog(
-            onDismissRequest = { showPermissionDialog = false },
-            title = { Text("Требуется разрешение") },
-            text = {
-                Text(
-                    "Для работы приложения необходим доступ к камере. Пожалуйста, предоставьте разрешение в настройках."
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showPermissionDialog = false
-                    }
-                ) {
-                    Text("OK")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showPermissionDialog = false }) {
-                    Text("Отмена")
-                }
-            }
-        )
-    }
-}
-
-@OptIn(ExperimentalComposeUiApi::class)
-@Composable
-private fun CameraPreview(
-    streamService: StreamService?,
-    onOpenGlViewCreated: (OpenGlView) -> Unit,
-) {
-    AndroidView(
-        factory = { ctx ->
-            Log.d("CameraScreen", "Создание OpenGlView")
-            OpenGlView(ctx).apply {
-                // Создаем именованный объект для колбека SurfaceHolder
-                val surfaceCallback =
-                    object : SurfaceHolder.Callback {
-                        override fun surfaceCreated(holder: SurfaceHolder) {
-                            Log.d("CameraScreen", "Surface создан")
-                            // Сохраняем ссылку на созданный OpenGlView только когда surface готов
-                            onOpenGlViewCreated(this@apply)
-                        }
-
-                        override fun surfaceChanged(
-                            holder: SurfaceHolder,
-                            format: Int,
-                            width: Int,
-                            height: Int,
-                        ) {
-                            Log.d("CameraScreen", "Surface изменен: $width x $height")
-                            // Не запускаем камеру повторно при изменении размера
-                        }
-
-                        override fun surfaceDestroyed(holder: SurfaceHolder) {
-                            Log.d("CameraScreen", "Surface уничтожен")
-                        }
-                    }
-
-                // Добавляем колбек к SurfaceHolder
-                holder.addCallback(surfaceCallback)
-            }
-        },
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .pointerInteropFilter { event ->
-                    when (event.action) {
-                        MotionEvent.ACTION_DOWN -> {
-                            streamService?.tapToFocus(event)
-                            true
-                        }
-
-                        MotionEvent.ACTION_MOVE -> {
-                            streamService?.setZoom(event)
-                            true
-                        }
-
-                        else -> false
-                    }
-                }
-    )
-}
-
-@Composable
-private fun StreamStatusIndicator(
-    isStreaming: Boolean,
-    isLandscape: Boolean,
-    onInfoClick: () -> Unit,
-) {
-    Box(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .then(
-                    if (!isLandscape) {
-                        Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
-                    } else {
-                        Modifier
-                    }
-                ).padding(16.dp),
-        contentAlignment = Alignment.TopStart
-    ) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-            modifier =
-                Modifier
-                    .padding(top = 8.dp)
-                    .clickable { onInfoClick() }
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-            ) {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(12.dp)
-                            .background(
-                                color =
-                                    if (isStreaming) {
-                                        MaterialTheme.colorScheme.error
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceVariant
-                                    },
-                                shape = CircleShape
-                            )
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = if (isStreaming) "LIVE" else "OFF",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                // Добавляем иконку для подсказки, что можно нажать
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = "Stream Info",
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun CameraControls(
-    isLandscape: Boolean,
-    isStreaming: Boolean,
-    isFlashOn: Boolean,
-    isMuted: Boolean,
-    streamService: StreamService?,
-    onStreamingToggle: (Boolean) -> Unit,
-    onFlashToggle: (Boolean) -> Unit,
-    onMuteToggle: (Boolean) -> Unit,
-    onSettingsClick: () -> Unit,
-) {
-    Box(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .then(
-                    if (!isLandscape) {
-                        Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
-                    } else {
-                        Modifier
-                    }
-                ).padding(16.dp),
-        contentAlignment = Alignment.BottomCenter
-    ) {
-        if (isLandscape) {
-            LandscapeCameraControls(
-                isStreaming = isStreaming,
-                isFlashOn = isFlashOn,
-                isMuted = isMuted,
-                streamService = streamService,
-                onStreamingToggle = onStreamingToggle,
-                onFlashToggle = onFlashToggle,
-                onMuteToggle = onMuteToggle,
-                onSettingsClick = onSettingsClick
-            )
-        } else {
-            PortraitCameraControls(
-                isStreaming = isStreaming,
-                isFlashOn = isFlashOn,
-                isMuted = isMuted,
-                streamService = streamService,
-                onStreamingToggle = onStreamingToggle,
-                onFlashToggle = onFlashToggle,
-                onMuteToggle = onMuteToggle,
-                onSettingsClick = onSettingsClick
-            )
-        }
-    }
-}
-
-@Composable
-private fun LandscapeCameraControls(
-    isStreaming: Boolean,
-    isFlashOn: Boolean,
-    isMuted: Boolean,
-    streamService: StreamService?,
-    onStreamingToggle: (Boolean) -> Unit,
-    onFlashToggle: (Boolean) -> Unit,
-    onMuteToggle: (Boolean) -> Unit,
-    onSettingsClick: () -> Unit,
-) {
-    // Right side controls column
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterEnd) {
-        Column(
-            modifier = Modifier.padding(end = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Top controls
-            SettingsButton(onClick = onSettingsClick)
-            MuteButton(
-                isMuted = isMuted,
-                onClick = {
-                    streamService?.toggleMute(!isMuted)
-                    onMuteToggle(!isMuted)
-                }
-            )
-
-            // Record button in the middle
-            Spacer(modifier = Modifier.height(8.dp))
-            RecordButton(
-                isStreaming = isStreaming,
-                onClick = {
-                    if (isStreaming) {
-                        streamService?.stopStream(null, null)
-                        onStreamingToggle(false)
-                    } else {
-                        streamService?.startStream()
-                        onStreamingToggle(true)
-                    }
-                }
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Bottom controls
-            PhotoButton(
-                onClick = {
-                    streamService?.takePhoto()
-                }
-            )
-            FlashButton(
-                isFlashOn = isFlashOn,
-                onClick = {
-                    val newState = streamService?.toggleLantern() == true
-                    onFlashToggle(newState)
-                }
-            )
-        }
-    }
-
-    // Left side - camera switch button
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
-        Box(modifier = Modifier.padding(start = 16.dp)) {
-            SwitchCameraButton(onClick = { streamService?.switchCamera() })
-        }
-    }
-}
-
-@Composable
-private fun PortraitCameraControls(
-    isStreaming: Boolean,
-    isFlashOn: Boolean,
-    isMuted: Boolean,
-    streamService: StreamService?,
-    onStreamingToggle: (Boolean) -> Unit,
-    onFlashToggle: (Boolean) -> Unit,
-    onMuteToggle: (Boolean) -> Unit,
-    onSettingsClick: () -> Unit,
-) {
-    // Main Controls (Record button in center)
-    RecordButton(
-        isStreaming = isStreaming,
-        onClick = {
-            if (isStreaming) {
-                streamService?.stopStream(null, null)
-                onStreamingToggle(false)
-            } else {
-                streamService?.startStream()
-                onStreamingToggle(true)
-            }
-        }
-    )
-
-    // Left Controls
-    Row(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(bottom = 6.dp),
-        horizontalArrangement = Arrangement.Start,
-        verticalAlignment = Alignment.Bottom
-    ) {
-        FlashButton(
-            isFlashOn = isFlashOn,
-            onClick = {
-                val newState = streamService?.toggleLantern() == true
-                onFlashToggle(newState)
-            }
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        PhotoButton(
-            onClick = {
-                streamService?.takePhoto()
-            }
-        )
-    }
-
-    // Right Controls
-    Row(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(bottom = 6.dp),
-        horizontalArrangement = Arrangement.End,
-        verticalAlignment = Alignment.Bottom
-    ) {
-        MuteButton(
-            isMuted = isMuted,
-            onClick = {
-                streamService?.toggleMute(!isMuted)
-                onMuteToggle(!isMuted)
-            }
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        SettingsButton(onClick = onSettingsClick)
-    }
-
-    // Center Left - Camera Switch
-    Box(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(bottom = 16.dp, start = 0.dp),
-        contentAlignment = Alignment.CenterStart
-    ) {
-        SwitchCameraButton(onClick = { streamService?.switchCamera() })
-    }
-}
-
-@Composable
-private fun RecordButton(
-    isStreaming: Boolean,
-    onClick: () -> Unit,
-) {
-    FloatingActionButton(
-        onClick = onClick,
-        containerColor = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary
-    ) {
-        Icon(
-            imageVector = if (isStreaming) Icons.Default.VideocamOff else Icons.Default.Videocam,
-            contentDescription = if (isStreaming) "Stop Streaming" else "Start Streaming"
-        )
-    }
-}
-
-@Composable
-private fun FlashButton(
-    isFlashOn: Boolean,
-    onClick: () -> Unit,
-) {
-    SmallFloatingActionButton(
-        onClick = onClick,
-        containerColor = MaterialTheme.colorScheme.secondary,
-        contentColor = MaterialTheme.colorScheme.onSecondary
-    ) {
-        Icon(
-            imageVector = if (isFlashOn) Icons.Default.FlashOn else Icons.Default.FlashOff,
-            contentDescription = if (isFlashOn) "Turn Flash Off" else "Turn Flash On"
-        )
-    }
-}
-
-@Composable
-private fun PhotoButton(onClick: () -> Unit) {
-    SmallFloatingActionButton(
-        onClick = {
-            Log.d("CameraScreen", "Нажата кнопка фото")
-            onClick()
-        },
-        containerColor = MaterialTheme.colorScheme.secondary,
-        contentColor = MaterialTheme.colorScheme.onSecondary
-    ) {
-        Icon(
-            imageVector = Icons.Default.PhotoCamera,
-            contentDescription = "Take Photo"
-        )
-    }
-}
-
-@Composable
-private fun MuteButton(
-    isMuted: Boolean,
-    onClick: () -> Unit,
-) {
-    SmallFloatingActionButton(
-        onClick = onClick,
-        containerColor = MaterialTheme.colorScheme.secondary,
-        contentColor = MaterialTheme.colorScheme.onSecondary
-    ) {
-        Icon(
-            imageVector = if (isMuted) Icons.Default.MicOff else Icons.Default.Mic,
-            contentDescription = if (isMuted) "Unmute" else "Mute"
-        )
-    }
-}
-
-@Composable
-private fun SwitchCameraButton(onClick: () -> Unit) {
-    SmallFloatingActionButton(
-        onClick = onClick,
-        containerColor = MaterialTheme.colorScheme.secondary,
-        contentColor = MaterialTheme.colorScheme.onSecondary
-    ) {
-        Icon(
-            imageVector = Icons.Default.Cameraswitch,
-            contentDescription = "Switch Camera"
-        )
-    }
-}
-
-@Composable
-private fun SettingsButton(onClick: () -> Unit) {
-    SmallFloatingActionButton(
-        onClick = onClick,
-        containerColor = MaterialTheme.colorScheme.secondary,
-        contentColor = MaterialTheme.colorScheme.onSecondary
-    ) {
-        Icon(
-            imageVector = Icons.Default.Settings,
-            contentDescription = "Settings"
-        )
-    }
-}
-
-@Composable
-private fun SettingsConfirmationDialog(
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-) {
-    val context = LocalContext.current
-    androidx.compose.material3.AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(context.getString(R.string.stop_streaming)) },
-        text = { Text(context.getString(R.string.stop_streaming_confirmation)) },
-        confirmButton = {
-            androidx.compose.material3.TextButton(onClick = onConfirm) {
-                Text(context.getString(R.string.yes))
-            }
-        },
-        dismissButton = {
-            androidx.compose.material3.TextButton(onClick = onDismiss) {
-                Text(context.getString(R.string.cancel))
-            }
-        }
-    )
-}
-
-@Composable
-private fun StreamInfoPanel(
-    streamInfo: StreamInfo,
-    isLandscape: Boolean,
-) {
-    Box(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .then(
-                    if (!isLandscape) {
-                        Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
-                    } else {
-                        Modifier
-                    }
-                ).padding(16.dp),
-        contentAlignment = Alignment.TopCenter
-    ) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-            modifier =
-                Modifier
-                    .padding(top = if (isLandscape) 16.dp else 48.dp)
-                    .then(if (isLandscape) Modifier.width(300.dp) else Modifier)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                InfoRow(label = "Protocol", value = streamInfo.protocol)
-                InfoRow(label = "Resolution", value = streamInfo.resolution)
-                InfoRow(label = "Bitrate", value = streamInfo.bitrate)
-                InfoRow(label = "FPS", value = streamInfo.fps)
-            }
-        }
-    }
-}
-
-@Composable
-private fun InfoRow(
-    label: String,
-    value: String,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
+        PermissionDialog(
+            onDismiss = { showPermissionDialog = false }
         )
     }
 }
