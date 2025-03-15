@@ -38,18 +38,19 @@ fun PermissionDialog(
     permissionType: String,
     onDismiss: () -> Unit,
 ) {
+    val context = LocalContext.current
     val title =
         when (permissionType) {
-            "camera" -> "Требуется доступ к камере"
-            "microphone" -> "Требуется доступ к микрофону"
-            else -> "Требуется разрешение"
+            "camera" -> context.getString(R.string.camera_permission_title)
+            "microphone" -> context.getString(R.string.microphone_permission_title)
+            else -> context.getString(R.string.unknown_error)
         }
 
     val message =
         when (permissionType) {
-            "camera" -> "Для работы приложения необходим доступ к камере. Пожалуйста, предоставьте разрешение в настройках."
-            "microphone" -> "Для работы приложения необходим доступ к микрофону. Пожалуйста, предоставьте разрешение в настройках."
-            else -> "Для работы приложения необходимы разрешения. Пожалуйста, предоставьте их в настройках."
+            "camera" -> context.getString(R.string.camera_permission_message)
+            "microphone" -> context.getString(R.string.microphone_permission_message)
+            else -> context.getString(R.string.unknown_error)
         }
 
     AlertDialog(
@@ -58,12 +59,12 @@ fun PermissionDialog(
         text = { Text(message) },
         confirmButton = {
             Button(onClick = { onDismiss() }) {
-                Text("OK")
+                Text(context.getString(R.string.ok))
             }
         },
         dismissButton = {
             TextButton(onClick = { onDismiss() }) {
-                Text("Отмена")
+                Text(context.getString(R.string.cancel))
             }
         }
     )
