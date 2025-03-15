@@ -31,7 +31,7 @@ class OnboardingActivity : AppIntro() {
                 title = getString(R.string.welcome_to_emerlink),
                 description = getString(R.string.welcome_description),
                 imageDrawable = R.drawable.ic_welcome,
-                backgroundColorRes = R.color.primary
+                backgroundColorRes = R.color.light_primary
             )
         )
 
@@ -41,7 +41,7 @@ class OnboardingActivity : AppIntro() {
                 title = getString(R.string.camera_and_mic_permissions),
                 description = getString(R.string.camera_and_mic_permissions_description),
                 imageDrawable = R.drawable.ic_camera,
-                backgroundColorRes = R.color.primary
+                backgroundColorRes = R.color.light_primary
             )
         )
 
@@ -51,7 +51,7 @@ class OnboardingActivity : AppIntro() {
                 title = getString(R.string.location_permission),
                 description = getString(R.string.location_permission_description),
                 imageDrawable = R.drawable.ic_location,
-                backgroundColorRes = R.color.primary
+                backgroundColorRes = R.color.light_primary
             )
         )
 
@@ -62,7 +62,7 @@ class OnboardingActivity : AppIntro() {
                     title = getString(R.string.storage_permission),
                     description = getString(R.string.storage_permission_description),
                     imageDrawable = R.drawable.ic_storage,
-                    backgroundColorRes = R.color.primary
+                    backgroundColorRes = R.color.light_primary
                 )
             )
         }
@@ -74,7 +74,7 @@ class OnboardingActivity : AppIntro() {
                     title = getString(R.string.notification_permission),
                     description = getString(R.string.notification_permission_description),
                     imageDrawable = R.drawable.ic_notification,
-                    backgroundColorRes = R.color.primary
+                    backgroundColorRes = R.color.light_primary
                 )
             )
         }
@@ -85,7 +85,7 @@ class OnboardingActivity : AppIntro() {
                 title = getString(R.string.all_set),
                 description = getString(R.string.ready_to_start_description),
                 imageDrawable = R.drawable.ic_welcome,
-                backgroundColorRes = R.color.primary
+                backgroundColorRes = R.color.light_primary
             )
         )
 
