@@ -481,37 +481,47 @@ class StreamService :
             return
         }
 
-        if (streamManager.prepareAudio() && streamManager.prepareVideo()) {
-            streamManager.switchStreamResolution()
-
-            if (streamSettings.stream) {
-                startStreaming()
-            }
-            if (streamSettings.record) {
-                mediaManager.startRecording()
-            }
-
-            try {
-                if (hasLocationPermission()) {
-                    locManager?.requestLocationUpdates(
-                        LocationManager.GPS_PROVIDER,
-                        1000,
-                        1f,
-                        locListener!!
-                    )
-                } else {
-                    Log.w(TAG, "Отсутствуют разрешения на местоположение, отслеживание отключено")
-                }
-            } catch (e: SecurityException) {
-                Log.e(TAG, "Failed to request location updates", e)
-            }
-
-            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
-            sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_NORMAL)
-        } else {
-            Log.e(TAG, "Failed to prepare audio or video")
-            notificationManager.showErrorNotification(getString(R.string.failed_to_prepare))
+        val audioInitialized = streamManager.prepareAudio()
+        val videoInitialized = streamManager.prepareVideo()
+        
+        if (!audioInitialized) {
+            Log.e(TAG, "Failed to initialize audio")
+            notificationManager.showErrorNotification(getString(R.string.failed_to_prepare_audio))
+            // Continue anyway, we'll stream without audio
         }
+        
+        if (!videoInitialized) {
+            Log.e(TAG, "Failed to initialize video")
+            notificationManager.showErrorNotification(getString(R.string.failed_to_prepare))
+            return
+        }
+
+        streamManager.switchStreamResolution()
+
+        if (streamSettings.stream) {
+            startStreaming()
+        }
+        if (streamSettings.record) {
+            mediaManager.startRecording()
+        }
+
+        try {
+            if (hasLocationPermission()) {
+                locManager?.requestLocationUpdates(
+                    LocationManager.GPS_PROVIDER,
+                    1000,
+                    1f,
+                    locListener!!
+                )
+            } else {
+                Log.w(TAG, "Отсутствуют разрешения на местоположение, отслеживание отключено")
+            }
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Failed to request location updates", e)
+        }
+
+        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
+        sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_NORMAL)
     }
 
     private fun startStreaming() {

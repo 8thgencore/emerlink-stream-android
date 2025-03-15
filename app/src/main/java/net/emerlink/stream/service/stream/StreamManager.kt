@@ -175,27 +175,31 @@ class StreamManager(
     }
 
     fun prepareAudio(): Boolean {
+        Log.d(TAG, "Подготовка аудио")
+
+        // Try with known working configuration first
         try {
-            Log.d(TAG, "Подготовка аудио")
-
-            // Базовая подготовка аудио
             cameraInterface.prepareAudio(
-                bitrate = streamSettings.audioBitrate * 1000,
+                bitrate = streamSettings.audioBitrate * 1024,
                 sampleRate = streamSettings.audioSampleRate.toInt(),
-                isStereo = streamSettings.audioStereo,
-                echoCanceler = streamSettings.audioEchoCancel,
-                noiseSuppressor = streamSettings.audioNoiseReduction
+                isStereo = streamSettings.audioStereo
             )
-
-            // Установка аудио кодека, если поддерживается
-            if (streamSettings.audioCodec == "opus") {
-                cameraInterface.setAudioCodec(AudioCodec.OPUS)
-            } else {
-                cameraInterface.setAudioCodec(AudioCodec.AAC)
-            }
-
+            cameraInterface.setAudioCodec(AudioCodec.AAC)
             return true
         } catch (e: Exception) {
+            // Try fallback configuration
+            try {
+                cameraInterface.prepareAudio(
+                    bitrate = 128 * 1024,
+                    sampleRate = 44100,
+                    isStereo = false
+                )
+                cameraInterface.setAudioCodec(AudioCodec.AAC)
+                return true
+            } catch (e2: Exception) {
+                Log.e(TAG, "Не удалось инициализировать аудио: ${e2.message}", e2)
+                return false
+            }
             Log.e(TAG, "Ошибка подготовки аудио: ${e.message}", e)
             return false
         }

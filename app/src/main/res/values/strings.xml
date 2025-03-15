@@ -113,6 +113,7 @@
     <string name="retry">Повторить</string>
     <string name="dismiss">Закрыть</string>
     <string name="error_unsupported_transport">Сервер не поддерживает выбранный транспортный протокол</string>
+    <string name="failed_to_prepare_audio">Не удалось подготовить аудио. Стриминг без звука.</string>
     
     <!-- Advanced Settings -->
     <string name="advanced_settings">Расширенные настройки</string>

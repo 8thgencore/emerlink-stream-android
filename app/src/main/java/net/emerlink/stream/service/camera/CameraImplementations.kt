@@ -25,20 +25,21 @@ class RtmpCameraImpl(
     override val glInterface: GlInterface get() = camera.glInterface
 
     override fun prepareAudio(
+        audioSource: Int,
         bitrate: Int,
         sampleRate: Int,
         isStereo: Boolean,
         echoCanceler: Boolean,
         noiseSuppressor: Boolean,
-    ) {
+    ): Boolean =
         camera.prepareAudio(
+            audioSource,
             bitrate,
             sampleRate,
             isStereo,
             echoCanceler,
             noiseSuppressor
         )
-    }
 
     override fun prepareVideo(
         width: Int,
@@ -114,20 +115,21 @@ class RtspCameraImpl(
     override val glInterface: GlInterface get() = camera.glInterface
 
     override fun prepareAudio(
+        audioSource: Int,
         bitrate: Int,
         sampleRate: Int,
         isStereo: Boolean,
         echoCanceler: Boolean,
         noiseSuppressor: Boolean,
-    ) {
+    ): Boolean =
         camera.prepareAudio(
+            audioSource,
             bitrate,
             sampleRate,
             isStereo,
             echoCanceler,
             noiseSuppressor
         )
-    }
 
     override fun prepareVideo(
         width: Int,
@@ -203,20 +205,21 @@ class SrtCameraImpl(
     override val glInterface: GlInterface get() = camera.glInterface
 
     override fun prepareAudio(
+        audioSource: Int,
         bitrate: Int,
         sampleRate: Int,
         isStereo: Boolean,
         echoCanceler: Boolean,
         noiseSuppressor: Boolean,
-    ) {
+    ): Boolean =
         camera.prepareAudio(
+            audioSource,
             bitrate,
             sampleRate,
             isStereo,
             echoCanceler,
             noiseSuppressor
         )
-    }
 
     override fun prepareVideo(
         width: Int,
@@ -292,20 +295,21 @@ class UdpCameraImpl(
     override val glInterface: GlInterface get() = camera.glInterface
 
     override fun prepareAudio(
+        audioSource: Int,
         bitrate: Int,
         sampleRate: Int,
         isStereo: Boolean,
         echoCanceler: Boolean,
         noiseSuppressor: Boolean,
-    ) {
+    ): Boolean =
         camera.prepareAudio(
+            audioSource,
             bitrate,
             sampleRate,
             isStereo,
             echoCanceler,
             noiseSuppressor
         )
-    }
 
     override fun prepareVideo(
         width: Int,

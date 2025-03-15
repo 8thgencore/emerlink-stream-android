@@ -1,6 +1,7 @@
 package net.emerlink.stream.service.camera
 
 import android.content.Context
+import android.media.MediaRecorder
 import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.video.CameraHelper
@@ -22,12 +23,13 @@ interface CameraInterface {
     val glInterface: GlInterface
 
     fun prepareAudio(
+        audioSource: Int = MediaRecorder.AudioSource.DEFAULT,
         bitrate: Int = 128 * 1000,
         sampleRate: Int = 44100,
         isStereo: Boolean = true,
         echoCanceler: Boolean = false,
         noiseSuppressor: Boolean = false,
-    )
+    ): Boolean
 
     fun prepareVideo(
         width: Int,
