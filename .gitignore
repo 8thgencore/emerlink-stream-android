@@ -130,4 +130,8 @@ hs_err_pid*
 # Cache of project
 .gradletasknamecache
 
+# Local properties
 local.properties
+
+# Release files
+release/
