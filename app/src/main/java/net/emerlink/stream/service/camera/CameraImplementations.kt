@@ -32,7 +32,14 @@ class RtmpCameraImpl(
         bitrate: Int,
         iFrameInterval: Int,
         rotation: Int,
-    ) = camera.prepareVideo(width, height, fps, bitrate, rotation)
+    ) = camera.prepareVideo(
+        width,
+        height,
+        fps,
+        bitrate,
+        iFrameInterval,
+        rotation
+    )
 
     override fun startStream(url: String) = camera.startStream(url)
 
@@ -73,7 +80,7 @@ class RtmpCameraImpl(
     }
 
     override fun setProtocol(tcp: Boolean) {
-        // Не применимо для RTMP
+        // Not applicable for RTMP
     }
 }
 
@@ -98,7 +105,14 @@ class RtspCameraImpl(
         bitrate: Int,
         iFrameInterval: Int,
         rotation: Int,
-    ) = camera.prepareVideo(width, height, fps, bitrate, rotation)
+    ) = camera.prepareVideo(
+        width,
+        height,
+        fps,
+        bitrate,
+        iFrameInterval,
+        rotation
+    )
 
     override fun startStream(url: String) = camera.startStream(url)
 
@@ -164,7 +178,14 @@ class SrtCameraImpl(
         bitrate: Int,
         iFrameInterval: Int,
         rotation: Int,
-    ) = camera.prepareVideo(width, height, fps, bitrate, rotation)
+    ) = camera.prepareVideo(
+        width,
+        height,
+        fps,
+        bitrate,
+        iFrameInterval,
+        rotation
+    )
 
     override fun startStream(url: String) = camera.startStream(url)
 
@@ -201,11 +222,11 @@ class SrtCameraImpl(
         username: String,
         password: String,
     ) {
-        // Не применимо для SRT
+        // Not applicable for SRT
     }
 
     override fun setProtocol(tcp: Boolean) {
-        // Не применимо для SRT
+        // Not applicable for SRT
     }
 }
 
@@ -230,7 +251,14 @@ class UdpCameraImpl(
         bitrate: Int,
         iFrameInterval: Int,
         rotation: Int,
-    ) = camera.prepareVideo(width, height, fps, bitrate, rotation)
+    ) = camera.prepareVideo(
+        width,
+        height,
+        fps,
+        bitrate,
+        iFrameInterval,
+        rotation
+    )
 
     override fun startStream(url: String) = camera.startStream(url)
 
@@ -267,10 +295,10 @@ class UdpCameraImpl(
         username: String,
         password: String,
     ) {
-        // Не применимо для UDP
+        // Not applicable for UDP
     }
 
     override fun setProtocol(tcp: Boolean) {
-        // Не применимо для UDP
+        // Not applicable for UDP
     }
 }
