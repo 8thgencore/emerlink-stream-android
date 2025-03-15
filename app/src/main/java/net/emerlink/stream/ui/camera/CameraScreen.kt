@@ -16,7 +16,8 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -48,6 +49,11 @@ fun CameraScreen(
     var screenWasOff by remember { mutableStateOf(false) }
     var isPreviewActive by remember { mutableStateOf(streamService?.isPreviewRunning() == true) }
     var showPermissionDialog by remember { mutableStateOf(false) }
+    var permissionType by remember { mutableStateOf("") }
+
+    // Используем lateinit для объявления лаунчеров заранее
+    lateinit var requestCameraPermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>
+    lateinit var requestMicrophonePermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>
 
     LaunchedEffect(streamService) {
         streamService?.let { service ->
@@ -55,7 +61,7 @@ fun CameraScreen(
         }
     }
 
-    // Функция инициализации камеры должна быть объявлена до requestPermissionLauncher
+    // Функция инициализации камеры
     fun initializeCamera(view: OpenGlView) {
         if (streamService != null && !isPreviewActive && !streamService.isPreviewRunning()) {
             try {
@@ -70,41 +76,70 @@ fun CameraScreen(
         }
     }
 
-    // Создаем лаунчер для запроса разрешений
-    val requestPermissionLauncher =
-        rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { isGranted ->
-            if (isGranted) {
-                // Разрешение получено, можно инициализировать камеру
-                openGlView?.let { view ->
-                    initializeCamera(view)
-                }
-            } else {
-                // Разрешение не получено, показываем диалог
-                showPermissionDialog = true
-            }
-        }
-
-    // Добавляем функцию проверки разрешений
-    fun checkCameraPermissions() {
+    // Функция проверки разрешения на микрофон
+    fun checkMicrophonePermission() {
         when {
             ContextCompat.checkSelfPermission(
                 context,
-                Manifest.permission.CAMERA
+                Manifest.permission.RECORD_AUDIO
             ) == PackageManager.PERMISSION_GRANTED -> {
-                // Разрешение уже есть, можно инициализировать камеру
                 openGlView?.let { view ->
                     initializeCamera(view)
                 }
             }
 
             else -> {
-                // Запрашиваем разрешение
-                requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+                requestMicrophonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
             }
         }
     }
+
+    // Функция проверки разрешений на камеру
+    fun checkCameraPermission() {
+        when {
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                checkMicrophonePermission()
+            }
+
+            else -> {
+                requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+        }
+    }
+
+    // Инициализируем лаунчеры
+    requestCameraPermissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted ->
+            if (isGranted) {
+                // Проверяем разрешение на микрофон после получения разрешения на камеру
+                checkMicrophonePermission()
+            } else {
+                // Разрешение на камеру не получено, показываем диалог
+                permissionType = "camera"
+                showPermissionDialog = true
+            }
+        }
+
+    requestMicrophonePermissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted ->
+            if (isGranted) {
+                // Оба разрешения получены, можно инициализировать камеру
+                openGlView?.let { view ->
+                    initializeCamera(view)
+                }
+            } else {
+                // Разрешение на микрофон не получено, показываем диалог
+                permissionType = "microphone"
+                showPermissionDialog = true
+            }
+        }
 
     // Регистрируем приемник событий экрана
     DisposableEffect(key1 = Unit) {
@@ -246,7 +281,7 @@ fun CameraScreen(
             streamService = streamService,
             onOpenGlViewCreated = { view ->
                 openGlView = view
-                checkCameraPermissions()
+                checkCameraPermission()
             }
         )
 
@@ -310,9 +345,10 @@ fun CameraScreen(
         )
     }
 
-    // Добавляем диалог с объяснением необходимости разрешения
+    // Обновляем диалог с объяснением необходимости разрешения
     if (showPermissionDialog) {
         PermissionDialog(
+            permissionType = permissionType,
             onDismiss = { showPermissionDialog = false }
         )
     }

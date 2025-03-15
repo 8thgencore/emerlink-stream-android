@@ -34,21 +34,30 @@ fun SettingsConfirmationDialog(
 }
 
 @Composable
-fun PermissionDialog(onDismiss: () -> Unit) {
+fun PermissionDialog(
+    permissionType: String,
+    onDismiss: () -> Unit,
+) {
+    val title =
+        when (permissionType) {
+            "camera" -> "Требуется доступ к камере"
+            "microphone" -> "Требуется доступ к микрофону"
+            else -> "Требуется разрешение"
+        }
+
+    val message =
+        when (permissionType) {
+            "camera" -> "Для работы приложения необходим доступ к камере. Пожалуйста, предоставьте разрешение в настройках."
+            "microphone" -> "Для работы приложения необходим доступ к микрофону. Пожалуйста, предоставьте разрешение в настройках."
+            else -> "Для работы приложения необходимы разрешения. Пожалуйста, предоставьте их в настройках."
+        }
+
     AlertDialog(
         onDismissRequest = { onDismiss() },
-        title = { Text("Требуется разрешение") },
-        text = {
-            Text(
-                "Для работы приложения необходим доступ к камере. Пожалуйста, предоставьте разрешение в настройках."
-            )
-        },
+        title = { Text(title) },
+        text = { Text(message) },
         confirmButton = {
-            Button(
-                onClick = {
-                    onDismiss()
-                }
-            ) {
+            Button(onClick = { onDismiss() }) {
                 Text("OK")
             }
         },
