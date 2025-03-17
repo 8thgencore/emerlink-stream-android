@@ -14,7 +14,6 @@ object AppIntentActions {
     const val ACTION_NEW_BITRATE = "net.emerlink.stream.NEW_BITRATE"
     const val ACTION_LOCATION_CHANGE = "net.emerlink.stream.LOCATION_CHANGE"
     const val ACTION_DISMISS_ERROR = "net.emerlink.stream.DISMISS_ERROR"
-    const val ACTION_PROFILE_CHANGED = "net.emerlink.stream.PROFILE_CHANGED"
 
     // Broadcast события
     const val BROADCAST_STREAM_STOPPED = "net.emerlink.stream.STREAM_STOPPED"

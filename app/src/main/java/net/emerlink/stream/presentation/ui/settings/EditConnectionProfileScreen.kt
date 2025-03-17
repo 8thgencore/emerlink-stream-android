@@ -2,7 +2,6 @@
 
 package net.emerlink.stream.presentation.ui.settings
 
-import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -12,16 +11,12 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import net.emerlink.stream.R
-import net.emerlink.stream.core.AppIntentActions
 import net.emerlink.stream.data.model.ConnectionProfile
 import net.emerlink.stream.data.model.ConnectionSettings
 import net.emerlink.stream.data.model.StreamType
@@ -48,7 +43,7 @@ fun EditConnectionProfileScreen(
     // Load existing profile or create a new one
     val existingProfile =
         if (!isNewProfile) {
-            viewModel.getProfile(profileId!!)
+            viewModel.getProfile(profileId)
         } else {
             null
         }
@@ -100,7 +95,6 @@ fun EditConnectionProfileScreen(
 
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -147,17 +141,10 @@ fun EditConnectionProfileScreen(
 
                                 // Save profile
                                 viewModel.saveProfile(profile)
-                                
+
                                 // Set as active profile
                                 viewModel.setActiveProfile(profileId)
-                                
-                                // Отправить уведомление об изменении профиля
-                                val intent = Intent(AppIntentActions.ACTION_PROFILE_CHANGED)
-                                LocalBroadcastManager.getInstance(context).sendBroadcast(intent)
-                                
-                                // Give repository time to update flows
-                                delay(100)
-                                
+
                                 onBackClick()
                             }
                         },

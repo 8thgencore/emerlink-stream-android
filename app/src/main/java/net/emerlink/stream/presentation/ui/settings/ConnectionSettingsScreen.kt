@@ -2,7 +2,6 @@
 
 package net.emerlink.stream.presentation.ui.settings
 
-import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,10 +27,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.preference.PreferenceManager
 import net.emerlink.stream.R
-import net.emerlink.stream.core.AppIntentActions
 import net.emerlink.stream.data.model.ConnectionProfile
 import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.presentation.ui.settings.components.PreferenceCategory
@@ -170,10 +167,6 @@ fun ConnectionSettingsScreen(
                             onCheckedChange = { checked ->
                                 streamVideo = checked
                                 settingsViewModel.updateStreamVideo(checked)
-
-                                // Отправить уведомление об изменении настроек
-                                val intent = Intent(AppIntentActions.ACTION_PROFILE_CHANGED)
-                                LocalBroadcastManager.getInstance(context).sendBroadcast(intent)
                             }
                         )
                     }
@@ -208,12 +201,7 @@ fun ConnectionSettingsScreen(
                                     ConnectionProfileItem(
                                         profile = profile,
                                         isActive = isActive,
-                                        onProfileClick = {
-                                            connectionProfilesViewModel.setActiveProfile(profile.id)
-                                            // Отправить уведомление об изменении профиля
-                                            val intent = Intent(AppIntentActions.ACTION_PROFILE_CHANGED)
-                                            LocalBroadcastManager.getInstance(context).sendBroadcast(intent)
-                                        },
+                                        onProfileClick = { connectionProfilesViewModel.setActiveProfile(profile.id) },
                                         onEditClick = { onEditProfile(profile.id) },
                                         onDeleteClick = {
                                             profileToDelete = profile
@@ -246,9 +234,6 @@ fun ConnectionSettingsScreen(
                             onClick = {
                                 profileToDelete?.id?.let {
                                     connectionProfilesViewModel.deleteProfile(it)
-                                    // Отправить уведомление об изменении профиля
-                                    val intent = Intent(AppIntentActions.ACTION_PROFILE_CHANGED)
-                                    LocalBroadcastManager.getInstance(context).sendBroadcast(intent)
                                 }
                                 showDeleteDialog = false
                                 profileToDelete = null
