@@ -63,6 +63,9 @@ dependencies {
     // Preferences
     implementation(libs.androidx.datastore.preferences)
 
+    // JSON
+    implementation(libs.gson)
+
     // Dependency Injection
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)

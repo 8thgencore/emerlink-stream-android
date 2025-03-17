@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports", "ktlint:standard:function-naming")
+
 package net.emerlink.stream.navigation
 
 import android.content.pm.ActivityInfo
@@ -8,16 +10,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import androidx.preference.PreferenceManager
 import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.service.StreamService
 import net.emerlink.stream.ui.camera.CameraScreen
+import net.emerlink.stream.ui.settings.ConnectionSettingsScreen
+import net.emerlink.stream.ui.settings.EditConnectionProfileScreen
 import net.emerlink.stream.ui.settings.SettingsScreen
-import net.emerlink.stream.ui.settings.StreamSettingsScreen
 
 // Define your navigation routes
 object NavigationRoutes {
@@ -25,6 +30,7 @@ object NavigationRoutes {
     const val SETTINGS = "settings"
     const val STREAM_SETTINGS = "stream_settings"
     const val ADVANCED_SETTINGS = "advanced_settings"
+    const val EDIT_CONNECTION_PROFILE = "edit_connection_profile"
 }
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
@@ -53,7 +59,40 @@ fun AppNavigation(streamService: StreamService?) {
         }
 
         composable(NavigationRoutes.STREAM_SETTINGS) {
-            StreamSettingsScreen(
+            ConnectionSettingsScreen(
+                onBackClick = { navController.popBackStack() },
+                onEditProfile = { profileId ->
+                    navController.navigate("${NavigationRoutes.EDIT_CONNECTION_PROFILE}/$profileId")
+                },
+                onCreateProfile = {
+                    navController.navigate(NavigationRoutes.EDIT_CONNECTION_PROFILE)
+                }
+            )
+        }
+
+        // Edit connection profile screen
+        composable(
+            route = "${NavigationRoutes.EDIT_CONNECTION_PROFILE}/{profileId}",
+            arguments =
+                listOf(
+                    navArgument("profileId") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
+        ) { backStackEntry ->
+            val profileId = backStackEntry.arguments?.getString("profileId")
+            EditConnectionProfileScreen(
+                profileId = profileId,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        // Create new connection profile screen
+        composable(NavigationRoutes.EDIT_CONNECTION_PROFILE) {
+            EditConnectionProfileScreen(
+                profileId = null,
                 onBackClick = { navController.popBackStack() }
             )
         }
@@ -97,10 +136,14 @@ private fun HandleScreenOrientation(navController: NavHostController) {
                     }
             }
 
-            NavigationRoutes.SETTINGS, NavigationRoutes.ADVANCED_SETTINGS, NavigationRoutes.STREAM_SETTINGS -> {
-                // For settings screens, use unspecified orientation
-                activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-            }
+            NavigationRoutes.SETTINGS,
+            NavigationRoutes.ADVANCED_SETTINGS,
+            NavigationRoutes.STREAM_SETTINGS,
+            NavigationRoutes.EDIT_CONNECTION_PROFILE,
+                -> {
+                    // For settings screens, use unspecified orientation
+                    activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                }
         }
 
         onDispose {}

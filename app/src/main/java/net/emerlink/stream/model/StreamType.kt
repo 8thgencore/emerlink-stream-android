@@ -2,23 +2,52 @@ package net.emerlink.stream.model
 
 import net.emerlink.stream.model.StreamType.entries
 
-enum class StreamType(
-    val defaultPort: String,
-    val supportAuth: Boolean,
-    val supportsStreamKey: Boolean = false,
-) {
-    RTMP("1935", supportAuth = true, supportsStreamKey = true),
-    RTMPs("1936", supportAuth = true, supportsStreamKey = true),
-    RTSP("554", supportAuth = true),
-    RTSPs("322", supportAuth = true),
-    SRT("9710", supportAuth = false),
-    UDP("5600", supportAuth = false),
-    ;
-
+/**
+ * Enum for different stream protocols
+ */
+enum class StreamType {
+    RTMP {
+        override val defaultPort: String = "1935"
+        override val supportsStreamKey: Boolean = true
+        override val supportAuth: Boolean = true
+    },
+    RTMPs {
+        override val defaultPort: String = "443"
+        override val supportsStreamKey: Boolean = true
+        override val supportAuth: Boolean = true
+    },
+    RTSP {
+        override val defaultPort: String = "554"
+        override val supportsStreamKey: Boolean = false
+        override val supportAuth: Boolean = true
+    },
+    RTSPs {
+        override val defaultPort: String = "322"
+        override val supportsStreamKey: Boolean = false
+        override val supportAuth: Boolean = true
+    },
+    SRT {
+        override val defaultPort: String = "9710"
+        override val supportsStreamKey: Boolean = false
+        override val supportAuth: Boolean = true
+    },
+    UDP {
+        override val defaultPort: String = "5000"
+        override val supportsStreamKey: Boolean = false
+        override val supportAuth: Boolean = false
+    };
+    
+    abstract val defaultPort: String
+    abstract val supportsStreamKey: Boolean
+    abstract val supportAuth: Boolean
+    
     companion object {
-        fun fromString(value: String): StreamType =
-            entries.find { it.toString() == value }
-                ?: throw IllegalArgumentException("Invalid stream type: $value")
+        /**
+         * Convert string to StreamType
+         */
+        fun fromString(value: String): StreamType {
+            return entries.find { it.name.equals(value, ignoreCase = true) } ?: RTMP
+        }
     }
 
     override fun toString(): String = name.lowercase()

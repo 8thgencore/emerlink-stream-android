@@ -458,7 +458,7 @@ class StreamService :
     }
 
     private fun loadPreferences() {
-        val preferencesLoader = PreferencesLoader()
+        val preferencesLoader = PreferencesLoader(applicationContext)
 
         val oldProtocol = streamSettings.connection.protocol
 
@@ -483,13 +483,13 @@ class StreamService :
 
         val audioInitialized = streamManager.prepareAudio()
         val videoInitialized = streamManager.prepareVideo()
-        
+
         if (!audioInitialized) {
             Log.e(TAG, "Failed to initialize audio")
             notificationManager.showErrorNotification(getString(R.string.failed_to_prepare_audio))
             // Continue anyway, we'll stream without audio
         }
-        
+
         if (!videoInitialized) {
             Log.e(TAG, "Failed to initialize video")
             notificationManager.showErrorNotification(getString(R.string.failed_to_prepare))

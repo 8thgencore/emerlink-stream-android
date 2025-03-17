@@ -1,143 +1,89 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports", "ktlint:standard:function-naming")
+
 package net.emerlink.stream.ui.settings
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.core.content.edit
-import androidx.preference.PreferenceManager
+import androidx.lifecycle.viewmodel.compose.viewModel
 import net.emerlink.stream.R
-import net.emerlink.stream.data.preferences.PreferenceKeys
+import net.emerlink.stream.model.ConnectionProfile
+import net.emerlink.stream.model.ConnectionSettings
 import net.emerlink.stream.model.StreamType
 import net.emerlink.stream.ui.settings.components.DropdownPreference
 import net.emerlink.stream.ui.settings.components.InputPreference
 import net.emerlink.stream.ui.settings.components.PreferenceCategory
 import net.emerlink.stream.ui.settings.components.SwitchPreference
+import net.emerlink.stream.ui.settings.viewmodel.ConnectionProfilesViewModel
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StreamSettingsScreen(onBackClick: () -> Unit) {
-    val context = LocalContext.current
-    val preferences = PreferenceManager.getDefaultSharedPreferences(context)
-    val scrollState = rememberScrollState()
+fun EditConnectionProfileScreen(
+    profileId: String?,
+    onBackClick: () -> Unit,
+    viewModel: ConnectionProfilesViewModel = viewModel(),
+) {
+    val isNewProfile = profileId == null
+    val title =
+        stringResource(
+            id = if (isNewProfile) R.string.create_profile else R.string.edit_profile
+        )
 
-    // Stream Settings states
-    var streamVideo by remember {
-        mutableStateOf(
-            preferences.getBoolean(
-                PreferenceKeys.STREAM_VIDEO,
-                PreferenceKeys.STREAM_VIDEO_DEFAULT
-            )
-        )
-    }
+    // Load existing profile or create a new one
+    val existingProfile =
+        if (!isNewProfile) {
+            viewModel.getProfile(profileId!!)
+        } else {
+            null
+        }
+
+    // State for profile fields
+    var profileName by remember { mutableStateOf(existingProfile?.name ?: "") }
+    var isDefault by remember { mutableStateOf(existingProfile?.isDefault ?: false) }
+
+    // Connection settings states
     var streamProtocol by remember {
-        mutableStateOf(
-            preferences.getString(
-                PreferenceKeys.STREAM_PROTOCOL,
-                PreferenceKeys.STREAM_PROTOCOL_DEFAULT
-            ) ?: PreferenceKeys.STREAM_PROTOCOL_DEFAULT
-        )
+        mutableStateOf(existingProfile?.settings?.protocol?.toString() ?: StreamType.RTMP.toString())
     }
     var streamAddress by remember {
-        mutableStateOf(
-            preferences.getString(
-                PreferenceKeys.STREAM_ADDRESS,
-                PreferenceKeys.STREAM_ADDRESS_DEFAULT
-            ) ?: PreferenceKeys.STREAM_ADDRESS_DEFAULT
-        )
+        mutableStateOf(existingProfile?.settings?.address ?: "127.0.0.1")
     }
     var streamPort by remember {
-        mutableStateOf(
-            preferences.getString(
-                PreferenceKeys.STREAM_PORT,
-                PreferenceKeys.STREAM_PORT_DEFAULT
-            ) ?: PreferenceKeys.STREAM_PORT_DEFAULT
-        )
+        mutableStateOf(existingProfile?.settings?.port?.toString() ?: "1935")
     }
     var streamPath by remember {
-        mutableStateOf(
-            preferences.getString(
-                PreferenceKeys.STREAM_PATH,
-                PreferenceKeys.STREAM_PATH_DEFAULT
-            ) ?: PreferenceKeys.STREAM_PATH_DEFAULT
-        )
-    }
-    var streamUseTcp by remember {
-        mutableStateOf(
-            preferences.getBoolean(
-                PreferenceKeys.STREAM_USE_TCP,
-                PreferenceKeys.STREAM_USE_TCP_DEFAULT
-            )
-        )
-    }
-    var streamUsername by remember {
-        mutableStateOf(
-            preferences.getString(
-                PreferenceKeys.STREAM_USERNAME,
-                PreferenceKeys.STREAM_USERNAME_DEFAULT
-            ) ?: PreferenceKeys.STREAM_USERNAME_DEFAULT
-        )
-    }
-    var streamPassword by remember {
-        mutableStateOf(
-            preferences.getString(
-                PreferenceKeys.STREAM_PASSWORD,
-                PreferenceKeys.STREAM_PASSWORD_DEFAULT
-            ) ?: PreferenceKeys.STREAM_PASSWORD_DEFAULT
-        )
-    }
-    var streamSelfSignedCert by remember {
-        mutableStateOf(
-            preferences.getBoolean(
-                PreferenceKeys.STREAM_SELF_SIGNED_CERT,
-                PreferenceKeys.STREAM_SELF_SIGNED_CERT_DEFAULT
-            )
-        )
-    }
-    var streamCertificate by remember {
-        mutableStateOf(
-            preferences.getString(
-                PreferenceKeys.STREAM_CERTIFICATE,
-                PreferenceKeys.STREAM_CERTIFICATE_DEFAULT
-            ) ?: PreferenceKeys.STREAM_CERTIFICATE_DEFAULT
-        )
-    }
-    var streamCertificatePassword by remember {
-        mutableStateOf(
-            preferences.getString(
-                PreferenceKeys.STREAM_CERTIFICATE_PASSWORD,
-                PreferenceKeys.STREAM_CERTIFICATE_PASSWORD_DEFAULT
-            ) ?: PreferenceKeys.STREAM_CERTIFICATE_PASSWORD_DEFAULT
-        )
+        mutableStateOf(existingProfile?.settings?.path ?: "live")
     }
     var streamKey by remember {
-        mutableStateOf(
-            preferences.getString(
-                PreferenceKeys.STREAM_KEY,
-                PreferenceKeys.STREAM_KEY_DEFAULT
-            ) ?: PreferenceKeys.STREAM_KEY_DEFAULT
-        )
+        mutableStateOf(existingProfile?.settings?.streamKey ?: "")
+    }
+    var streamUseTcp by remember {
+        mutableStateOf(existingProfile?.settings?.tcp ?: false)
+    }
+    var streamUsername by remember {
+        mutableStateOf(existingProfile?.settings?.username ?: "")
+    }
+    var streamPassword by remember {
+        mutableStateOf(existingProfile?.settings?.password ?: "")
+    }
+    var streamSelfSignedCert by remember {
+        mutableStateOf(existingProfile?.settings?.streamSelfSignedCert ?: false)
+    }
+    var streamCertificate by remember {
+        mutableStateOf(existingProfile?.settings?.certFile ?: "")
+    }
+    var streamCertificatePassword by remember {
+        mutableStateOf(existingProfile?.settings?.certPassword ?: "")
     }
 
     // Get current stream type
@@ -146,16 +92,61 @@ fun StreamSettingsScreen(onBackClick: () -> Unit) {
             it.toString() == streamProtocol
         } ?: StreamType.RTMP
 
+    val scrollState = rememberScrollState()
+
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text(text = stringResource(id = R.string.stream_settings)) }, navigationIcon = {
-                IconButton(onClick = onBackClick) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(id = R.string.back)
-                    )
+            TopAppBar(
+                title = { Text(text = title) },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(id = R.string.back)
+                        )
+                    }
+                },
+                actions = {
+                    // Save button
+                    IconButton(
+                        onClick = {
+                            // Create ConnectionSettings object
+                            val settings =
+                                ConnectionSettings(
+                                    protocol = StreamType.fromString(streamProtocol),
+                                    address = streamAddress,
+                                    port = streamPort.toIntOrNull() ?: 0,
+                                    path = streamPath,
+                                    streamKey = streamKey,
+                                    tcp = streamUseTcp,
+                                    username = streamUsername,
+                                    password = streamPassword,
+                                    streamSelfSignedCert = streamSelfSignedCert,
+                                    certFile = streamCertificate.takeIf { it.isNotEmpty() },
+                                    certPassword = streamCertificatePassword
+                                )
+
+                            // Create or update profile
+                            val profile =
+                                ConnectionProfile(
+                                    id = existingProfile?.id ?: UUID.randomUUID().toString(),
+                                    name = profileName.takeIf { it.isNotEmpty() } ?: "Unnamed Profile",
+                                    settings = settings,
+                                    isDefault = isDefault
+                                )
+
+                            viewModel.saveProfile(profile)
+                            onBackClick()
+                        },
+                        enabled = profileName.isNotEmpty() && streamAddress.isNotEmpty()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = stringResource(id = R.string.save)
+                        )
+                    }
                 }
-            })
+            )
         }
     ) { paddingValues ->
         Surface(
@@ -172,20 +163,29 @@ fun StreamSettingsScreen(onBackClick: () -> Unit) {
                         .verticalScroll(scrollState)
                         .padding(16.dp)
             ) {
-                // Stream Settings
-                PreferenceCategory(title = stringResource(id = R.string.stream_settings)) {
-                    SwitchPreference(
-                        title = stringResource(id = R.string.enable_streaming),
-                        summary = stringResource(id = R.string.enable_streaming_summary),
-                        checked = streamVideo,
-                        onCheckedChange = { checked ->
-                            streamVideo = checked
-                            preferences.edit {
-                                putBoolean(PreferenceKeys.STREAM_VIDEO, checked)
-                            }
-                        }
+                // Profile details
+                PreferenceCategory(title = stringResource(id = R.string.profile_details)) {
+                    // Profile name
+                    InputPreference(
+                        title = stringResource(id = R.string.profile_name),
+                        summary = stringResource(id = R.string.profile_name_summary),
+                        value = profileName,
+                        onValueChange = { profileName = it }
                     )
 
+                    // Default profile
+                    SwitchPreference(
+                        title = stringResource(id = R.string.default_profile),
+                        summary = stringResource(id = R.string.default_profile_summary),
+                        checked = isDefault,
+                        onCheckedChange = { isDefault = it }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Connection Settings
+                PreferenceCategory(title = stringResource(id = R.string.connection_settings)) {
                     DropdownPreference(
                         title = stringResource(id = R.string.stream_protocol),
                         summary = stringResource(id = R.string.stream_protocol_summary),
@@ -197,15 +197,8 @@ fun StreamSettingsScreen(onBackClick: () -> Unit) {
                             val newType = StreamType.entries.find { it.toString() == value }
                             if (newType != null) {
                                 streamPort = newType.defaultPort
-                                preferences.edit {
-                                    putString(PreferenceKeys.STREAM_PORT, newType.defaultPort)
-                                }
                             }
-                            preferences.edit {
-                                putString(PreferenceKeys.STREAM_PROTOCOL, value)
-                            }
-                        },
-                        enabled = streamVideo
+                        }
                     )
 
                     InputPreference(
@@ -215,12 +208,8 @@ fun StreamSettingsScreen(onBackClick: () -> Unit) {
                         onValueChange = { value ->
                             val filteredValue = value.filterNot { it.isWhitespace() }
                             streamAddress = filteredValue
-                            preferences.edit {
-                                putString(PreferenceKeys.STREAM_ADDRESS, filteredValue)
-                            }
                         },
-                        keyboardType = KeyboardType.Text,
-                        enabled = streamVideo
+                        keyboardType = KeyboardType.Text
                     )
 
                     InputPreference(
@@ -230,12 +219,8 @@ fun StreamSettingsScreen(onBackClick: () -> Unit) {
                         onValueChange = { value ->
                             val filteredValue = value.filterNot { it.isWhitespace() }
                             streamPort = filteredValue
-                            preferences.edit {
-                                putString(PreferenceKeys.STREAM_PORT, filteredValue)
-                            }
                         },
-                        keyboardType = KeyboardType.Number,
-                        enabled = streamVideo
+                        keyboardType = KeyboardType.Number
                     )
 
                     InputPreference(
@@ -245,11 +230,7 @@ fun StreamSettingsScreen(onBackClick: () -> Unit) {
                         onValueChange = { value ->
                             val filteredValue = value.filterNot { it.isWhitespace() }
                             streamPath = filteredValue
-                            preferences.edit {
-                                putString(PreferenceKeys.STREAM_PATH, filteredValue)
-                            }
-                        },
-                        enabled = streamVideo
+                        }
                     )
 
                     // Show stream key field for protocols that support it (like RTMP)
@@ -261,11 +242,7 @@ fun StreamSettingsScreen(onBackClick: () -> Unit) {
                             onValueChange = { value ->
                                 val filteredValue = value.filterNot { it.isWhitespace() }
                                 streamKey = filteredValue
-                                preferences.edit {
-                                    putString(PreferenceKeys.STREAM_KEY, value)
-                                }
-                            },
-                            enabled = streamVideo
+                            }
                         )
                     }
 
@@ -277,11 +254,7 @@ fun StreamSettingsScreen(onBackClick: () -> Unit) {
                             checked = streamUseTcp,
                             onCheckedChange = { checked ->
                                 streamUseTcp = checked
-                                preferences.edit {
-                                    putBoolean(PreferenceKeys.STREAM_USE_TCP, checked)
-                                }
-                            },
-                            enabled = streamVideo
+                            }
                         )
                     }
 
@@ -294,11 +267,7 @@ fun StreamSettingsScreen(onBackClick: () -> Unit) {
                             onValueChange = { value ->
                                 val filteredValue = value.filterNot { it.isWhitespace() }
                                 streamUsername = filteredValue
-                                preferences.edit {
-                                    putString(PreferenceKeys.STREAM_USERNAME, filteredValue)
-                                }
-                            },
-                            enabled = streamVideo
+                            }
                         )
 
                         InputPreference(
@@ -309,11 +278,7 @@ fun StreamSettingsScreen(onBackClick: () -> Unit) {
                             onValueChange = { value ->
                                 val filteredValue = value.filterNot { it.isWhitespace() }
                                 streamPassword = filteredValue
-                                preferences.edit {
-                                    putString(PreferenceKeys.STREAM_PASSWORD, filteredValue)
-                                }
-                            },
-                            enabled = streamVideo
+                            }
                         )
                     }
 
@@ -325,25 +290,17 @@ fun StreamSettingsScreen(onBackClick: () -> Unit) {
                             checked = streamSelfSignedCert,
                             onCheckedChange = { checked ->
                                 streamSelfSignedCert = checked
-                                preferences.edit {
-                                    putBoolean(PreferenceKeys.STREAM_SELF_SIGNED_CERT, checked)
-                                }
-                            },
-                            enabled = streamVideo
+                            }
                         )
 
-                        if (streamSelfSignedCert && streamVideo) {
+                        if (streamSelfSignedCert) {
                             InputPreference(
                                 title = stringResource(id = R.string.certificate),
                                 summary = stringResource(id = R.string.certificate_summary),
                                 value = streamCertificate,
                                 onValueChange = { value ->
                                     streamCertificate = value
-                                    preferences.edit {
-                                        putString(PreferenceKeys.STREAM_CERTIFICATE, value)
-                                    }
-                                },
-                                enabled = streamVideo
+                                }
                             )
 
                             InputPreference(
@@ -353,11 +310,7 @@ fun StreamSettingsScreen(onBackClick: () -> Unit) {
                                 isPassword = true,
                                 onValueChange = { value ->
                                     streamCertificatePassword = value
-                                    preferences.edit {
-                                        putString(PreferenceKeys.STREAM_CERTIFICATE_PASSWORD, value)
-                                    }
-                                },
-                                enabled = streamVideo
+                                }
                             )
                         }
                     }

@@ -1,8 +1,10 @@
 package net.emerlink.stream.data.preferences
 
+import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import android.util.Size
+import net.emerlink.stream.data.repository.ConnectionProfileRepository
 import net.emerlink.stream.model.ConnectionSettings
 import net.emerlink.stream.model.StreamSettings
 import net.emerlink.stream.model.StreamType
@@ -10,19 +12,28 @@ import net.emerlink.stream.model.StreamType
 /**
  * Class for loading settings from SharedPreferences
  */
-class PreferencesLoader {
+class PreferencesLoader(
+    private val context: Context,
+) {
     companion object {
         private const val TAG = "PreferencesLoader"
     }
+
+    private val profileRepository = ConnectionProfileRepository(context)
 
     /**
      * Loads all settings from SharedPreferences and returns a settings object
      */
     fun loadPreferences(preferences: SharedPreferences): StreamSettings {
         Log.d(TAG, "Loading preferences")
+
+        // Try to get connection settings from active profile first
+        val activeProfile = profileRepository.getActiveProfile()
+        val connectionSettings = activeProfile?.settings ?: loadConnectionSettings(preferences)
+
         return StreamSettings(
             // Connection settings
-            connection = loadConnectionSettings(preferences),
+            connection = connectionSettings,
             // Audio settings
             audioSampleRate =
                 preferences
