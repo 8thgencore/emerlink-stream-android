@@ -11,7 +11,7 @@
     <string name="ok">Ок</string>
 
     <!-- Notifications -->
-    <string name="streaming">Стрим начался</string>
+    <string name="streaming">Идет трансляция</string>
     <string name="recording">Запись</string>
     <string name="failed_to_prepare">Не удалось подготовить аудио или видео</string>
     <string name="failed_to_record">Не удалось начать запись</string>
@@ -145,5 +145,9 @@
     <string name="no_connection">Нет соединения</string>
     <string name="change_profile">Изменить профиль</string>
     <string name="manage_profiles">Управление профилями</string>
+
+    <!-- New resources for restarting stream -->
+    <string name="streaming_reconnected">Трансляция перезапущена с новыми настройками</string>
+    <string name="error_reconnecting">Ошибка при перезапуске трансляции</string>
 
 </resources>

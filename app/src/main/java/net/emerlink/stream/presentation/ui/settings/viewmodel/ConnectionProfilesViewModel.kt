@@ -37,6 +37,13 @@ class ConnectionProfilesViewModel(
             )
 
     /**
+     * Refresh profiles data
+     */
+    fun refreshProfiles() {
+        repository.refreshProfiles()
+    }
+
+    /**
      * Set a profile as active
      */
     fun setActiveProfile(profileId: String) {

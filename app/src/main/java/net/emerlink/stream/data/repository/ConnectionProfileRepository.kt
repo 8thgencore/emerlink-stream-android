@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import net.emerlink.stream.data.model.ConnectionProfile
 import net.emerlink.stream.data.model.ConnectionSettings
 import net.emerlink.stream.data.model.StreamType
-import java.util.UUID
+import java.util.*
 
 /**
  * Repository for managing connection profiles
@@ -71,7 +71,7 @@ class ConnectionProfileRepository(
      */
     private fun saveProfiles() {
         val json = gson.toJson(_profilesFlow.value)
-        prefs.edit {
+        prefs.edit(commit = true) {
             putString(KEY_PROFILES, json)
         }
     }
@@ -164,7 +164,7 @@ class ConnectionProfileRepository(
         val profile = _profilesFlow.value.find { it.id == profileId }
         if (profile != null) {
             _activeProfileFlow.value = profile
-            prefs.edit {
+            prefs.edit(commit = true) {
                 putString(KEY_ACTIVE_PROFILE_ID, profileId)
             }
         }
@@ -197,4 +197,11 @@ class ConnectionProfileRepository(
      * Get the active profile
      */
     fun getActiveProfile(): ConnectionProfile? = _activeProfileFlow.value
+
+    /**
+     * Refresh profiles from SharedPreferences
+     */
+    fun refreshProfiles() {
+        loadProfiles()
+    }
 }

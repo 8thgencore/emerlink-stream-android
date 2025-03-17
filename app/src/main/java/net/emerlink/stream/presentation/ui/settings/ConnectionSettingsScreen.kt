@@ -2,6 +2,7 @@
 
 package net.emerlink.stream.presentation.ui.settings
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,7 +12,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,8 +28,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.preference.PreferenceManager
 import net.emerlink.stream.R
+import net.emerlink.stream.core.AppIntentActions
 import net.emerlink.stream.data.model.ConnectionProfile
 import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.presentation.ui.settings.components.PreferenceCategory
@@ -41,15 +47,19 @@ fun ConnectionSettingsScreen(
     onEditProfile: (String) -> Unit,
     onCreateProfile: () -> Unit,
     connectionProfilesViewModel: ConnectionProfilesViewModel = viewModel(),
-    settingsViewModel: SettingsViewModel = viewModel()
+    settingsViewModel: SettingsViewModel = viewModel(),
 ) {
     val context = LocalContext.current
     val preferences = PreferenceManager.getDefaultSharedPreferences(context)
 
+    LaunchedEffect(Unit) {
+        connectionProfilesViewModel.refreshProfiles()
+    }
+
     // Профили соединений
     val profiles by connectionProfilesViewModel.profiles.collectAsState()
     val activeProfile by connectionProfilesViewModel.activeProfile.collectAsState()
-    
+
     // Video settings from SettingsViewModel
     val videoSettings by settingsViewModel.videoSettings.collectAsState()
 
@@ -79,7 +89,7 @@ fun ConnectionSettingsScreen(
             }
         }
     }
-    
+
     // Update local state when videoSettings changes
     LaunchedEffect(videoSettings) {
         streamVideo = videoSettings.streamVideo
@@ -160,44 +170,57 @@ fun ConnectionSettingsScreen(
                             onCheckedChange = { checked ->
                                 streamVideo = checked
                                 settingsViewModel.updateStreamVideo(checked)
+
+                                // Отправить уведомление об изменении настроек
+                                val intent = Intent(AppIntentActions.ACTION_PROFILE_CHANGED)
+                                LocalBroadcastManager.getInstance(context).sendBroadcast(intent)
                             }
                         )
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Profiles section
-                    PreferenceCategory(title = stringResource(id = R.string.connection_profiles)) {
-                        // Show active profile info
-                        activeProfile?.let { profile ->
-                            Text(
-                                text = stringResource(id = R.string.active_profile, profile.name),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // List of profiles
-                        LazyColumn(
-                            modifier = Modifier.heightIn(max = 400.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(profiles) { profile ->
-                                val isActive = profile.id == activeProfile?.id
-
-                                ConnectionProfileItem(
-                                    profile = profile,
-                                    isActive = isActive,
-                                    onProfileClick = { connectionProfilesViewModel.setActiveProfile(profile.id) },
-                                    onEditClick = { onEditProfile(profile.id) },
-                                    onDeleteClick = {
-                                        profileToDelete = profile
-                                        showDeleteDialog = true
-                                    }
+                    // Profiles section - use weight(1f) to make it take all available space
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        PreferenceCategory(title = stringResource(id = R.string.connection_profiles)) {
+                            // Show active profile info
+                            activeProfile?.let { profile ->
+                                Text(
+                                    text = stringResource(id = R.string.active_profile, profile.name),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)
                                 )
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // List of profiles - will fill remaining space
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(profiles) { profile ->
+                                    val isActive = profile.id == activeProfile?.id
+
+                                    ConnectionProfileItem(
+                                        profile = profile,
+                                        isActive = isActive,
+                                        onProfileClick = {
+                                            connectionProfilesViewModel.setActiveProfile(profile.id)
+                                            // Отправить уведомление об изменении профиля
+                                            val intent = Intent(AppIntentActions.ACTION_PROFILE_CHANGED)
+                                            LocalBroadcastManager.getInstance(context).sendBroadcast(intent)
+                                        },
+                                        onEditClick = { onEditProfile(profile.id) },
+                                        onDeleteClick = {
+                                            profileToDelete = profile
+                                            showDeleteDialog = true
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -221,7 +244,12 @@ fun ConnectionSettingsScreen(
                     confirmButton = {
                         TextButton(
                             onClick = {
-                                profileToDelete?.id?.let { connectionProfilesViewModel.deleteProfile(it) }
+                                profileToDelete?.id?.let {
+                                    connectionProfilesViewModel.deleteProfile(it)
+                                    // Отправить уведомление об изменении профиля
+                                    val intent = Intent(AppIntentActions.ACTION_PROFILE_CHANGED)
+                                    LocalBroadcastManager.getInstance(context).sendBroadcast(intent)
+                                }
                                 showDeleteDialog = false
                                 profileToDelete = null
                             }

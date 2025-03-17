@@ -2,6 +2,7 @@
 
 package net.emerlink.stream.presentation.ui.settings
 
+import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -11,11 +12,16 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import net.emerlink.stream.R
+import net.emerlink.stream.core.AppIntentActions
 import net.emerlink.stream.data.model.ConnectionProfile
 import net.emerlink.stream.data.model.ConnectionSettings
 import net.emerlink.stream.data.model.StreamType
@@ -93,6 +99,8 @@ fun EditConnectionProfileScreen(
         } ?: StreamType.RTMP
 
     val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -110,33 +118,48 @@ fun EditConnectionProfileScreen(
                     // Save button
                     IconButton(
                         onClick = {
-                            // Create ConnectionSettings object
-                            val settings =
-                                ConnectionSettings(
-                                    protocol = StreamType.fromString(streamProtocol),
-                                    address = streamAddress,
-                                    port = streamPort.toIntOrNull() ?: 0,
-                                    path = streamPath,
-                                    streamKey = streamKey,
-                                    tcp = streamUseTcp,
-                                    username = streamUsername,
-                                    password = streamPassword,
-                                    streamSelfSignedCert = streamSelfSignedCert,
-                                    certFile = streamCertificate.takeIf { it.isNotEmpty() },
-                                    certPassword = streamCertificatePassword
-                                )
+                            coroutineScope.launch {
+                                // Create ConnectionSettings object
+                                val settings =
+                                    ConnectionSettings(
+                                        protocol = StreamType.fromString(streamProtocol),
+                                        address = streamAddress,
+                                        port = streamPort.toIntOrNull() ?: 0,
+                                        path = streamPath,
+                                        streamKey = streamKey,
+                                        tcp = streamUseTcp,
+                                        username = streamUsername,
+                                        password = streamPassword,
+                                        streamSelfSignedCert = streamSelfSignedCert,
+                                        certFile = streamCertificate.takeIf { it.isNotEmpty() },
+                                        certPassword = streamCertificatePassword
+                                    )
 
-                            // Create or update profile
-                            val profile =
-                                ConnectionProfile(
-                                    id = existingProfile?.id ?: UUID.randomUUID().toString(),
-                                    name = profileName.takeIf { it.isNotEmpty() } ?: "Unnamed Profile",
-                                    settings = settings,
-                                    isDefault = isDefault
-                                )
+                                // Create or update profile
+                                val profileId = existingProfile?.id ?: UUID.randomUUID().toString()
+                                val profile =
+                                    ConnectionProfile(
+                                        id = profileId,
+                                        name = profileName.takeIf { it.isNotEmpty() } ?: "Unnamed Profile",
+                                        settings = settings,
+                                        isDefault = isDefault
+                                    )
 
-                            viewModel.saveProfile(profile)
-                            onBackClick()
+                                // Save profile
+                                viewModel.saveProfile(profile)
+                                
+                                // Set as active profile
+                                viewModel.setActiveProfile(profileId)
+                                
+                                // Отправить уведомление об изменении профиля
+                                val intent = Intent(AppIntentActions.ACTION_PROFILE_CHANGED)
+                                LocalBroadcastManager.getInstance(context).sendBroadcast(intent)
+                                
+                                // Give repository time to update flows
+                                delay(100)
+                                
+                                onBackClick()
+                            }
                         },
                         enabled = profileName.isNotEmpty() && streamAddress.isNotEmpty()
                     ) {
