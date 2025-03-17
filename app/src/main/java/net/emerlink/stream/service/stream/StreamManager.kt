@@ -1,16 +1,15 @@
 package net.emerlink.stream.service.stream
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import androidx.preference.PreferenceManager
+import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.video.CameraHelper
 import com.pedro.library.view.OpenGlView
-import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.model.Resolution
+import net.emerlink.stream.model.StreamSettings
 import net.emerlink.stream.model.StreamType
 import net.emerlink.stream.service.camera.CameraInterface
 import net.emerlink.stream.util.ErrorHandler
@@ -19,18 +18,13 @@ class StreamManager(
     private val context: Context,
     private val connectChecker: ConnectChecker,
     private val errorHandler: ErrorHandler,
+    private val streamSettings: StreamSettings,
 ) {
     companion object {
         private const val TAG = "StreamManager"
-        private const val DEFAULT_FPS = 30
-        private const val DEFAULT_BITRATE = 2500000 // 2.5 Mbps
     }
 
     private var currentView: OpenGlView? = null
-
-    private val sharedPreferences: SharedPreferences by lazy {
-        PreferenceManager.getDefaultSharedPreferences(context)
-    }
 
     private var cameraInterface: CameraInterface
     private var streamType: StreamType = StreamType.RTMP
@@ -57,10 +51,14 @@ class StreamManager(
             Log.d(TAG, "Перезапуск превью")
             stopPreview()
 
-            Handler(Looper.getMainLooper()).postDelayed({
-                startPreview(view)
-                Log.d(TAG, "Превью перезапущено успешно")
-            }, 100)
+            Handler(Looper.getMainLooper())
+                .postDelayed(
+                    {
+                        startPreview(view)
+                        Log.d(TAG, "Превью перезапущено успешно")
+                    },
+                    100
+                )
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при перезапуске превью: ${e.message}", e)
         }
@@ -141,9 +139,16 @@ class StreamManager(
 
             cameraInterface.replaceView(view)
 
-            val bitrate = cameraInterface.bitrate.takeIf { it > 0 } ?: DEFAULT_BITRATE
-            val resolution = Resolution.parseFromPreferences(sharedPreferences)
-            cameraInterface.prepareVideo(resolution.width, resolution.height, DEFAULT_FPS, bitrate)
+            val bitrate = cameraInterface.bitrate.takeIf { it > 0 } ?: (streamSettings.bitrate * 1000)
+            val resolution = Resolution.parseFromSize(streamSettings.resolution)
+            cameraInterface.prepareVideo(
+                width = resolution.width,
+                height = resolution.height,
+                fps = streamSettings.fps,
+                iFrameInterval = streamSettings.iFrameInterval,
+                bitrate = bitrate,
+                rotation = CameraHelper.getCameraOrientation(context)
+            )
 
             val rotation = CameraHelper.getCameraOrientation(context)
             cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
@@ -170,11 +175,31 @@ class StreamManager(
     }
 
     fun prepareAudio(): Boolean {
+        Log.d(TAG, "Подготовка аудио")
+
+        // Try with known working configuration first
         try {
-            Log.d(TAG, "Подготовка аудио")
-            cameraInterface.prepareAudio()
+            cameraInterface.prepareAudio(
+                bitrate = streamSettings.audioBitrate * 1024,
+                sampleRate = streamSettings.audioSampleRate.toInt(),
+                isStereo = streamSettings.audioStereo
+            )
+            cameraInterface.setAudioCodec(AudioCodec.AAC)
             return true
         } catch (e: Exception) {
+            // Try fallback configuration
+            try {
+                cameraInterface.prepareAudio(
+                    bitrate = 128 * 1024,
+                    sampleRate = 44100,
+                    isStereo = false
+                )
+                cameraInterface.setAudioCodec(AudioCodec.AAC)
+                return true
+            } catch (e2: Exception) {
+                Log.e(TAG, "Не удалось инициализировать аудио: ${e2.message}", e2)
+                return false
+            }
             Log.e(TAG, "Ошибка подготовки аудио: ${e.message}", e)
             return false
         }
@@ -182,24 +207,16 @@ class StreamManager(
 
     fun prepareVideo(): Boolean {
         try {
-            val resolution = Resolution.parseFromPreferences(sharedPreferences)
-            val fps =
-                sharedPreferences
-                    .getString(
-                        PreferenceKeys.VIDEO_FPS,
-                        PreferenceKeys.VIDEO_FPS_DEFAULT
-                    )?.toIntOrNull() ?: 30
-            val videoBitrate =
-                sharedPreferences
-                    .getString(
-                        PreferenceKeys.VIDEO_BITRATE,
-                        PreferenceKeys.VIDEO_BITRATE_DEFAULT
-                    )?.toIntOrNull() ?: 2500
-
-            Log.d(TAG, "Подготовка видео: ${resolution.width}x${resolution.height}, FPS=$fps, битрейт=${videoBitrate}k")
-
+            val resolution = Resolution.parseFromSize(streamSettings.resolution)
             val rotation = CameraHelper.getCameraOrientation(context)
-            cameraInterface.prepareVideo(resolution.width, resolution.height, fps, videoBitrate * 1000, rotation)
+            cameraInterface.prepareVideo(
+                width = resolution.width,
+                height = resolution.height,
+                fps = streamSettings.fps,
+                bitrate = streamSettings.bitrate * 1000,
+                iFrameInterval = streamSettings.iFrameInterval,
+                rotation = rotation
+            )
 
             return true
         } catch (e: Exception) {
@@ -224,21 +241,19 @@ class StreamManager(
 
     fun switchStreamResolution() {
         try {
-            val resolution = Resolution.parseFromPreferences(sharedPreferences)
-
-            val bitrate = cameraInterface.bitrate.takeIf { it > 0 } ?: DEFAULT_BITRATE
-            val fps =
-                sharedPreferences
-                    .getString(
-                        PreferenceKeys.VIDEO_FPS,
-                        PreferenceKeys.VIDEO_FPS_DEFAULT
-                    )?.toIntOrNull() ?: DEFAULT_FPS
-
+            val resolution = Resolution.parseFromSize(streamSettings.resolution)
             if (isOnPreview()) {
                 val rotation = CameraHelper.getCameraOrientation(context)
 
                 cameraInterface.stopPreview()
-                cameraInterface.prepareVideo(resolution.width, resolution.height, fps, bitrate, rotation)
+                cameraInterface.prepareVideo(
+                    width = resolution.width,
+                    height = resolution.height,
+                    fps = streamSettings.fps,
+                    bitrate = streamSettings.bitrate * 1000,
+                    iFrameInterval = streamSettings.iFrameInterval,
+                    rotation = rotation
+                )
 
                 currentView?.let { view ->
                     cameraInterface.replaceView(view)
@@ -246,7 +261,10 @@ class StreamManager(
                 }
             }
 
-            Log.d(TAG, "Установлено новое разрешение стрима: ${resolution.width}x${resolution.height}")
+            Log.d(
+                TAG,
+                "Установлено новое разрешение стрима: ${resolution.width}x${resolution.height}"
+            )
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при изменении разрешения стрима: ${e.message}")
         }

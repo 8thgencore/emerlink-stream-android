@@ -1,12 +1,77 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="primary">#2196F3</color>
-    <color name="primary_dark">#1976D2</color>
-    <color name="primary_light">#BBDEFB</color>
-    <color name="accent">#FF4081</color>
-    <color name="primary_text">#212121</color>
-    <color name="secondary_text">#757575</color>
-    <color name="divider">#BDBDBD</color>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+
+<!-- Primary colors -->
+<color name="light_primary">#0061A4</color>
+<color name="light_onPrimary">#FFFFFFFF</color>
+<color name="light_primaryContainer">#D1E4FF</color>
+<color name="light_onPrimaryContainer">#001D36</color>
+
+<!-- Secondary colors -->
+<color name="light_secondary">#535F70</color>
+<color name="light_onSecondary">#FFFFFFFF</color>
+<color name="light_secondaryContainer">#D7E3F7</color>
+<color name="light_onSecondaryContainer">#101C2B</color>
+
+<!-- Tertiary colors -->
+<color name="light_tertiary">#6B5778</color>
+<color name="light_onTertiary">#FFFFFFFF</color>
+<color name="light_tertiaryContainer">#F2DAFF</color>
+<color name="light_onTertiaryContainer">#251431</color>
+
+<!-- Error colors -->
+<color name="light_error">#BA1A1A</color>
+<color name="light_errorContainer">#FFDAD6</color>
+<color name="light_onError">#FFFFFFFF</color>
+<color name="light_onErrorContainer">#410002</color>
+
+<!-- Background colors -->
+<color name="light_background">#FDFCFF</color>
+<color name="light_onBackground">#1A1C1E</color>
+<color name="light_surface">#FDFCFF</color>
+<color name="light_onSurface">#1A1C1E</color>
+<color name="light_surfaceVariant">#DFE2EB</color>
+<color name="light_onSurfaceVariant">#43474E</color>
+<color name="light_outline">#73777F</color>
+<color name="light_inverseOnSurface">#F1F0F4</color>
+<color name="light_inverseSurface">#2F3033</color>
+
+<!-- Dark theme colors -->
+<color name="dark_primary">#9ECAFF</color>
+<color name="dark_onPrimary">#003258</color>
+<color name="dark_primaryContainer">#00497D</color>
+<color name="dark_onPrimaryContainer">#D1E4FF</color>
+
+<color name="dark_secondary">#BBC7DB</color>
+<color name="dark_onSecondary">#253140</color>
+<color name="dark_secondaryContainer">#3B4858</color>
+<color name="dark_onSecondaryContainer">#D7E3F7</color>
+
+<color name="dark_tertiary">#D6BEE4</color>
+<color name="dark_onTertiary">#3B2948</color>
+<color name="dark_tertiaryContainer">#523F5F</color>
+<color name="dark_onTertiaryContainer">#F2DAFF</color>
+
+<color name="dark_error">#FFFFB4AB</color>
+<color name="dark_errorContainer">#93000A</color>
+<color name="dark_onError">#690005</color>
+<color name="dark_onErrorContainer">#FFFFDAD6</color>
+
+<color name="dark_background">#1A1C1E</color>
+<color name="dark_onBackground">#E2E2E6</color>
+<color name="dark_surface">#1A1C1E</color>
+<color name="dark_onSurface">#E2E2E6</color>
+<color name="dark_surfaceVariant">#43474E</color>
+<color name="dark_onSurfaceVariant">#C3C7CF</color>
+<color name="dark_outline">#8D9199</color>
+<color name="dark_inverseOnSurface">#1A1C1E</color>
+<color name="dark_inverseSurface">#E2E2E6</color>
+
+<!-- Special streaming app colors -->
+<color name="streamBlue">#2196F3</color>
+<color name="streamRed">#E53935</color>
+<color name="streamGreen">#43A047</color>
+<color name="streamAccent">#FFFF4081</color>
+<color name="streamOverlay">#80000000</color>
+<color name="streamBackground">#121212</color>
 </resources>

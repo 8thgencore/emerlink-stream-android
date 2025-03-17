@@ -1,39 +1,20 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports", "ktlint:standard:function-naming")
+
 package net.emerlink.stream.ui.settings
 
 import android.content.Context
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.VideoCameraBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -114,56 +95,64 @@ fun SettingsScreen(
         mutableStateOf(
             preferences.getString(
                 PreferenceKeys.VIDEO_RESOLUTION,
-                PreferenceKeys.VIDEO_RESOLUTION_DEFAULT,
-            ) ?: PreferenceKeys.VIDEO_RESOLUTION_DEFAULT,
+                PreferenceKeys.VIDEO_RESOLUTION_DEFAULT
+            ) ?: PreferenceKeys.VIDEO_RESOLUTION_DEFAULT
         )
     }
     var screenOrientation by remember {
         mutableStateOf(
             preferences.getString(
                 PreferenceKeys.SCREEN_ORIENTATION,
-                PreferenceKeys.SCREEN_ORIENTATION_DEFAULT,
-            ) ?: PreferenceKeys.SCREEN_ORIENTATION_DEFAULT,
+                PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
+            ) ?: PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
         )
     }
     var videoFps by remember {
         mutableStateOf(
             preferences.getString(
                 PreferenceKeys.VIDEO_FPS,
-                PreferenceKeys.VIDEO_FPS_DEFAULT,
-            ) ?: PreferenceKeys.VIDEO_FPS_DEFAULT,
+                PreferenceKeys.VIDEO_FPS_DEFAULT
+            ) ?: PreferenceKeys.VIDEO_FPS_DEFAULT
         )
     }
     var videoBitrate by remember {
         mutableStateOf(
             preferences.getString(
                 PreferenceKeys.VIDEO_BITRATE,
-                PreferenceKeys.VIDEO_BITRATE_DEFAULT,
-            ) ?: PreferenceKeys.VIDEO_BITRATE_DEFAULT,
+                PreferenceKeys.VIDEO_BITRATE_DEFAULT
+            ) ?: PreferenceKeys.VIDEO_BITRATE_DEFAULT
         )
     }
     var videoCodec by remember {
         mutableStateOf(
             preferences.getString(
                 PreferenceKeys.VIDEO_CODEC,
-                PreferenceKeys.VIDEO_CODEC_DEFAULT,
-            ) ?: PreferenceKeys.VIDEO_CODEC_DEFAULT,
+                PreferenceKeys.VIDEO_CODEC_DEFAULT
+            ) ?: PreferenceKeys.VIDEO_CODEC_DEFAULT
         )
     }
     var videoAdaptiveBitrate by remember {
         mutableStateOf(
             preferences.getBoolean(
                 PreferenceKeys.VIDEO_ADAPTIVE_BITRATE,
-                PreferenceKeys.VIDEO_ADAPTIVE_BITRATE_DEFAULT,
-            ),
+                PreferenceKeys.VIDEO_ADAPTIVE_BITRATE_DEFAULT
+            )
         )
     }
     var recordVideo by remember {
         mutableStateOf(
             preferences.getBoolean(
                 PreferenceKeys.RECORD_VIDEO,
-                PreferenceKeys.RECORD_VIDEO_DEFAULT,
-            ),
+                PreferenceKeys.RECORD_VIDEO_DEFAULT
+            )
+        )
+    }
+    var keyframeInterval by remember {
+        mutableStateOf(
+            preferences.getString(
+                PreferenceKeys.VIDEO_KEYFRAME_INTERVAL,
+                PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT
+            ) ?: PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT
         )
     }
 
@@ -172,56 +161,56 @@ fun SettingsScreen(
         mutableStateOf(
             preferences.getBoolean(
                 PreferenceKeys.ENABLE_AUDIO,
-                PreferenceKeys.ENABLE_AUDIO_DEFAULT,
-            ),
+                PreferenceKeys.ENABLE_AUDIO_DEFAULT
+            )
         )
     }
     var audioBitrate by remember {
         mutableStateOf(
             preferences.getString(
                 PreferenceKeys.AUDIO_BITRATE,
-                PreferenceKeys.AUDIO_BITRATE_DEFAULT,
-            ) ?: PreferenceKeys.AUDIO_BITRATE_DEFAULT,
+                PreferenceKeys.AUDIO_BITRATE_DEFAULT
+            ) ?: PreferenceKeys.AUDIO_BITRATE_DEFAULT
         )
     }
     var audioSampleRate by remember {
         mutableStateOf(
             preferences.getString(
                 PreferenceKeys.AUDIO_SAMPLE_RATE,
-                PreferenceKeys.AUDIO_SAMPLE_RATE_DEFAULT,
-            ) ?: PreferenceKeys.AUDIO_SAMPLE_RATE_DEFAULT,
+                PreferenceKeys.AUDIO_SAMPLE_RATE_DEFAULT
+            ) ?: PreferenceKeys.AUDIO_SAMPLE_RATE_DEFAULT
         )
     }
     var audioStereo by remember {
         mutableStateOf(
             preferences.getBoolean(
                 PreferenceKeys.AUDIO_STEREO,
-                PreferenceKeys.AUDIO_STEREO_DEFAULT,
-            ),
+                PreferenceKeys.AUDIO_STEREO_DEFAULT
+            )
         )
     }
     var audioEchoCancel by remember {
         mutableStateOf(
             preferences.getBoolean(
                 PreferenceKeys.AUDIO_ECHO_CANCEL,
-                PreferenceKeys.AUDIO_ECHO_CANCEL_DEFAULT,
-            ),
+                PreferenceKeys.AUDIO_ECHO_CANCEL_DEFAULT
+            )
         )
     }
     var audioNoiseReduction by remember {
         mutableStateOf(
             preferences.getBoolean(
                 PreferenceKeys.AUDIO_NOISE_REDUCTION,
-                PreferenceKeys.AUDIO_NOISE_REDUCTION_DEFAULT,
-            ),
+                PreferenceKeys.AUDIO_NOISE_REDUCTION_DEFAULT
+            )
         )
     }
     var audioCodec by remember {
         mutableStateOf(
             preferences.getString(
                 PreferenceKeys.AUDIO_CODEC,
-                PreferenceKeys.AUDIO_CODEC_DEFAULT,
-            ) ?: PreferenceKeys.AUDIO_CODEC_DEFAULT,
+                PreferenceKeys.AUDIO_CODEC_DEFAULT
+            ) ?: PreferenceKeys.AUDIO_CODEC_DEFAULT
         )
     }
 
@@ -231,25 +220,25 @@ fun SettingsScreen(
                 IconButton(onClick = onBackClick) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(id = R.string.back),
+                        contentDescription = stringResource(id = R.string.back)
                     )
                 }
             })
-        },
+        }
     ) { paddingValues ->
         Surface(
             modifier =
                 Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
-            color = MaterialTheme.colorScheme.background,
+            color = MaterialTheme.colorScheme.background
         ) {
             Column(
                 modifier =
                     Modifier
                         .fillMaxSize()
                         .verticalScroll(scrollState)
-                        .padding(16.dp),
+                        .padding(16.dp)
             ) {
                 // Stream Settings Navigation
                 Row(
@@ -258,12 +247,12 @@ fun SettingsScreen(
                             .fillMaxWidth()
                             .clickable(onClick = onStreamSettingsClick)
                             .padding(vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         imageVector = Icons.Default.VideoCameraBack,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.primary
                     )
                     Text(
                         text = stringResource(id = R.string.stream_settings),
@@ -271,12 +260,12 @@ fun SettingsScreen(
                         modifier =
                             Modifier
                                 .weight(1f)
-                                .padding(start = 16.dp),
+                                .padding(start = 16.dp)
                     )
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
 
@@ -294,7 +283,7 @@ fun SettingsScreen(
                         onValueSelected = { value ->
                             videoResolution = value
                             preferences.edit { putString(PreferenceKeys.VIDEO_RESOLUTION, value) }
-                        },
+                        }
                     )
 
                     DropdownPreference(
@@ -305,7 +294,7 @@ fun SettingsScreen(
                         onValueSelected = { value ->
                             screenOrientation = value
                             preferences.edit { putString(PreferenceKeys.SCREEN_ORIENTATION, value) }
-                        },
+                        }
                     )
 
                     InputPreference(
@@ -317,7 +306,7 @@ fun SettingsScreen(
                             val filteredValue = value.filterNot { it.isWhitespace() }
                             videoFps = filteredValue
                             preferences.edit { putString(PreferenceKeys.VIDEO_FPS, filteredValue) }
-                        },
+                        }
                     )
 
                     InputPreference(
@@ -329,7 +318,7 @@ fun SettingsScreen(
                             val filteredValue = value.filterNot { it.isWhitespace() }
                             videoBitrate = filteredValue
                             preferences.edit { putString(PreferenceKeys.VIDEO_BITRATE, filteredValue) }
-                        },
+                        }
                     )
 
                     DropdownPreference(
@@ -340,7 +329,7 @@ fun SettingsScreen(
                         onValueSelected = { value ->
                             videoCodec = value
                             preferences.edit { putString(PreferenceKeys.VIDEO_CODEC, value) }
-                        },
+                        }
                     )
 
                     SwitchPreference(
@@ -352,10 +341,27 @@ fun SettingsScreen(
                             preferences.edit {
                                 putBoolean(
                                     PreferenceKeys.VIDEO_ADAPTIVE_BITRATE,
-                                    checked,
+                                    checked
+                                )
+                            }
+                        }
+                    )
+
+                    InputPreference(
+                        title = stringResource(id = R.string.keyframe_interval),
+                        summary = stringResource(id = R.string.keyframe_interval_summary),
+                        value = keyframeInterval,
+                        onValueChange = { value ->
+                            val filteredValue = value.filterNot { it.isWhitespace() }
+                            keyframeInterval = filteredValue
+                            preferences.edit {
+                                putString(
+                                    PreferenceKeys.VIDEO_KEYFRAME_INTERVAL,
+                                    filteredValue
                                 )
                             }
                         },
+                        keyboardType = KeyboardType.Number
                     )
 
                     SwitchPreference(
@@ -365,9 +371,13 @@ fun SettingsScreen(
                         onCheckedChange = { checked ->
                             recordVideo = checked
                             preferences.edit { putBoolean(PreferenceKeys.RECORD_VIDEO, checked) }
-                        },
+                        }
                     )
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Audio Settings
                 PreferenceCategory(title = stringResource(id = R.string.audio_settings)) {
@@ -378,7 +388,7 @@ fun SettingsScreen(
                         onCheckedChange = { checked ->
                             enableAudio = checked
                             preferences.edit { putBoolean(PreferenceKeys.ENABLE_AUDIO, checked) }
-                        },
+                        }
                     )
 
                     InputPreference(
@@ -390,7 +400,7 @@ fun SettingsScreen(
                             val filteredValue = value.filterNot { it.isWhitespace() }
                             audioBitrate = filteredValue
                             preferences.edit { putString(PreferenceKeys.AUDIO_BITRATE, filteredValue) }
-                        },
+                        }
                     )
 
                     DropdownPreference(
@@ -403,10 +413,10 @@ fun SettingsScreen(
                             preferences.edit {
                                 putString(
                                     PreferenceKeys.AUDIO_SAMPLE_RATE,
-                                    value,
+                                    value
                                 )
                             }
-                        },
+                        }
                     )
 
                     SwitchPreference(
@@ -416,7 +426,7 @@ fun SettingsScreen(
                         onCheckedChange = { checked ->
                             audioStereo = checked
                             preferences.edit { putBoolean(PreferenceKeys.AUDIO_STEREO, checked) }
-                        },
+                        }
                     )
 
                     SwitchPreference(
@@ -428,10 +438,10 @@ fun SettingsScreen(
                             preferences.edit {
                                 putBoolean(
                                     PreferenceKeys.AUDIO_ECHO_CANCEL,
-                                    checked,
+                                    checked
                                 )
                             }
-                        },
+                        }
                     )
 
                     SwitchPreference(
@@ -443,10 +453,10 @@ fun SettingsScreen(
                             preferences.edit {
                                 putBoolean(
                                     PreferenceKeys.AUDIO_NOISE_REDUCTION,
-                                    checked,
+                                    checked
                                 )
                             }
-                        },
+                        }
                     )
 
                     DropdownPreference(
@@ -457,19 +467,8 @@ fun SettingsScreen(
                         onValueSelected = { value ->
                             audioCodec = value
                             preferences.edit { putString(PreferenceKeys.AUDIO_CODEC, value) }
-                        },
+                        }
                     )
-                }
-
-                // Advanced Settings Button
-                Button(
-                    onClick = onAdvancedSettingsClick,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 16.dp),
-                ) {
-                    Text(text = stringResource(id = R.string.advanced_settings))
                 }
             }
         }

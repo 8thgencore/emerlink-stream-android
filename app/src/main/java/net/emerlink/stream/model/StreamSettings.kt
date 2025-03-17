@@ -9,11 +9,11 @@ data class StreamSettings(
     // Stream connection settings
     var connection: ConnectionSettings = ConnectionSettings(),
     // Audio settings
-    var sampleRate: Int = 0,
-    var stereo: Boolean = false,
-    var echoCancel: Boolean = false,
-    var noiseReduction: Boolean = false,
     var enableAudio: Boolean = false,
+    var audioSampleRate: Int = 0,
+    var audioStereo: Boolean = false,
+    var audioEchoCancel: Boolean = false,
+    var audioNoiseReduction: Boolean = false,
     var audioBitrate: Int = 0,
     var audioCodec: String = "",
     // Video settings
@@ -25,22 +25,7 @@ data class StreamSettings(
     var bitrate: Int = 0,
     var codec: String = "",
     var uid: String = "",
+    val iFrameInterval: Int = 2,
     // Camera
     var videoSource: String = "",
-    // Advanced Video Settings
-    var keyframeInterval: Int = 0,
-    var videoProfile: String = "",
-    var videoLevel: String = "",
-    var bitrateMode: String = "",
-    var encodingQuality: String = "",
-    // Network Settings
-    var bufferSize: Int = 0,
-    var connectionTimeout: Int = 0,
-    var autoReconnect: Boolean = false,
-    var reconnectDelay: Int = 0,
-    var maxReconnectAttempts: Int = 0,
-    // Stability Settings
-    var lowLatencyMode: Boolean = false,
-    var hardwareRotation: Boolean = false,
-    var dynamicFps: Boolean = false,
 )

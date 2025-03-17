@@ -1,6 +1,7 @@
 package net.emerlink.stream.service.camera
 
 import android.content.Context
+import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.video.CameraHelper
 import com.pedro.library.rtmp.RtmpCamera2
@@ -12,8 +13,8 @@ import com.pedro.library.view.OpenGlView
 import com.pedro.rtsp.rtsp.Protocol
 
 class RtmpCameraImpl(
-    private val context: Context,
-    private val connectChecker: ConnectChecker,
+    context: Context,
+    connectChecker: ConnectChecker,
 ) : CameraInterface {
     override val camera = RtmpCamera2(context, connectChecker)
 
@@ -23,15 +24,38 @@ class RtmpCameraImpl(
     override val bitrate: Int get() = camera.bitrate
     override val glInterface: GlInterface get() = camera.glInterface
 
-    override fun prepareAudio() = camera.prepareAudio()
+    override fun prepareAudio(
+        audioSource: Int,
+        bitrate: Int,
+        sampleRate: Int,
+        isStereo: Boolean,
+        echoCanceler: Boolean,
+        noiseSuppressor: Boolean,
+    ): Boolean =
+        camera.prepareAudio(
+            audioSource,
+            bitrate,
+            sampleRate,
+            isStereo,
+            echoCanceler,
+            noiseSuppressor
+        )
 
     override fun prepareVideo(
         width: Int,
         height: Int,
         fps: Int,
         bitrate: Int,
+        iFrameInterval: Int,
         rotation: Int,
-    ) = camera.prepareVideo(width, height, fps, bitrate, rotation)
+    ) = camera.prepareVideo(
+        width,
+        height,
+        fps,
+        bitrate,
+        iFrameInterval,
+        rotation
+    )
 
     override fun startStream(url: String) = camera.startStream(url)
 
@@ -72,13 +96,15 @@ class RtmpCameraImpl(
     }
 
     override fun setProtocol(tcp: Boolean) {
-        // Не применимо для RTMP
+        // Not applicable for RTMP
     }
+
+    override fun setAudioCodec(codec: AudioCodec) = camera.setAudioCodec(codec)
 }
 
 class RtspCameraImpl(
-    private val context: Context,
-    private val connectChecker: ConnectChecker,
+    context: Context,
+    connectChecker: ConnectChecker,
 ) : CameraInterface {
     override val camera = RtspCamera2(context, connectChecker)
 
@@ -88,15 +114,38 @@ class RtspCameraImpl(
     override val bitrate: Int get() = camera.bitrate
     override val glInterface: GlInterface get() = camera.glInterface
 
-    override fun prepareAudio() = camera.prepareAudio()
+    override fun prepareAudio(
+        audioSource: Int,
+        bitrate: Int,
+        sampleRate: Int,
+        isStereo: Boolean,
+        echoCanceler: Boolean,
+        noiseSuppressor: Boolean,
+    ): Boolean =
+        camera.prepareAudio(
+            audioSource,
+            bitrate,
+            sampleRate,
+            isStereo,
+            echoCanceler,
+            noiseSuppressor
+        )
 
     override fun prepareVideo(
         width: Int,
         height: Int,
         fps: Int,
         bitrate: Int,
+        iFrameInterval: Int,
         rotation: Int,
-    ) = camera.prepareVideo(width, height, fps, bitrate, rotation)
+    ) = camera.prepareVideo(
+        width,
+        height,
+        fps,
+        bitrate,
+        iFrameInterval,
+        rotation
+    )
 
     override fun startStream(url: String) = camera.startStream(url)
 
@@ -139,11 +188,13 @@ class RtspCameraImpl(
     override fun setProtocol(tcp: Boolean) {
         camera.getStreamClient().setProtocol(if (tcp) Protocol.TCP else Protocol.UDP)
     }
+
+    override fun setAudioCodec(codec: AudioCodec) = camera.setAudioCodec(codec)
 }
 
 class SrtCameraImpl(
-    private val context: Context,
-    private val connectChecker: ConnectChecker,
+    context: Context,
+    connectChecker: ConnectChecker,
 ) : CameraInterface {
     override val camera = SrtCamera2(context, connectChecker)
 
@@ -153,15 +204,38 @@ class SrtCameraImpl(
     override val bitrate: Int get() = camera.bitrate
     override val glInterface: GlInterface get() = camera.glInterface
 
-    override fun prepareAudio() = camera.prepareAudio()
+    override fun prepareAudio(
+        audioSource: Int,
+        bitrate: Int,
+        sampleRate: Int,
+        isStereo: Boolean,
+        echoCanceler: Boolean,
+        noiseSuppressor: Boolean,
+    ): Boolean =
+        camera.prepareAudio(
+            audioSource,
+            bitrate,
+            sampleRate,
+            isStereo,
+            echoCanceler,
+            noiseSuppressor
+        )
 
     override fun prepareVideo(
         width: Int,
         height: Int,
         fps: Int,
         bitrate: Int,
+        iFrameInterval: Int,
         rotation: Int,
-    ) = camera.prepareVideo(width, height, fps, bitrate, rotation)
+    ) = camera.prepareVideo(
+        width,
+        height,
+        fps,
+        bitrate,
+        iFrameInterval,
+        rotation
+    )
 
     override fun startStream(url: String) = camera.startStream(url)
 
@@ -198,17 +272,19 @@ class SrtCameraImpl(
         username: String,
         password: String,
     ) {
-        // Не применимо для SRT
+        // Not applicable for SRT
     }
 
     override fun setProtocol(tcp: Boolean) {
-        // Не применимо для SRT
+        // Not applicable for SRT
     }
+
+    override fun setAudioCodec(codec: AudioCodec) = camera.setAudioCodec(codec)
 }
 
 class UdpCameraImpl(
-    private val context: Context,
-    private val connectChecker: ConnectChecker,
+    context: Context,
+    connectChecker: ConnectChecker,
 ) : CameraInterface {
     override val camera = UdpCamera2(context, connectChecker)
 
@@ -218,15 +294,38 @@ class UdpCameraImpl(
     override val bitrate: Int get() = camera.bitrate
     override val glInterface: GlInterface get() = camera.glInterface
 
-    override fun prepareAudio() = camera.prepareAudio()
+    override fun prepareAudio(
+        audioSource: Int,
+        bitrate: Int,
+        sampleRate: Int,
+        isStereo: Boolean,
+        echoCanceler: Boolean,
+        noiseSuppressor: Boolean,
+    ): Boolean =
+        camera.prepareAudio(
+            audioSource,
+            bitrate,
+            sampleRate,
+            isStereo,
+            echoCanceler,
+            noiseSuppressor
+        )
 
     override fun prepareVideo(
         width: Int,
         height: Int,
         fps: Int,
         bitrate: Int,
+        iFrameInterval: Int,
         rotation: Int,
-    ) = camera.prepareVideo(width, height, fps, bitrate, rotation)
+    ) = camera.prepareVideo(
+        width,
+        height,
+        fps,
+        bitrate,
+        iFrameInterval,
+        rotation
+    )
 
     override fun startStream(url: String) = camera.startStream(url)
 
@@ -263,10 +362,12 @@ class UdpCameraImpl(
         username: String,
         password: String,
     ) {
-        // Не применимо для UDP
+        // Not applicable for UDP
     }
 
     override fun setProtocol(tcp: Boolean) {
-        // Не применимо для UDP
+        // Not applicable for UDP
     }
+
+    override fun setAudioCodec(codec: AudioCodec) = camera.setAudioCodec(codec)
 }

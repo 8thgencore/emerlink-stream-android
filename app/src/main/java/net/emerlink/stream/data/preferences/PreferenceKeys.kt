@@ -39,6 +39,9 @@ object PreferenceKeys {
     const val STREAM_KEY_DEFAULT = ""
 
     // Video settings
+    const val SCREEN_ORIENTATION = "screen_orientation"
+    const val SCREEN_ORIENTATION_DEFAULT = "landscape"
+
     const val VIDEO_RESOLUTION = "video_resolution"
     const val VIDEO_RESOLUTION_DEFAULT = "1920х1080"
 
@@ -56,7 +59,6 @@ object PreferenceKeys {
 
     const val VIDEO_SOURCE = "video_source"
     const val VIDEO_SOURCE_DEFAULT = "camera2"
-    const val VIDEO_SOURCE_UVC = "uvc"
 
     const val RECORD_VIDEO = "record_video"
     const val RECORD_VIDEO_DEFAULT = false
@@ -93,46 +95,4 @@ object PreferenceKeys {
     // Advanced video settings
     const val VIDEO_KEYFRAME_INTERVAL = "video_keyframe_interval"
     const val VIDEO_KEYFRAME_INTERVAL_DEFAULT = "2"
-
-    const val VIDEO_PROFILE = "video_profile"
-    const val VIDEO_PROFILE_DEFAULT = "baseline"
-
-    const val VIDEO_LEVEL = "video_level"
-    const val VIDEO_LEVEL_DEFAULT = "3.1"
-
-    const val VIDEO_BITRATE_MODE = "video_bitrate_mode"
-    const val VIDEO_BITRATE_MODE_DEFAULT = "vbr" // vbr, cbr, cq
-
-    const val VIDEO_QUALITY = "video_quality"
-    const val VIDEO_QUALITY_DEFAULT = "medium" // fastest, fast, medium, slow, slowest
-
-    // Network settings
-    const val NETWORK_BUFFER_SIZE = "network_buffer_size"
-    const val NETWORK_BUFFER_SIZE_DEFAULT = "0" // 0 = auto
-
-    const val NETWORK_TIMEOUT = "network_timeout"
-    const val NETWORK_TIMEOUT_DEFAULT = "5000" // ms
-
-    const val NETWORK_RECONNECT = "network_reconnect"
-    const val NETWORK_RECONNECT_DEFAULT = true
-
-    const val NETWORK_RECONNECT_DELAY = "network_reconnect_delay"
-    const val NETWORK_RECONNECT_DELAY_DEFAULT = "3000" // ms
-
-    const val NETWORK_MAX_RECONNECT_ATTEMPTS = "network_max_reconnect_attempts"
-    const val NETWORK_MAX_RECONNECT_ATTEMPTS_DEFAULT = "5"
-
-    // Stability settings
-    const val STABILITY_LOW_LATENCY = "stability_low_latency"
-    const val STABILITY_LOW_LATENCY_DEFAULT = false
-
-    const val STABILITY_HARDWARE_ROTATION = "stability_hardware_rotation"
-    const val STABILITY_HARDWARE_ROTATION_DEFAULT = true
-
-    const val STABILITY_DYNAMIC_FPS = "stability_dynamic_fps"
-    const val STABILITY_DYNAMIC_FPS_DEFAULT = false
-
-    // New constants
-    const val SCREEN_ORIENTATION = "screen_orientation"
-    const val SCREEN_ORIENTATION_DEFAULT = "landscape"
 }

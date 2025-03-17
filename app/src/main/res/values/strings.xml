@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">Emerlink Stream</string>
-    
+
     <!-- General -->
     <string name="back">Назад</string>
     <string name="settings">Настройки</string>
@@ -8,9 +8,9 @@
     <string name="exit">Выход</string>
     <string name="yes">Да</string>
     <string name="cancel">Отмена</string>
-    
+    <string name="ok">Ок</string>
+
     <!-- Notifications -->
-    <string name="ready_to_stream">Готов к стримингу</string>
     <string name="streaming">Стрим начался</string>
     <string name="recording">Запись</string>
     <string name="failed_to_prepare">Не удалось подготовить аудио или видео</string>
@@ -19,14 +19,10 @@
     <string name="connection_failed">Ошибка подключения</string>
     <string name="saved_photo">Фото сохранено</string>
     <string name="saved_photo_failed">Не удалось сохранить фото</string>
-    
+
     <!-- Onboarding -->
     <string name="welcome_to_emerlink">Добро пожаловать в Emerlink Stream</string>
     <string name="welcome_description">Приложение для стриминга видео по протоколам RTSP(S), RTMP(S) и SRT</string>
-    <string name="camera_permission">Доступ к камере</string>
-    <string name="camera_permission_description">Для стриминга видео необходим доступ к камере устройства</string>
-    <string name="microphone_permission">Доступ к микрофону</string>
-    <string name="microphone_permission_description">Для стриминга аудио необходим доступ к микрофону устройства</string>
     <string name="camera_and_mic_permissions">Доступ к камере и микрофону</string>
     <string name="camera_and_mic_permissions_description">Для стриминга видео и аудио необходим доступ к камере и микрофону устройства</string>
     <string name="location_permission">Доступ к местоположению</string>
@@ -37,7 +33,7 @@
     <string name="notification_permission_description">Для отображения статуса стриминга необходим доступ к уведомлениям</string>
     <string name="all_set">Всё готово!</string>
     <string name="ready_to_start_description">Теперь вы можете начать использовать Emerlink Stream для трансляции видео</string>
-    
+
     <!-- Stream Settings -->
     <string name="stream_settings">Настройка стриминга</string>
     <string name="enable_streaming">Включить стриминг</string>
@@ -64,7 +60,7 @@
     <string name="certificate_password_summary">Пароль для сертификата</string>
     <string name="stream_key">Ключ стрима</string>
     <string name="stream_key_summary">Ключ стрима, предоставленный вашим сервисом стриминга</string>
-    
+
     <!-- Video Settings -->
     <string name="video_settings">Настройки видео</string>
     <string name="video_resolution">Разрешение</string>
@@ -79,7 +75,9 @@
     <string name="adaptive_bitrate_summary">Автоматически регулировать битрейт в зависимости от качества соединения</string>
     <string name="record_video">Запись видео</string>
     <string name="record_video_summary">Сохранять видео на устройство во время стриминга</string>
-    
+    <string name="keyframe_interval">Интервал ключевых кадров</string>
+    <string name="keyframe_interval_summary">Интервал между ключевыми кадрами в секундах</string>
+
     <!-- Audio Settings -->
     <string name="audio_settings">Настройки аудио</string>
     <string name="enable_audio">Включить аудио</string>
@@ -96,72 +94,21 @@
     <string name="noise_reduction_summary">Включить шумоподавление</string>
     <string name="audio_codec">Кодек аудио</string>
     <string name="audio_codec_summary">Кодек для сжатия аудио</string>
-    
+
     <!-- Error messages -->
-    <string name="error_wrong_address">Неверный адрес сервера</string>
-    <string name="error_connection_timeout">Превышено время ожидания подключения</string>
-    <string name="error_unauthorized">Ошибка авторизации</string>
-    <string name="error_permission_denied">Отказано в доступе</string>
-    <string name="error_unknown">Неизвестная ошибка</string>
     <string name="unknown_error">Неизвестная ошибка</string>
     <string name="unknown_host">Не удалось найти сервер</string>
-    <string name="ssl_error">Ошибка SSL-соединения</string>
-    <string name="io_error">Ошибка ввода/вывода</string>
-    <string name="configuration_error">Ошибка конфигурации</string>
     <string name="permission_error">Отсутствуют необходимые разрешения</string>
-    <string name="memory_error">Недостаточно памяти</string>
-    <string name="retry">Повторить</string>
-    <string name="dismiss">Закрыть</string>
     <string name="error_unsupported_transport">Сервер не поддерживает выбранный транспортный протокол</string>
-    
-    <!-- Advanced Settings -->
-    <string name="advanced_settings">Расширенные настройки</string>
-    <string name="error">Ошибка</string>
-    
-    <!-- Advanced Video Settings -->
-    <string name="advanced_video_settings">Расширенные настройки видео</string>
-    <string name="keyframe_interval">Интервал ключевых кадров</string>
-    <string name="keyframe_interval_summary">Интервал между ключевыми кадрами в секундах</string>
-    <string name="video_profile">Профиль видео</string>
-    <string name="video_profile_summary">Профиль H.264 (baseline, main, high)</string>
-    <string name="video_level">Уровень видео</string>
-    <string name="video_level_summary">Уровень H.264 (3.0, 3.1, 4.0, 4.1, 4.2)</string>
-    <string name="bitrate_mode">Режим битрейта</string>
-    <string name="bitrate_mode_summary">Режим контроля битрейта (VBR, CBR, CQ)</string>
-    <string name="encoding_quality">Качество кодирования</string>
-    <string name="encoding_quality_summary">Баланс между качеством и скоростью кодирования</string>
-    
-    <!-- Network Settings -->
-    <string name="network_settings">Настройки сети</string>
-    <string name="buffer_size">Размер буфера</string>
-    <string name="buffer_size_summary">Размер сетевого буфера в байтах (0 = авто)</string>
-    <string name="connection_timeout">Таймаут соединения</string>
-    <string name="connection_timeout_summary">Время ожидания соединения в миллисекундах</string>
-    <string name="auto_reconnect">Автоматическое переподключение</string>
-    <string name="auto_reconnect_summary">Автоматически переподключаться при потере соединения</string>
-    <string name="reconnect_delay">Задержка переподключения</string>
-    <string name="reconnect_delay_summary">Задержка перед повторным подключением в миллисекундах</string>
-    <string name="max_reconnect_attempts">Максимальное количество попыток</string>
-    <string name="max_reconnect_attempts_summary">Максимальное количество попыток переподключения</string>
-    
-    <!-- Stability Settings -->
-    <string name="stability_settings">Настройки стабильности</string>
-    <string name="low_latency_mode">Режим низкой задержки</string>
-    <string name="low_latency_mode_summary">Уменьшает задержку за счет стабильности</string>
-    <string name="hardware_rotation">Аппаратный поворот</string>
-    <string name="hardware_rotation_summary">Использовать аппаратный поворот вместо программного</string>
-    <string name="dynamic_fps">Динамический FPS</string>
-    <string name="dynamic_fps_summary">Автоматически регулировать частоту кадров в зависимости от нагрузки</string>
-    
+    <string name="failed_to_prepare_audio">Не удалось подготовить аудио. Стриминг без звука.</string>
+
     <!-- Screen Orientation -->
     <string name="screen_orientation">Ориентация экрана</string>
     <string name="screen_orientation_summary">Установите предпочтительную ориентацию экрана</string>
 
     <!-- Camera -->
-    <string name="screenshot_saved">Скриншот сохранен</string>
     <string name="stop_streaming">Остановить стриминг</string>
     <string name="stop_streaming_confirmation">Остановить стриминг и перейти в настройки?</string>
-    <string name="loading_camera">Загрузка камеры...</string>
 
     <!-- Notification Channels -->
     <string name="notification_channel_stream_service">Сервис стриминга</string>
@@ -170,4 +117,11 @@
     <string name="notification_channel_errors_description">Уведомления об ошибках стриминга</string>
     <string name="notification_channel_photos">Фотографии</string>
     <string name="notification_channel_photos_description">Уведомления о сделанных фотографиях</string>
+
+    <!-- Camera Permissions -->
+    <string name="camera_permission_title">Требуется доступ к камере</string>
+    <string name="camera_permission_message">Для работы приложения необходим доступ к камере. Пожалуйста, предоставьте разрешение в настройках.</string>
+    <string name="microphone_permission_title">Требуется доступ к микрофону</string>
+    <string name="microphone_permission_message">Для работы приложения необходим доступ к микрофону. Пожалуйста, предоставьте разрешение в настройках.</string>
+
 </resources>
