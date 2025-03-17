@@ -17,7 +17,7 @@ import java.util.UUID
  * Repository for managing connection profiles
  */
 class ConnectionProfileRepository(
-    private val context: Context,
+    context: Context,
 ) {
     companion object {
         private const val PREFS_NAME = "connection_profiles"

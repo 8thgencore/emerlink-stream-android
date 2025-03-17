@@ -20,6 +20,7 @@ import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.R
 import net.emerlink.stream.core.AppIntentActions
 import net.emerlink.stream.core.ErrorHandler
+import net.emerlink.stream.data.model.StreamInfo
 import net.emerlink.stream.data.model.StreamSettings
 import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.data.preferences.PreferencesLoader
@@ -44,12 +45,12 @@ class StreamService :
     private lateinit var preferences: SharedPreferences
     private lateinit var notificationManager: NotificationManager
     private lateinit var errorHandler: ErrorHandler
-    internal lateinit var streamManager: StreamManager
+    private lateinit var streamManager: StreamManager
     private lateinit var cameraManager: ICameraManager
     private lateinit var mediaManager: MediaManager
 
     // Для совместимости с существующим кодом, будем хранить текущие настройки
-    lateinit var streamSettings: StreamSettings
+    private lateinit var streamSettings: StreamSettings
 
     // Inject SettingsRepository
     private val settingsRepository: SettingsRepository by inject(SettingsRepository::class.java)
@@ -726,4 +727,14 @@ class StreamService :
     }
 
     fun isPreviewRunning(): Boolean = isPreviewActive
+
+    fun getStreamInfo(): StreamInfo =
+        StreamInfo(
+            protocol = streamSettings.connection.protocol.toString(),
+            resolution = streamSettings.resolution.toString(),
+            bitrate = "${streamSettings.bitrate} kbps",
+            fps = "${streamSettings.fps} fps"
+        )
+
+    fun isStreaming(): Boolean = streamManager.isStreaming()
 }

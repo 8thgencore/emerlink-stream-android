@@ -26,6 +26,4 @@ data class StreamSettings(
     var codec: String = "",
     var uid: String = "",
     val iFrameInterval: Int = 2,
-    // Camera
-    var videoSource: String = "",
 )

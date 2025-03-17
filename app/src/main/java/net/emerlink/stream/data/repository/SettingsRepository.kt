@@ -16,7 +16,7 @@ import net.emerlink.stream.data.preferences.PreferenceKeys
  * Repository for managing application settings
  */
 class SettingsRepository(
-    private val context: Context,
+    context: Context,
 ) {
     private val preferences: SharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
 
@@ -31,87 +31,107 @@ class SettingsRepository(
     /**
      * Load video settings from SharedPreferences
      */
-    private fun loadVideoSettings(): VideoSettings {
-        return VideoSettings(
+    private fun loadVideoSettings(): VideoSettings =
+        VideoSettings(
             resolution = getResolutionFromPreferences(),
-            fps = preferences.getString(PreferenceKeys.VIDEO_FPS, PreferenceKeys.VIDEO_FPS_DEFAULT)
-                ?.toIntOrNull() ?: 30,
-            bitrate = preferences.getString(PreferenceKeys.VIDEO_BITRATE, PreferenceKeys.VIDEO_BITRATE_DEFAULT)
-                ?.toIntOrNull() ?: 2500,
-            codec = preferences.getString(PreferenceKeys.VIDEO_CODEC, PreferenceKeys.VIDEO_CODEC_DEFAULT)
-                ?: PreferenceKeys.VIDEO_CODEC_DEFAULT,
-            adaptiveBitrate = preferences.getBoolean(
-                PreferenceKeys.VIDEO_ADAPTIVE_BITRATE,
-                PreferenceKeys.VIDEO_ADAPTIVE_BITRATE_DEFAULT
-            ),
-            recordVideo = preferences.getBoolean(
-                PreferenceKeys.RECORD_VIDEO,
-                PreferenceKeys.RECORD_VIDEO_DEFAULT
-            ),
-            streamVideo = preferences.getBoolean(
-                PreferenceKeys.STREAM_VIDEO,
-                PreferenceKeys.STREAM_VIDEO_DEFAULT
-            ),
-            screenOrientation = preferences.getString(
-                PreferenceKeys.SCREEN_ORIENTATION,
-                PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
-            ) ?: PreferenceKeys.SCREEN_ORIENTATION_DEFAULT,
-            keyframeInterval = preferences.getString(
-                PreferenceKeys.VIDEO_KEYFRAME_INTERVAL,
-                PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT
-            )?.toIntOrNull() ?: 2,
-            videoSource = preferences.getString(
-                PreferenceKeys.VIDEO_SOURCE,
-                PreferenceKeys.VIDEO_SOURCE_DEFAULT
-            ) ?: PreferenceKeys.VIDEO_SOURCE_DEFAULT
+            fps =
+                preferences
+                    .getString(PreferenceKeys.VIDEO_FPS, PreferenceKeys.VIDEO_FPS_DEFAULT)
+                    ?.toIntOrNull() ?: 30,
+            bitrate =
+                preferences
+                    .getString(PreferenceKeys.VIDEO_BITRATE, PreferenceKeys.VIDEO_BITRATE_DEFAULT)
+                    ?.toIntOrNull() ?: 2500,
+            codec =
+                preferences.getString(PreferenceKeys.VIDEO_CODEC, PreferenceKeys.VIDEO_CODEC_DEFAULT)
+                    ?: PreferenceKeys.VIDEO_CODEC_DEFAULT,
+            adaptiveBitrate =
+                preferences.getBoolean(
+                    PreferenceKeys.VIDEO_ADAPTIVE_BITRATE,
+                    PreferenceKeys.VIDEO_ADAPTIVE_BITRATE_DEFAULT
+                ),
+            recordVideo =
+                preferences.getBoolean(
+                    PreferenceKeys.RECORD_VIDEO,
+                    PreferenceKeys.RECORD_VIDEO_DEFAULT
+                ),
+            streamVideo =
+                preferences.getBoolean(
+                    PreferenceKeys.STREAM_VIDEO,
+                    PreferenceKeys.STREAM_VIDEO_DEFAULT
+                ),
+            screenOrientation =
+                preferences.getString(
+                    PreferenceKeys.SCREEN_ORIENTATION,
+                    PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
+                ) ?: PreferenceKeys.SCREEN_ORIENTATION_DEFAULT,
+            keyframeInterval =
+                preferences
+                    .getString(
+                        PreferenceKeys.VIDEO_KEYFRAME_INTERVAL,
+                        PreferenceKeys.VIDEO_KEYFRAME_INTERVAL_DEFAULT
+                    )?.toIntOrNull() ?: 2,
+            videoSource =
+                preferences.getString(
+                    PreferenceKeys.VIDEO_SOURCE,
+                    PreferenceKeys.VIDEO_SOURCE_DEFAULT
+                ) ?: PreferenceKeys.VIDEO_SOURCE_DEFAULT
         )
-    }
 
     /**
      * Load audio settings from SharedPreferences
      */
-    private fun loadAudioSettings(): AudioSettings {
-        return AudioSettings(
-            enabled = preferences.getBoolean(
-                PreferenceKeys.ENABLE_AUDIO,
-                PreferenceKeys.ENABLE_AUDIO_DEFAULT
-            ),
-            bitrate = preferences.getString(
-                PreferenceKeys.AUDIO_BITRATE,
-                PreferenceKeys.AUDIO_BITRATE_DEFAULT
-            )?.toIntOrNull() ?: 128,
-            sampleRate = preferences.getString(
-                PreferenceKeys.AUDIO_SAMPLE_RATE,
-                PreferenceKeys.AUDIO_SAMPLE_RATE_DEFAULT
-            )?.toIntOrNull() ?: 44100,
-            stereo = preferences.getBoolean(
-                PreferenceKeys.AUDIO_STEREO,
-                PreferenceKeys.AUDIO_STEREO_DEFAULT
-            ),
-            echoCancel = preferences.getBoolean(
-                PreferenceKeys.AUDIO_ECHO_CANCEL,
-                PreferenceKeys.AUDIO_ECHO_CANCEL_DEFAULT
-            ),
-            noiseReduction = preferences.getBoolean(
-                PreferenceKeys.AUDIO_NOISE_REDUCTION,
-                PreferenceKeys.AUDIO_NOISE_REDUCTION_DEFAULT
-            ),
-            codec = preferences.getString(
-                PreferenceKeys.AUDIO_CODEC,
-                PreferenceKeys.AUDIO_CODEC_DEFAULT
-            ) ?: PreferenceKeys.AUDIO_CODEC_DEFAULT
+    private fun loadAudioSettings(): AudioSettings =
+        AudioSettings(
+            enabled =
+                preferences.getBoolean(
+                    PreferenceKeys.ENABLE_AUDIO,
+                    PreferenceKeys.ENABLE_AUDIO_DEFAULT
+                ),
+            bitrate =
+                preferences
+                    .getString(
+                        PreferenceKeys.AUDIO_BITRATE,
+                        PreferenceKeys.AUDIO_BITRATE_DEFAULT
+                    )?.toIntOrNull() ?: 128,
+            sampleRate =
+                preferences
+                    .getString(
+                        PreferenceKeys.AUDIO_SAMPLE_RATE,
+                        PreferenceKeys.AUDIO_SAMPLE_RATE_DEFAULT
+                    )?.toIntOrNull() ?: 44100,
+            stereo =
+                preferences.getBoolean(
+                    PreferenceKeys.AUDIO_STEREO,
+                    PreferenceKeys.AUDIO_STEREO_DEFAULT
+                ),
+            echoCancel =
+                preferences.getBoolean(
+                    PreferenceKeys.AUDIO_ECHO_CANCEL,
+                    PreferenceKeys.AUDIO_ECHO_CANCEL_DEFAULT
+                ),
+            noiseReduction =
+                preferences.getBoolean(
+                    PreferenceKeys.AUDIO_NOISE_REDUCTION,
+                    PreferenceKeys.AUDIO_NOISE_REDUCTION_DEFAULT
+                ),
+            codec =
+                preferences.getString(
+                    PreferenceKeys.AUDIO_CODEC,
+                    PreferenceKeys.AUDIO_CODEC_DEFAULT
+                ) ?: PreferenceKeys.AUDIO_CODEC_DEFAULT
         )
-    }
 
     /**
      * Get resolution from SharedPreferences
      */
     private fun getResolutionFromPreferences(): Size {
-        val resolutionString = preferences.getString(
-            PreferenceKeys.VIDEO_RESOLUTION,
-            PreferenceKeys.VIDEO_RESOLUTION_DEFAULT
-        ) ?: PreferenceKeys.VIDEO_RESOLUTION_DEFAULT
-        
+        val resolutionString =
+            preferences.getString(
+                PreferenceKeys.VIDEO_RESOLUTION,
+                PreferenceKeys.VIDEO_RESOLUTION_DEFAULT
+            ) ?: PreferenceKeys.VIDEO_RESOLUTION_DEFAULT
+
         val parts = resolutionString.split("x")
         return if (parts.size == 2) {
             try {
@@ -283,4 +303,4 @@ class SettingsRepository(
         }
         _audioSettingsFlow.value = loadAudioSettings()
     }
-} 
+}

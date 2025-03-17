@@ -3,7 +3,6 @@ package net.emerlink.stream.data.preferences
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
-import android.util.Size
 import net.emerlink.stream.data.model.ConnectionSettings
 import net.emerlink.stream.data.model.StreamSettings
 import net.emerlink.stream.data.model.StreamType
@@ -15,7 +14,7 @@ import org.koin.java.KoinJavaComponent.inject
  * Class for loading settings from SharedPreferences
  */
 class PreferencesLoader(
-    private val context: Context,
+    context: Context,
 ) {
     companion object {
         private const val TAG = "PreferencesLoader"
@@ -58,9 +57,6 @@ class PreferencesLoader(
             bitrate = videoSettings.bitrate,
             codec = videoSettings.codec,
             uid = preferences.getString(PreferenceKeys.UID, PreferenceKeys.UID_DEFAULT) ?: PreferenceKeys.UID_DEFAULT,
-            // Camera
-            videoSource = videoSettings.videoSource,
-            // Advanced Video Settings
             iFrameInterval = videoSettings.keyframeInterval
         )
     }
@@ -114,24 +110,5 @@ class PreferencesLoader(
                     PreferenceKeys.STREAM_CERTIFICATE_PASSWORD_DEFAULT
                 ) ?: PreferenceKeys.STREAM_CERTIFICATE_PASSWORD_DEFAULT
         )
-    }
-
-    /**
-     * Loads resolution from SharedPreferences
-     */
-    private fun getResolutionFromPreferences(preferences: SharedPreferences): Size {
-        val resolutionString =
-            preferences.getString(PreferenceKeys.VIDEO_RESOLUTION, PreferenceKeys.VIDEO_RESOLUTION_DEFAULT)
-                ?: PreferenceKeys.VIDEO_RESOLUTION_DEFAULT
-        val parts = resolutionString.split("x")
-        return if (parts.size == 2) {
-            try {
-                Size(parts[0].toInt(), parts[1].toInt())
-            } catch (_: NumberFormatException) {
-                Size(1920, 1080) // Default if parsing fails
-            }
-        } else {
-            Size(1920, 1080) // Default if format is incorrect
-        }
     }
 }

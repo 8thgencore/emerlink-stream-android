@@ -9,6 +9,7 @@ import net.emerlink.stream.presentation.notification.NotificationManager
 class ErrorHandler(
     private val context: Context,
 ) {
+    @Suppress("ktlint:standard:backing-property-naming")
     private val _errorState = MutableStateFlow<ErrorState>(ErrorState.None)
 
     private val notificationManager = NotificationManager.getInstance(context)

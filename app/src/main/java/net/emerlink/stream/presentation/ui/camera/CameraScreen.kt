@@ -27,14 +27,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.core.AppIntentActions
 import net.emerlink.stream.data.model.StreamInfo
-import net.emerlink.stream.presentation.ui.camera.components.CameraControls
-import net.emerlink.stream.presentation.ui.camera.components.CameraPreview
-import net.emerlink.stream.presentation.ui.camera.components.PermissionDialog
-import net.emerlink.stream.presentation.ui.camera.components.SettingsConfirmationDialog
-import net.emerlink.stream.presentation.ui.camera.components.StreamInfoPanel
-import net.emerlink.stream.presentation.ui.camera.components.StreamStatusIndicator
+import net.emerlink.stream.presentation.ui.camera.components.*
 import net.emerlink.stream.service.StreamService
-import net.emerlink.stream.ui.camera.components.*
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
@@ -63,7 +57,7 @@ fun CameraScreen(
 
     LaunchedEffect(streamService) {
         streamService?.let { service ->
-            isStreaming = service.streamManager.isStreaming()
+            isStreaming = service.isStreaming()
         }
     }
 
@@ -150,21 +144,18 @@ fun CameraScreen(
     // Регистрируем приемник событий экрана
     DisposableEffect(key1 = Unit) {
         val screenStateReceiver =
-            createScreenStateReceiver(
-                onScreenOff = {
-                    Log.d("CameraScreen", "Экран выключен")
-                    screenWasOff = true
-                    streamService?.releaseCamera()
-                },
-                onUserPresent = {
-                    Log.d("CameraScreen", "Пользователь разблокировал экран")
-                    if (screenWasOff && openGlView != null && streamService != null) {
-                        restartCameraAfterScreenOn(streamService, openGlView) {
-                            screenWasOff = false
-                        }
+            createScreenStateReceiver(onScreenOff = {
+                Log.d("CameraScreen", "Экран выключен")
+                screenWasOff = true
+                streamService?.releaseCamera()
+            }, onUserPresent = {
+                Log.d("CameraScreen", "Пользователь разблокировал экран")
+                if (screenWasOff && openGlView != null && streamService != null) {
+                    restartCameraAfterScreenOn(streamService, openGlView) {
+                        screenWasOff = false
                     }
                 }
-            )
+            })
 
         val filter =
             IntentFilter().apply {
@@ -186,42 +177,38 @@ fun CameraScreen(
     // Отслеживаем жизненный цикл для управления камерой
     DisposableEffect(key1 = lifecycleOwner) {
         val observer =
-            createLifecycleObserver(
-                onPause = {
-                    Log.d("CameraScreen", "Lifecycle.Event.ON_PAUSE")
-                    streamService?.stopPreview()
-                    isPreviewActive = false
-                },
-                onStop = {
-                    Log.d("CameraScreen", "Lifecycle.Event.ON_STOP")
-                    streamService?.releaseCamera()
-                    isPreviewActive = false
-                },
-                onResume = {
-                    Log.d("CameraScreen", "Lifecycle.Event.ON_RESUME")
-                    // Запускаем камеру только если предпросмотр не активен и OpenGlView готов
-                    if (!isPreviewActive &&
-                        openGlView != null &&
-                        streamService != null &&
-                        !streamService.isPreviewRunning()
-                    ) {
-                        openGlView?.let { view ->
-                            if (view.holder.surface?.isValid == true) {
-                                Log.d("CameraScreen", "Запуск камеры из ON_RESUME")
-                                Handler(Looper.getMainLooper()).postDelayed({
-                                    try {
-                                        streamService.restartPreview(view)
-                                        screenWasOff = false
-                                        isPreviewActive = true
-                                    } catch (e: Exception) {
-                                        Log.e("CameraScreen", "Ошибка перезапуска предпросмотра: ${e.message}", e)
-                                    }
-                                }, 500)
-                            }
+            createLifecycleObserver(onPause = {
+                Log.d("CameraScreen", "Lifecycle.Event.ON_PAUSE")
+                streamService?.stopPreview()
+                isPreviewActive = false
+            }, onStop = {
+                Log.d("CameraScreen", "Lifecycle.Event.ON_STOP")
+                streamService?.releaseCamera()
+                isPreviewActive = false
+            }, onResume = {
+                Log.d("CameraScreen", "Lifecycle.Event.ON_RESUME")
+                // Запускаем камеру только если предпросмотр не активен и OpenGlView готов
+                if (!isPreviewActive &&
+                    openGlView != null &&
+                    streamService != null &&
+                    !streamService.isPreviewRunning()
+                ) {
+                    openGlView?.let { view ->
+                        if (view.holder.surface?.isValid == true) {
+                            Log.d("CameraScreen", "Запуск камеры из ON_RESUME")
+                            Handler(Looper.getMainLooper()).postDelayed({
+                                try {
+                                    streamService.restartPreview(view)
+                                    screenWasOff = false
+                                    isPreviewActive = true
+                                } catch (e: Exception) {
+                                    Log.e("CameraScreen", "Ошибка перезапуска предпросмотра: ${e.message}", e)
+                                }
+                            }, 500)
                         }
                     }
                 }
-            )
+            })
 
         lifecycleOwner.lifecycle.addObserver(observer)
 
@@ -233,14 +220,7 @@ fun CameraScreen(
     // Обновляем информацию о стриме при подключении к сервису
     DisposableEffect(streamService) {
         streamService?.let { service ->
-            val settings = service.streamSettings
-            streamInfo =
-                StreamInfo(
-                    protocol = settings.connection.protocol.toString(),
-                    resolution = settings.resolution.toString(),
-                    bitrate = "${settings.bitrate} kbps",
-                    fps = "${settings.fps} fps"
-                )
+            streamInfo = service.getStreamInfo()
         }
         onDispose { }
     }
@@ -334,21 +314,18 @@ fun CameraScreen(
 
     // Settings confirmation dialog
     if (showSettingsConfirmDialog) {
-        SettingsConfirmationDialog(
-            onDismiss = { showSettingsConfirmDialog = false },
-            onConfirm = {
-                showSettingsConfirmDialog = false
-                try {
-                    streamService?.stopStream(null, null)
-                    // Обязательно останавливаем предпросмотр перед переходом на экран настроек
-                    streamService?.stopPreview()
-                    openGlView = null
-                    onSettingsClick()
-                } catch (e: Exception) {
-                    Log.e("CameraScreen", "Ошибка при переходе в настройки: ${e.message}", e)
-                }
+        SettingsConfirmationDialog(onDismiss = { showSettingsConfirmDialog = false }, onConfirm = {
+            showSettingsConfirmDialog = false
+            try {
+                streamService?.stopStream(null, null)
+                // Обязательно останавливаем предпросмотр перед переходом на экран настроек
+                streamService?.stopPreview()
+                openGlView = null
+                onSettingsClick()
+            } catch (e: Exception) {
+                Log.e("CameraScreen", "Ошибка при переходе в настройки: ${e.message}", e)
             }
-        )
+        })
     }
 
     // Обновляем диалог с объяснением необходимости разрешения

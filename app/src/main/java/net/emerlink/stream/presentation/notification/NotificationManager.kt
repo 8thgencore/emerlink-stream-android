@@ -42,11 +42,11 @@ class NotificationManager private constructor(
 
         @SuppressLint("StaticFieldLeak")
         @Volatile
-        private var INSTANCE: NotificationManager? = null
+        private var instance: NotificationManager? = null
 
         fun getInstance(context: Context): NotificationManager =
-            INSTANCE ?: synchronized(this) {
-                INSTANCE ?: NotificationManager(context.applicationContext).also { INSTANCE = it }
+            instance ?: synchronized(this) {
+                instance ?: NotificationManager(context.applicationContext).also { instance = it }
             }
     }
 
