@@ -192,8 +192,7 @@ class StreamManager(
             )
             cameraInterface.setAudioCodec(AudioCodec.AAC)
             return true
-        } catch (e: Exception) {
-            // Try fallback configuration
+        } catch (_: Exception) {
             try {
                 cameraInterface.prepareAudio(
                     bitrate = 128 * 1024,

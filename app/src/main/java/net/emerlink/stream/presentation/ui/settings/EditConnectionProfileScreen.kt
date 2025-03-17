@@ -49,7 +49,7 @@ fun EditConnectionProfileScreen(
 
     // State for profile fields
     var profileName by remember { mutableStateOf(existingProfile?.name ?: "") }
-    var isDefault by remember { mutableStateOf(existingProfile?.isDefault ?: false) }
+    var isDefault by remember { mutableStateOf(existingProfile?.isDefault == true) }
 
     // Connection settings states
     var streamProtocol by remember {
@@ -68,7 +68,7 @@ fun EditConnectionProfileScreen(
         mutableStateOf(existingProfile?.settings?.streamKey ?: "")
     }
     var streamUseTcp by remember {
-        mutableStateOf(existingProfile?.settings?.tcp ?: false)
+        mutableStateOf(existingProfile?.settings?.tcp != false)
     }
     var streamUsername by remember {
         mutableStateOf(existingProfile?.settings?.username ?: "")
@@ -77,7 +77,7 @@ fun EditConnectionProfileScreen(
         mutableStateOf(existingProfile?.settings?.password ?: "")
     }
     var streamSelfSignedCert by remember {
-        mutableStateOf(existingProfile?.settings?.streamSelfSignedCert ?: false)
+        mutableStateOf(existingProfile?.settings?.streamSelfSignedCert == true)
     }
     var streamCertificate by remember {
         mutableStateOf(existingProfile?.settings?.certFile ?: "")

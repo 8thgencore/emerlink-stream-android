@@ -4,7 +4,10 @@ package net.emerlink.stream.service
 
 import android.annotation.SuppressLint
 import android.app.Service
-import android.content.*
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
@@ -13,17 +16,16 @@ import android.os.*
 import android.util.Log
 import android.view.MotionEvent
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import androidx.preference.PreferenceManager
 import com.pedro.common.ConnectChecker
 import com.pedro.library.util.BitrateAdapter
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.R
 import net.emerlink.stream.core.AppIntentActions
 import net.emerlink.stream.core.ErrorHandler
+import net.emerlink.stream.data.model.ConnectionSettings
 import net.emerlink.stream.data.model.StreamInfo
-import net.emerlink.stream.data.model.StreamSettings
 import net.emerlink.stream.data.preferences.PreferenceKeys
-import net.emerlink.stream.data.preferences.PreferencesLoader
+import net.emerlink.stream.data.repository.ConnectionProfileRepository
 import net.emerlink.stream.data.repository.SettingsRepository
 import net.emerlink.stream.presentation.notification.NotificationManager
 import net.emerlink.stream.service.camera.CameraManager
@@ -36,31 +38,26 @@ import org.koin.java.KoinJavaComponent.inject
 class StreamService :
     Service(),
     ConnectChecker,
-    SharedPreferences.OnSharedPreferenceChangeListener,
     SensorEventListener {
     companion object {
         private const val TAG = "StreamService"
     }
 
-    private lateinit var preferences: SharedPreferences
     private lateinit var notificationManager: NotificationManager
     private lateinit var errorHandler: ErrorHandler
     private lateinit var streamManager: StreamManager
     private lateinit var cameraManager: ICameraManager
     private lateinit var mediaManager: MediaManager
 
-    // Для совместимости с существующим кодом, будем хранить текущие настройки
-    private lateinit var streamSettings: StreamSettings
+    private lateinit var connectionSettings: ConnectionSettings
 
-    // Inject SettingsRepository
     private val settingsRepository: SettingsRepository by inject(SettingsRepository::class.java)
+    private val connectionRepository: ConnectionProfileRepository by inject(ConnectionProfileRepository::class.java)
 
     private var bitrateAdapter: BitrateAdapter? = null
 
-    // TODO: зачем нужена эта переменная
     private var exiting = false
 
-    // TODO: зачем нуженен binder
     private val binder = LocalBinder()
 
     private var currentCameraId = 0
@@ -92,16 +89,11 @@ class StreamService :
         errorHandler = ErrorHandler(this)
         notificationManager = NotificationManager.getInstance(this)
 
-        preferences = PreferenceManager.getDefaultSharedPreferences(this)
-        preferences.registerOnSharedPreferenceChangeListener(this)
-
-        streamSettings = StreamSettings()
-
-        loadPreferences()
+        connectionSettings = connectionRepository.activeProfileFlow.value?.settings ?: ConnectionSettings()
 
         // Создаем StreamManager только с SettingsRepository
         streamManager = StreamManager(this, this, errorHandler, settingsRepository)
-        streamManager.setStreamType(streamSettings.connection.protocol)
+        streamManager.setStreamType(connectionSettings.protocol)
 
         cameraManager = CameraManager(this, { streamManager.getVideoSource() }, { streamManager.getCameraInterface() })
         mediaManager = MediaManager(this, streamManager, notificationManager)
@@ -223,8 +215,6 @@ class StreamService :
             if (streamManager.isStreaming()) {
                 stopStream(null, null)
             }
-
-            preferences.unregisterOnSharedPreferenceChangeListener(this)
 
             if (commandReceiver != null) {
                 unregisterReceiver(commandReceiver)
@@ -370,19 +360,6 @@ class StreamService :
     ) {
     }
 
-    override fun onSharedPreferenceChanged(
-        sharedPreferences: SharedPreferences,
-        key: String?,
-    ) {
-        when (key) {
-            PreferenceKeys.VIDEO_RESOLUTION -> {
-                Log.d(TAG, "Обнаружено изменение разрешения в настройках")
-                streamManager.handleResolutionChange()
-            }
-        }
-        loadPreferences()
-    }
-
     /** Запускает предпросмотр камеры */
     fun startPreview(view: OpenGlView) {
         if (isPreviewActive) {
@@ -471,18 +448,6 @@ class StreamService :
         }
     }
 
-    private fun loadPreferences() {
-        val preferencesLoader = PreferencesLoader(applicationContext)
-
-        val oldProtocol = streamSettings.connection.protocol
-
-        streamSettings = preferencesLoader.loadPreferences(preferences)
-
-        if (streamSettings.connection.protocol != oldProtocol && ::streamManager.isInitialized) {
-            streamManager.setStreamType(streamSettings.connection.protocol)
-        }
-    }
-
     fun startStream() {
         Log.d(TAG, "Starting stream")
 
@@ -545,7 +510,7 @@ class StreamService :
         try {
             Log.d(TAG, "Starting streaming")
 
-            val streamUrl = streamSettings.connection.buildStreamUrl()
+            val streamUrl = connectionSettings.buildStreamUrl()
             // Log the URL (remove sensitive info in production)
             Log.d(TAG, "Stream URL: ${streamUrl.replace(Regex(":[^:/]*:[^:/]*"), ":****:****")}")
 
@@ -553,10 +518,10 @@ class StreamService :
 
             streamManager.startStream(
                 streamUrl,
-                streamSettings.connection.protocol.toString(),
-                streamSettings.connection.username,
-                streamSettings.connection.password,
-                streamSettings.connection.tcp
+                connectionSettings.protocol.toString(),
+                connectionSettings.username,
+                connectionSettings.password,
+                connectionSettings.tcp
             )
 
             notificationManager.showStreamingNotification(
@@ -728,13 +693,15 @@ class StreamService :
 
     fun isPreviewRunning(): Boolean = isPreviewActive
 
-    fun getStreamInfo(): StreamInfo =
-        StreamInfo(
-            protocol = streamSettings.connection.protocol.toString(),
+    fun getStreamInfo(): StreamInfo {
+        val streamSettings = settingsRepository.videoSettingsFlow.value
+        return StreamInfo(
+            protocol = connectionSettings.protocol.toString(),
             resolution = streamSettings.resolution.toString(),
             bitrate = "${streamSettings.bitrate} kbps",
             fps = "${streamSettings.fps} fps"
         )
+    }
 
     fun isStreaming(): Boolean = streamManager.isStreaming()
 }

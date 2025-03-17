@@ -36,8 +36,10 @@ class SettingsRepository(
             resolution = getResolutionFromPreferences(),
             fps =
                 preferences
-                    .getString(PreferenceKeys.VIDEO_FPS, PreferenceKeys.VIDEO_FPS_DEFAULT)
-                    ?.toIntOrNull() ?: 30,
+                    .getString(
+                        PreferenceKeys.VIDEO_FPS,
+                        PreferenceKeys.VIDEO_FPS_DEFAULT
+                    )?.toIntOrNull() ?: 30,
             bitrate =
                 preferences
                     .getString(PreferenceKeys.VIDEO_BITRATE, PreferenceKeys.VIDEO_BITRATE_DEFAULT)
@@ -58,7 +60,7 @@ class SettingsRepository(
             streamVideo =
                 preferences.getBoolean(
                     PreferenceKeys.STREAM_VIDEO,
-                    PreferenceKeys.STREAM_VIDEO_DEFAULT
+                    true
                 ),
             screenOrientation =
                 preferences.getString(
