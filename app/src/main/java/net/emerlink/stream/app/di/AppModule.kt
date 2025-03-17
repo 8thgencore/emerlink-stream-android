@@ -4,8 +4,9 @@ import android.content.Context
 import net.emerlink.stream.core.ErrorHandler
 import net.emerlink.stream.data.repository.ConnectionProfileRepository
 import net.emerlink.stream.data.repository.SettingsRepository
+import net.emerlink.stream.presentation.ui.camera.viewmodel.CameraViewModel
+import net.emerlink.stream.presentation.ui.settings.viewmodel.ConnectionProfilesViewModel
 import net.emerlink.stream.presentation.ui.settings.viewmodel.SettingsViewModel
-import net.emerlink.stream.service.StreamService
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
@@ -18,11 +19,8 @@ val appModule =
 
         // ViewModels
         viewModel { SettingsViewModel(androidContext() as android.app.Application) }
-
-        // Use cases
-
-        // Services
-        single { StreamService() }
+        viewModel { ConnectionProfilesViewModel(androidContext() as android.app.Application) }
+        viewModel { CameraViewModel() }
 
         // Utils
         single { ErrorHandler(androidContext()) }

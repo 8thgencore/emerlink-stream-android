@@ -12,12 +12,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.viewinterop.AndroidView
 import com.pedro.library.view.OpenGlView
-import net.emerlink.stream.service.StreamService
+import net.emerlink.stream.presentation.ui.camera.viewmodel.CameraViewModel
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun CameraPreview(
-    streamService: StreamService?,
+    viewModel: CameraViewModel,
     onOpenGlViewCreated: (OpenGlView) -> Unit,
 ) {
     AndroidView(
@@ -29,7 +29,6 @@ fun CameraPreview(
                     object : SurfaceHolder.Callback {
                         override fun surfaceCreated(holder: SurfaceHolder) {
                             Log.d("CameraScreen", "Surface создан")
-                            // Сохраняем ссылку на созданный OpenGlView только когда surface готов
                             onOpenGlViewCreated(this@apply)
                         }
 
@@ -58,12 +57,12 @@ fun CameraPreview(
                 .pointerInteropFilter { event ->
                     when (event.action) {
                         MotionEvent.ACTION_DOWN -> {
-                            streamService?.tapToFocus(event)
+                            viewModel.tapToFocus(event)
                             true
                         }
 
                         MotionEvent.ACTION_MOVE -> {
-                            streamService?.setZoom(event)
+                            viewModel.setZoom(event)
                             true
                         }
 

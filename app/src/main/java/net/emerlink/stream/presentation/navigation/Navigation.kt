@@ -22,7 +22,6 @@ import net.emerlink.stream.presentation.ui.camera.CameraScreen
 import net.emerlink.stream.presentation.ui.settings.ConnectionSettingsScreen
 import net.emerlink.stream.presentation.ui.settings.EditConnectionProfileScreen
 import net.emerlink.stream.presentation.ui.settings.SettingsScreen
-import net.emerlink.stream.service.StreamService
 
 // Define your navigation routes
 object NavigationRoutes {
@@ -34,7 +33,7 @@ object NavigationRoutes {
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
-fun AppNavigation(streamService: StreamService?) {
+fun AppNavigation() {
     val navController = rememberNavController()
     LocalContext.current
 
@@ -44,8 +43,7 @@ fun AppNavigation(streamService: StreamService?) {
     NavHost(navController = navController, startDestination = NavigationRoutes.CAMERA) {
         composable(NavigationRoutes.CAMERA) {
             CameraScreen(
-                onSettingsClick = { navController.navigate(NavigationRoutes.SETTINGS) },
-                streamService = streamService
+                onSettingsClick = { navController.navigate(NavigationRoutes.SETTINGS) }
             )
         }
 

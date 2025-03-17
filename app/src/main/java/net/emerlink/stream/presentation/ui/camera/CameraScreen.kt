@@ -14,65 +14,71 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.core.AppIntentActions
-import net.emerlink.stream.data.model.StreamInfo
 import net.emerlink.stream.presentation.ui.camera.components.*
-import net.emerlink.stream.service.StreamService
+import net.emerlink.stream.presentation.ui.camera.viewmodel.CameraViewModel
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 fun CameraScreen(
-    streamService: StreamService?,
     onSettingsClick: () -> Unit,
+    viewModel: CameraViewModel = viewModel(),
 ) {
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
-    var isStreaming by remember { mutableStateOf(false) }
-    var isFlashOn by remember { mutableStateOf(false) }
-    var isMuted by remember { mutableStateOf(false) }
-    var showSettingsConfirmDialog by remember { mutableStateOf(false) }
-    var showStreamInfo by remember { mutableStateOf(false) }
-    var streamInfo by remember { mutableStateOf(StreamInfo()) }
-    var openGlView by remember { mutableStateOf<OpenGlView?>(null) }
-    var screenWasOff by remember { mutableStateOf(false) }
-    var isPreviewActive by remember { mutableStateOf(streamService?.isPreviewRunning() == true) }
-    var showPermissionDialog by remember { mutableStateOf(false) }
-    var permissionType by remember { mutableStateOf("") }
-
-    // Используем lateinit для объявления лаунчеров заранее
-    lateinit var requestCameraPermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>
-    lateinit var requestMicrophonePermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>
-
-    LaunchedEffect(streamService) {
-        streamService?.let { service ->
-            isStreaming = service.isStreaming()
+    // Bind service
+    DisposableEffect(Unit) {
+        viewModel.bindService(context)
+        onDispose {
+            viewModel.unbindService(context)
         }
     }
 
+    // Collect states
+    val isServiceConnected by viewModel.isServiceConnected.collectAsStateWithLifecycle()
+    val openGlView by viewModel.openGlView.collectAsStateWithLifecycle()
+    val isStreaming by viewModel.isStreaming.collectAsStateWithLifecycle()
+    val isFlashOn by viewModel.isFlashOn.collectAsStateWithLifecycle()
+    val isMuted by viewModel.isMuted.collectAsStateWithLifecycle()
+    val showStreamInfo by viewModel.showStreamInfo.collectAsStateWithLifecycle()
+    val streamInfo by viewModel.streamInfo.collectAsStateWithLifecycle()
+    val screenWasOff by viewModel.screenWasOff.collectAsStateWithLifecycle()
+    val isPreviewActive by viewModel.isPreviewActive.collectAsStateWithLifecycle()
+    val showPermissionDialog by viewModel.showPermissionDialog.collectAsStateWithLifecycle()
+    val permissionType by viewModel.permissionType.collectAsStateWithLifecycle()
+
+    // Используем lateinit для объявления лаунчеров заранее
+    lateinit var requestCameraPermissionLauncher: ActivityResultLauncher<String>
+    lateinit var requestMicrophonePermissionLauncher: ActivityResultLauncher<String>
+
     // Функция инициализации камеры
     fun initializeCamera(view: OpenGlView) {
-        if (streamService != null && !isPreviewActive && !streamService.isPreviewRunning()) {
+        if (!isPreviewActive && isServiceConnected) {
             try {
                 Log.d("CameraScreen", "Запуск камеры из единой точки инициализации")
-                streamService.startPreview(view)
-                isPreviewActive = true
+                viewModel.startPreview(view)
             } catch (e: Exception) {
                 Log.e("CameraScreen", "Ошибка при запуске предпросмотра: ${e.message}", e)
             }
         } else {
-            Log.d("CameraScreen", "Предпросмотр уже активен или сервис не готов")
+            Log.d("CameraScreen", "Предпросмотр уже активен или сервис не подключен")
         }
     }
 
@@ -116,12 +122,9 @@ fun CameraScreen(
             ActivityResultContracts.RequestPermission()
         ) { isGranted ->
             if (isGranted) {
-                // Проверяем разрешение на микрофон после получения разрешения на камеру
                 checkMicrophonePermission()
             } else {
-                // Разрешение на камеру не получено, показываем диалог
-                permissionType = "camera"
-                showPermissionDialog = true
+                viewModel.showPermissionDialog("camera")
             }
         }
 
@@ -130,14 +133,11 @@ fun CameraScreen(
             ActivityResultContracts.RequestPermission()
         ) { isGranted ->
             if (isGranted) {
-                // Оба разрешения получены, можно инициализировать камеру
                 openGlView?.let { view ->
                     initializeCamera(view)
                 }
             } else {
-                // Разрешение на микрофон не получено, показываем диалог
-                permissionType = "microphone"
-                showPermissionDialog = true
+                viewModel.showPermissionDialog("microphone")
             }
         }
 
@@ -146,13 +146,14 @@ fun CameraScreen(
         val screenStateReceiver =
             createScreenStateReceiver(onScreenOff = {
                 Log.d("CameraScreen", "Экран выключен")
-                screenWasOff = true
-                streamService?.releaseCamera()
+                viewModel.setScreenWasOff(true)
+                viewModel.releaseCamera()
             }, onUserPresent = {
                 Log.d("CameraScreen", "Пользователь разблокировал экран")
-                if (screenWasOff && openGlView != null && streamService != null) {
-                    restartCameraAfterScreenOn(streamService, openGlView) {
-                        screenWasOff = false
+                if (screenWasOff && openGlView != null) {
+                    openGlView?.let { view ->
+                        viewModel.restartPreview(view)
+                        viewModel.setScreenWasOff(false)
                     }
                 }
             })
@@ -179,28 +180,20 @@ fun CameraScreen(
         val observer =
             createLifecycleObserver(onPause = {
                 Log.d("CameraScreen", "Lifecycle.Event.ON_PAUSE")
-                streamService?.stopPreview()
-                isPreviewActive = false
+                viewModel.stopPreview()
             }, onStop = {
                 Log.d("CameraScreen", "Lifecycle.Event.ON_STOP")
-                streamService?.releaseCamera()
-                isPreviewActive = false
+                viewModel.releaseCamera()
             }, onResume = {
                 Log.d("CameraScreen", "Lifecycle.Event.ON_RESUME")
-                // Запускаем камеру только если предпросмотр не активен и OpenGlView готов
-                if (!isPreviewActive &&
-                    openGlView != null &&
-                    streamService != null &&
-                    !streamService.isPreviewRunning()
-                ) {
+                if (!isPreviewActive && openGlView != null) {
                     openGlView?.let { view ->
                         if (view.holder.surface?.isValid == true) {
                             Log.d("CameraScreen", "Запуск камеры из ON_RESUME")
                             Handler(Looper.getMainLooper()).postDelayed({
                                 try {
-                                    streamService.restartPreview(view)
-                                    screenWasOff = false
-                                    isPreviewActive = true
+                                    viewModel.restartPreview(view)
+                                    viewModel.setScreenWasOff(false)
                                 } catch (e: Exception) {
                                     Log.e("CameraScreen", "Ошибка перезапуска предпросмотра: ${e.message}", e)
                                 }
@@ -217,14 +210,6 @@ fun CameraScreen(
         }
     }
 
-    // Обновляем информацию о стриме при подключении к сервису
-    DisposableEffect(streamService) {
-        streamService?.let { service ->
-            streamInfo = service.getStreamInfo()
-        }
-        onDispose { }
-    }
-
     // Регистрируем приемник через LocalBroadcastManager
     DisposableEffect(key1 = isStreaming) {
         val streamStoppedReceiver =
@@ -235,21 +220,20 @@ fun CameraScreen(
                 ) {
                     if (intent.action == AppIntentActions.BROADCAST_STREAM_STOPPED) {
                         Log.d("CameraScreen", "Получено уведомление об остановке стрима")
-                        isStreaming = false
+                        viewModel.updateStreamingState(false)
                     }
                 }
             }
 
         val filter = IntentFilter(AppIntentActions.BROADCAST_STREAM_STOPPED)
 
-        // Используем LocalBroadcastManager
-        androidx.localbroadcastmanager.content.LocalBroadcastManager
+        LocalBroadcastManager
             .getInstance(context)
             .registerReceiver(streamStoppedReceiver, filter)
 
         onDispose {
             try {
-                androidx.localbroadcastmanager.content.LocalBroadcastManager
+                LocalBroadcastManager
                     .getInstance(context)
                     .unregisterReceiver(streamStoppedReceiver)
             } catch (e: Exception) {
@@ -264,9 +248,9 @@ fun CameraScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         CameraPreview(
-            streamService = streamService,
+            viewModel = viewModel,
             onOpenGlViewCreated = { view ->
-                openGlView = view
+                viewModel.setOpenGlView(view)
                 checkCameraPermission()
             }
         )
@@ -275,7 +259,7 @@ fun CameraScreen(
         StreamStatusIndicator(
             isStreaming = isStreaming,
             isLandscape = isLandscape,
-            onInfoClick = { showStreamInfo = !showStreamInfo }
+            onInfoClick = { viewModel.toggleStreamInfo() }
         )
 
         // Stream Info Panel (отображается по нажатию на индикатор статуса)
@@ -292,17 +276,14 @@ fun CameraScreen(
             isStreaming = isStreaming,
             isFlashOn = isFlashOn,
             isMuted = isMuted,
-            streamService = streamService,
-            onStreamingToggle = { isStreaming = it },
-            onFlashToggle = { isFlashOn = it },
-            onMuteToggle = { isMuted = it },
+            viewModel = viewModel,
             onSettingsClick = {
                 if (isStreaming) {
-                    showSettingsConfirmDialog = true
+                    viewModel.setShowSettingsConfirmDialog(true)
                 } else {
                     try {
-                        streamService?.stopPreview()
-                        openGlView = null
+                        viewModel.stopPreview()
+                        viewModel.setOpenGlView(null)
                         onSettingsClick()
                     } catch (e: Exception) {
                         Log.e("CameraScreen", "Ошибка при остановке предпросмотра: ${e.message}", e)
@@ -313,26 +294,28 @@ fun CameraScreen(
     }
 
     // Settings confirmation dialog
-    if (showSettingsConfirmDialog) {
-        SettingsConfirmationDialog(onDismiss = { showSettingsConfirmDialog = false }, onConfirm = {
-            showSettingsConfirmDialog = false
-            try {
-                streamService?.stopStream(null, null)
-                // Обязательно останавливаем предпросмотр перед переходом на экран настроек
-                streamService?.stopPreview()
-                openGlView = null
-                onSettingsClick()
-            } catch (e: Exception) {
-                Log.e("CameraScreen", "Ошибка при переходе в настройки: ${e.message}", e)
+    if (viewModel.showSettingsConfirmDialog.value) {
+        SettingsConfirmationDialog(
+            onDismiss = { viewModel.setShowSettingsConfirmDialog(false) },
+            onConfirm = {
+                viewModel.setShowSettingsConfirmDialog(false)
+                try {
+                    viewModel.stopStreaming()
+                    viewModel.stopPreview()
+                    viewModel.setOpenGlView(null)
+                    onSettingsClick()
+                } catch (e: Exception) {
+                    Log.e("CameraScreen", "Ошибка при переходе в настройки: ${e.message}", e)
+                }
             }
-        })
+        )
     }
 
     // Обновляем диалог с объяснением необходимости разрешения
     if (showPermissionDialog) {
         PermissionDialog(
             permissionType = permissionType,
-            onDismiss = { showPermissionDialog = false }
+            onDismiss = { viewModel.dismissPermissionDialog() }
         )
     }
 }
