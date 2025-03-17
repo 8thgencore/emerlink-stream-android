@@ -12,9 +12,9 @@ import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import com.pedro.library.view.GlInterface
 import net.emerlink.stream.R
-import net.emerlink.stream.notification.NotificationManager
+import net.emerlink.stream.core.AppIntentActions
+import net.emerlink.stream.presentation.notification.NotificationManager
 import net.emerlink.stream.service.stream.StreamManager
-import net.emerlink.stream.util.AppIntentActions
 import net.emerlink.stream.util.PathUtils
 import java.io.File
 import java.io.FileOutputStream

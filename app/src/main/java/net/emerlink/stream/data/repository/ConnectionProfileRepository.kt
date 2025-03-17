@@ -8,9 +8,9 @@ import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import net.emerlink.stream.model.ConnectionProfile
-import net.emerlink.stream.model.ConnectionSettings
-import net.emerlink.stream.model.StreamType
+import net.emerlink.stream.data.model.ConnectionProfile
+import net.emerlink.stream.data.model.ConnectionSettings
+import net.emerlink.stream.data.model.StreamType
 import java.util.UUID
 
 /**

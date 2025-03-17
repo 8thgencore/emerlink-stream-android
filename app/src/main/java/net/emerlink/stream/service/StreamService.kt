@@ -18,17 +18,19 @@ import com.pedro.common.ConnectChecker
 import com.pedro.library.util.BitrateAdapter
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.R
+import net.emerlink.stream.core.AppIntentActions
+import net.emerlink.stream.core.ErrorHandler
+import net.emerlink.stream.data.model.StreamSettings
 import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.data.preferences.PreferencesLoader
-import net.emerlink.stream.model.StreamSettings
-import net.emerlink.stream.notification.NotificationManager
+import net.emerlink.stream.data.repository.SettingsRepository
+import net.emerlink.stream.presentation.notification.NotificationManager
 import net.emerlink.stream.service.camera.CameraManager
 import net.emerlink.stream.service.camera.ICameraManager
 import net.emerlink.stream.service.location.StreamLocationListener
 import net.emerlink.stream.service.media.MediaManager
 import net.emerlink.stream.service.stream.StreamManager
-import net.emerlink.stream.util.AppIntentActions
-import net.emerlink.stream.util.ErrorHandler
+import org.koin.java.KoinJavaComponent.inject
 
 class StreamService :
     Service(),
@@ -46,7 +48,11 @@ class StreamService :
     private lateinit var cameraManager: ICameraManager
     private lateinit var mediaManager: MediaManager
 
+    // Для совместимости с существующим кодом, будем хранить текущие настройки
     lateinit var streamSettings: StreamSettings
+
+    // Inject SettingsRepository
+    private val settingsRepository: SettingsRepository by inject(SettingsRepository::class.java)
 
     private var bitrateAdapter: BitrateAdapter? = null
 
@@ -92,7 +98,8 @@ class StreamService :
 
         loadPreferences()
 
-        streamManager = StreamManager(this, this, errorHandler, streamSettings)
+        // Создаем StreamManager только с SettingsRepository
+        streamManager = StreamManager(this, this, errorHandler, settingsRepository)
         streamManager.setStreamType(streamSettings.connection.protocol)
 
         cameraManager = CameraManager(this, { streamManager.getVideoSource() }, { streamManager.getCameraInterface() })
@@ -290,13 +297,16 @@ class StreamService :
     override fun onConnectionStarted(url: String) {}
 
     override fun onConnectionSuccess() {
-        if (streamSettings.adaptiveBitrate) {
+        // Используем настройки из SettingsRepository
+        val videoSettings = settingsRepository.videoSettingsFlow.value
+
+        if (videoSettings.adaptiveBitrate) {
             Log.d(TAG, "Setting adaptive bitrate")
             bitrateAdapter =
                 BitrateAdapter { bitrate ->
                     streamManager.setVideoBitrateOnFly(bitrate)
                 }
-            bitrateAdapter?.setMaxBitrate(streamSettings.bitrate * 1024)
+            bitrateAdapter?.setMaxBitrate(videoSettings.bitrate * 1024)
         } else {
             Log.d(TAG, "Not doing adaptive bitrate")
         }
@@ -438,7 +448,10 @@ class StreamService :
     fun takePhoto() = mediaManager.takePhoto()
 
     private fun getCameraIds() {
-        if (streamSettings.videoSource == PreferenceKeys.VIDEO_SOURCE_DEFAULT) {
+        // Используем настройки из SettingsRepository
+        val videoSettings = settingsRepository.videoSettingsFlow.value
+
+        if (videoSettings.videoSource == PreferenceKeys.VIDEO_SOURCE_DEFAULT) {
             try {
                 val cameraManager =
                     applicationContext.getSystemService(CAMERA_SERVICE) as android.hardware.camera2.CameraManager
@@ -498,10 +511,13 @@ class StreamService :
 
         streamManager.switchStreamResolution()
 
-        if (streamSettings.stream) {
+        // Используем настройки из SettingsRepository
+        val videoSettings = settingsRepository.videoSettingsFlow.value
+
+        if (videoSettings.streamVideo) {
             startStreaming()
         }
-        if (streamSettings.record) {
+        if (videoSettings.recordVideo) {
             mediaManager.startRecording()
         }
 

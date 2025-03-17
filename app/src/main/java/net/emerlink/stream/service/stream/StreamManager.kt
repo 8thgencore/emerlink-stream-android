@@ -8,17 +8,17 @@ import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.video.CameraHelper
 import com.pedro.library.view.OpenGlView
-import net.emerlink.stream.model.Resolution
-import net.emerlink.stream.model.StreamSettings
-import net.emerlink.stream.model.StreamType
+import net.emerlink.stream.core.ErrorHandler
+import net.emerlink.stream.data.model.Resolution
+import net.emerlink.stream.data.model.StreamType
+import net.emerlink.stream.data.repository.SettingsRepository
 import net.emerlink.stream.service.camera.CameraInterface
-import net.emerlink.stream.util.ErrorHandler
 
 class StreamManager(
     private val context: Context,
     private val connectChecker: ConnectChecker,
     private val errorHandler: ErrorHandler,
-    private val streamSettings: StreamSettings,
+    private val settingsRepository: SettingsRepository,
 ) {
     companion object {
         private const val TAG = "StreamManager"
@@ -139,13 +139,16 @@ class StreamManager(
 
             cameraInterface.replaceView(view)
 
-            val bitrate = cameraInterface.bitrate.takeIf { it > 0 } ?: (streamSettings.bitrate * 1000)
-            val resolution = Resolution.parseFromSize(streamSettings.resolution)
+            // Получаем актуальные настройки видео из репозитория
+            val videoSettings = settingsRepository.videoSettingsFlow.value
+
+            val bitrate = cameraInterface.bitrate.takeIf { it > 0 } ?: (videoSettings.bitrate * 1000)
+            val resolution = Resolution.parseFromSize(videoSettings.resolution)
             cameraInterface.prepareVideo(
                 width = resolution.width,
                 height = resolution.height,
-                fps = streamSettings.fps,
-                iFrameInterval = streamSettings.iFrameInterval,
+                fps = videoSettings.fps,
+                iFrameInterval = videoSettings.keyframeInterval,
                 bitrate = bitrate,
                 rotation = CameraHelper.getCameraOrientation(context)
             )
@@ -177,12 +180,15 @@ class StreamManager(
     fun prepareAudio(): Boolean {
         Log.d(TAG, "Подготовка аудио")
 
+        // Получаем актуальные настройки аудио из репозитория
+        val audioSettings = settingsRepository.audioSettingsFlow.value
+
         // Try with known working configuration first
         try {
             cameraInterface.prepareAudio(
-                bitrate = streamSettings.audioBitrate * 1024,
-                sampleRate = streamSettings.audioSampleRate.toInt(),
-                isStereo = streamSettings.audioStereo
+                bitrate = audioSettings.bitrate * 1024,
+                sampleRate = audioSettings.sampleRate,
+                isStereo = audioSettings.stereo
             )
             cameraInterface.setAudioCodec(AudioCodec.AAC)
             return true
@@ -200,21 +206,22 @@ class StreamManager(
                 Log.e(TAG, "Не удалось инициализировать аудио: ${e2.message}", e2)
                 return false
             }
-            Log.e(TAG, "Ошибка подготовки аудио: ${e.message}", e)
-            return false
         }
     }
 
     fun prepareVideo(): Boolean {
         try {
-            val resolution = Resolution.parseFromSize(streamSettings.resolution)
+            // Получаем актуальные настройки видео из репозитория
+            val videoSettings = settingsRepository.videoSettingsFlow.value
+
+            val resolution = Resolution.parseFromSize(videoSettings.resolution)
             val rotation = CameraHelper.getCameraOrientation(context)
             cameraInterface.prepareVideo(
                 width = resolution.width,
                 height = resolution.height,
-                fps = streamSettings.fps,
-                bitrate = streamSettings.bitrate * 1000,
-                iFrameInterval = streamSettings.iFrameInterval,
+                fps = videoSettings.fps,
+                bitrate = videoSettings.bitrate * 1000,
+                iFrameInterval = videoSettings.keyframeInterval,
                 rotation = rotation
             )
 
@@ -241,7 +248,10 @@ class StreamManager(
 
     fun switchStreamResolution() {
         try {
-            val resolution = Resolution.parseFromSize(streamSettings.resolution)
+            // Получаем актуальные настройки видео из репозитория
+            val videoSettings = settingsRepository.videoSettingsFlow.value
+
+            val resolution = Resolution.parseFromSize(videoSettings.resolution)
             if (isOnPreview()) {
                 val rotation = CameraHelper.getCameraOrientation(context)
 
@@ -249,9 +259,9 @@ class StreamManager(
                 cameraInterface.prepareVideo(
                     width = resolution.width,
                     height = resolution.height,
-                    fps = streamSettings.fps,
-                    bitrate = streamSettings.bitrate * 1000,
-                    iFrameInterval = streamSettings.iFrameInterval,
+                    fps = videoSettings.fps,
+                    bitrate = videoSettings.bitrate * 1000,
+                    iFrameInterval = videoSettings.keyframeInterval,
                     rotation = rotation
                 )
 

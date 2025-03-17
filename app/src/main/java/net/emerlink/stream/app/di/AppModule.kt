@@ -1,0 +1,32 @@
+package net.emerlink.stream.app.di
+
+import android.content.Context
+import net.emerlink.stream.core.ErrorHandler
+import net.emerlink.stream.data.repository.ConnectionProfileRepository
+import net.emerlink.stream.data.repository.SettingsRepository
+import net.emerlink.stream.presentation.ui.settings.viewmodel.SettingsViewModel
+import net.emerlink.stream.service.StreamService
+import org.koin.android.ext.koin.androidContext
+import org.koin.androidx.viewmodel.dsl.viewModel
+import org.koin.dsl.module
+
+val appModule =
+    module {
+        // Repositories
+        single { ConnectionProfileRepository(androidContext()) }
+        single { SettingsRepository(androidContext()) }
+
+        // ViewModels
+        viewModel { SettingsViewModel(androidContext() as android.app.Application) }
+
+        // Use cases
+
+        // Services
+        single { StreamService() }
+
+        // Utils
+        single { ErrorHandler(androidContext()) }
+
+        // Providers
+        factory { (context: Context) -> ErrorHandler(context) }
+    }

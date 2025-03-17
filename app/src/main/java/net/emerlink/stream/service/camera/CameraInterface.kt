@@ -8,7 +8,7 @@ import com.pedro.encoder.input.video.CameraHelper
 import com.pedro.library.base.Camera2Base
 import com.pedro.library.view.GlInterface
 import com.pedro.library.view.OpenGlView
-import net.emerlink.stream.model.StreamType
+import net.emerlink.stream.data.model.StreamType
 
 /**
  * Interface for camera implementation
