@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import net.emerlink.stream.core.AppIntentActions
 import net.emerlink.stream.data.model.StreamInfo
 import net.emerlink.stream.service.StreamService
 
@@ -268,13 +267,19 @@ class CameraViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 if (streamService?.isStreaming() == false) {
-                    val intent = Intent(AppIntentActions.ACTION_START_STREAM)
-                    streamService?.sendBroadcast(intent)
-                    _isStreaming.value = true
-                    _streamInfo.value = streamService?.getStreamInfo() ?: StreamInfo()
+                    Log.d("CameraViewModel", "Запуск стрима")
+
+                    // Вызываем метод startStream напрямую
+                    streamService?.startStream()
+
+                    // Обновляем состояние после начала стрима
+                    updateStreamingState(true)
+                    updateStreamInfo(streamService?.getStreamInfo() ?: StreamInfo())
+                } else {
+                    Log.d("CameraViewModel", "Стрим уже запущен или сервис недоступен")
                 }
             } catch (e: Exception) {
-                Log.e("CameraViewModel", "Error starting streaming", e)
+                Log.e("CameraViewModel", "Ошибка при запуске стрима: ${e.message}", e)
             }
         }
     }
@@ -283,12 +288,19 @@ class CameraViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 if (streamService?.isStreaming() == true) {
-                    val intent = Intent(AppIntentActions.ACTION_STOP_STREAM)
-                    streamService?.sendBroadcast(intent)
-                    _isStreaming.value = false
+                    Log.d("CameraViewModel", "Остановка стрима")
+
+                    // Вызываем метод stopStream напрямую
+                    streamService?.stopStream(null, null)
+
+                    // Обновляем состояние UI - это должно произойти через LocalBroadcastManager
+                    // но на всякий случай обновляем состояние здесь
+                    updateStreamingState(false)
+                } else {
+                    Log.d("CameraViewModel", "Стрим не был запущен или сервис недоступен")
                 }
             } catch (e: Exception) {
-                Log.e("CameraViewModel", "Error stopping streaming", e)
+                Log.e("CameraViewModel", "Ошибка при остановке стрима: ${e.message}", e)
             }
         }
     }

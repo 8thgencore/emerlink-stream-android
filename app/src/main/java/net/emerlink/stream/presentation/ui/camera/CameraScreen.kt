@@ -133,9 +133,7 @@ fun CameraScreen(
             ActivityResultContracts.RequestPermission()
         ) { isGranted ->
             if (isGranted) {
-                openGlView?.let { view ->
-                    initializeCamera(view)
-                }
+                openGlView?.let { view -> initializeCamera(view) }
             } else {
                 viewModel.showPermissionDialog("microphone")
             }
@@ -218,6 +216,7 @@ fun CameraScreen(
                     context: Context,
                     intent: Intent,
                 ) {
+                    Log.d("CameraScreen", "Получен broadcast: ${intent.action}")
                     if (intent.action == AppIntentActions.BROADCAST_STREAM_STOPPED) {
                         Log.d("CameraScreen", "Получено уведомление об остановке стрима")
                         viewModel.updateStreamingState(false)
@@ -226,6 +225,7 @@ fun CameraScreen(
             }
 
         val filter = IntentFilter(AppIntentActions.BROADCAST_STREAM_STOPPED)
+        Log.d("CameraScreen", "Регистрация приемника для BROADCAST_STREAM_STOPPED")
 
         LocalBroadcastManager
             .getInstance(context)
@@ -233,6 +233,7 @@ fun CameraScreen(
 
         onDispose {
             try {
+                Log.d("CameraScreen", "Отмена регистрации приемника для BROADCAST_STREAM_STOPPED")
                 LocalBroadcastManager
                     .getInstance(context)
                     .unregisterReceiver(streamStoppedReceiver)
