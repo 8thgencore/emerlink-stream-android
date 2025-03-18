@@ -15,5 +15,5 @@ data class VideoSettings(
     val streamVideo: Boolean = true,
     val screenOrientation: String = "landscape",
     val keyframeInterval: Int = 10,
-    val videoSource: String = "camera"
-) 
+    val videoSource: String = "camera",
+)
