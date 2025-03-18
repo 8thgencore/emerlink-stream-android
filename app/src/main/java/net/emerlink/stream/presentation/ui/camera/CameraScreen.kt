@@ -2,19 +2,12 @@
 
 package net.emerlink.stream.presentation.ui.camera
 
-import android.Manifest
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Box
@@ -25,12 +18,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import com.pedro.library.view.OpenGlView
-import net.emerlink.stream.core.AppIntentActions
 import net.emerlink.stream.presentation.ui.camera.components.*
 import net.emerlink.stream.presentation.ui.camera.viewmodel.CameraViewModel
 
@@ -58,6 +47,7 @@ fun CameraScreen(
     val isStreaming by viewModel.isStreaming.collectAsStateWithLifecycle()
     val isFlashOn by viewModel.isFlashOn.collectAsStateWithLifecycle()
     val isMuted by viewModel.isMuted.collectAsStateWithLifecycle()
+    val showSettingsConfirmDialog by viewModel.showSettingsConfirmDialog.collectAsStateWithLifecycle()
     val showStreamInfo by viewModel.showStreamInfo.collectAsStateWithLifecycle()
     val streamInfo by viewModel.streamInfo.collectAsStateWithLifecycle()
     val screenWasOff by viewModel.screenWasOff.collectAsStateWithLifecycle()
@@ -88,8 +78,8 @@ fun CameraScreen(
             }
         }
 
-    // Screen state receiver
-    DisposableEffect(key1 = Unit) {
+    // Screen state receiver handling
+    DisposableEffect(Unit) {
         val screenStateReceiver =
             createScreenStateReceiver(
                 onScreenOff = {
@@ -106,25 +96,18 @@ fun CameraScreen(
                 }
             )
 
-        val filter =
-            IntentFilter().apply {
-                addAction(Intent.ACTION_SCREEN_OFF)
-                addAction(Intent.ACTION_SCREEN_ON)
-                addAction(Intent.ACTION_USER_PRESENT)
-            }
-        context.registerReceiver(screenStateReceiver, filter)
+        val disposeScreenReceiver =
+            registerScreenStateReceiver(
+                context = context,
+                receiver = screenStateReceiver,
+                onDispose = {}
+            )
 
-        onDispose {
-            try {
-                context.unregisterReceiver(screenStateReceiver)
-            } catch (e: Exception) {
-                Log.e("CameraScreen", "Error unregistering receiver", e)
-            }
-        }
+        onDispose(disposeScreenReceiver)
     }
 
     // Lifecycle observer
-    DisposableEffect(key1 = lifecycleOwner) {
+    DisposableEffect(lifecycleOwner) {
         val observer =
             createLifecycleObserver(
                 onPause = { viewModel.stopPreview() },
@@ -153,30 +136,21 @@ fun CameraScreen(
         }
     }
 
-    // Stream state broadcast receiver
-    DisposableEffect(key1 = isStreaming) {
-        val streamStoppedReceiver =
-            object : BroadcastReceiver() {
-                override fun onReceive(
-                    context: Context,
-                    intent: Intent,
-                ) {
-                    if (intent.action == AppIntentActions.BROADCAST_STREAM_STOPPED) {
-                        viewModel.updateStreamingState(false)
-                    }
-                }
+    // Stream status receiver
+    DisposableEffect(isStreaming) {
+        val streamStatusReceiver =
+            createStreamStatusReceiver {
+                viewModel.updateStreamingState(false)
             }
 
-        val filter = IntentFilter(AppIntentActions.BROADCAST_STREAM_STOPPED)
-        LocalBroadcastManager.getInstance(context).registerReceiver(streamStoppedReceiver, filter)
+        val disposeStreamReceiver =
+            registerStreamStatusReceiver(
+                context = context,
+                receiver = streamStatusReceiver,
+                onDispose = {}
+            )
 
-        onDispose {
-            try {
-                LocalBroadcastManager.getInstance(context).unregisterReceiver(streamStoppedReceiver)
-            } catch (e: Exception) {
-                Log.e("CameraScreen", "Error unregistering broadcast receiver", e)
-            }
-        }
+        onDispose(disposeStreamReceiver)
     }
 
     // UI components
@@ -209,23 +183,17 @@ fun CameraScreen(
             isMuted = isMuted,
             viewModel = viewModel,
             onSettingsClick = {
-                if (isStreaming) {
-                    viewModel.setShowSettingsConfirmDialog(true)
-                } else {
-                    try {
-                        viewModel.stopPreview()
-                        viewModel.setOpenGlView(null)
-                        onSettingsClick()
-                    } catch (e: Exception) {
-                        Log.e("CameraScreen", "Error stopping preview before settings", e)
-                    }
-                }
+                handleSettingsClick(
+                    isStreaming = isStreaming,
+                    viewModel = viewModel,
+                    navigateToSettings = onSettingsClick
+                )
             }
         )
     }
 
     // Dialogs
-    if (viewModel.showSettingsConfirmDialog.value) {
+    if (showSettingsConfirmDialog) {
         SettingsConfirmationDialog(
             onDismiss = { viewModel.setShowSettingsConfirmDialog(false) },
             onConfirm = {
@@ -247,58 +215,5 @@ fun CameraScreen(
             permissionType = permissionType,
             onDismiss = { viewModel.dismissPermissionDialog() }
         )
-    }
-}
-
-private fun checkCameraPermission(
-    context: Context,
-    viewModel: CameraViewModel,
-    requestCameraPermissionLauncher: ActivityResultLauncher<String>,
-) {
-    when {
-        ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.CAMERA
-        ) == PackageManager.PERMISSION_GRANTED -> {
-            checkMicrophonePermission(context, viewModel, viewModel.openGlView.value)
-        }
-
-        else -> {
-            requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-        }
-    }
-}
-
-private fun checkMicrophonePermission(
-    context: Context,
-    viewModel: CameraViewModel,
-    openGlView: OpenGlView?,
-) {
-    when {
-        ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.RECORD_AUDIO
-        ) == PackageManager.PERMISSION_GRANTED -> {
-            openGlView?.let { view ->
-                initializeCamera(viewModel, view)
-            }
-        }
-
-        else -> {
-            // This will be called through callback after user responds to permission dialog
-        }
-    }
-}
-
-private fun initializeCamera(
-    viewModel: CameraViewModel,
-    view: OpenGlView,
-) {
-    if (!viewModel.isPreviewActive.value && viewModel.isServiceConnected.value) {
-        try {
-            viewModel.startPreview(view)
-        } catch (e: Exception) {
-            Log.e("CameraScreen", "Error starting preview", e)
-        }
     }
 }
