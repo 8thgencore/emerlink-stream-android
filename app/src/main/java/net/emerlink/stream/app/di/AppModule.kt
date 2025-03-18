@@ -8,7 +8,7 @@ import net.emerlink.stream.presentation.camera.viewmodel.CameraViewModel
 import net.emerlink.stream.presentation.settings.viewmodel.ConnectionProfilesViewModel
 import net.emerlink.stream.presentation.settings.viewmodel.SettingsViewModel
 import org.koin.android.ext.koin.androidContext
-import org.koin.androidx.viewmodel.dsl.viewModel
+import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val appModule =

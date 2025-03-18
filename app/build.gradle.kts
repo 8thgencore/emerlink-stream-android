@@ -80,13 +80,6 @@ dependencies {
     implementation(libs.library)
     implementation(libs.extra.sources)
 
-    implementation(libs.rootencoder.common)
-    implementation(libs.rootencoder.encoder)
-    implementation(libs.rootencoder.rtmp)
-    implementation(libs.rootencoder.rtsp)
-    implementation(libs.rootencoder.srt)
-    implementation(libs.rootencoder.udp)
-
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

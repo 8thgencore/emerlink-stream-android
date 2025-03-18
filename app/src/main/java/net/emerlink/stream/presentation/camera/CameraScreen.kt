@@ -57,18 +57,11 @@ fun CameraScreen(
     val audioLevel by viewModel.audioLevel.collectAsStateWithLifecycle()
 
     // Permission handling
-    val requestCameraPermissionLauncher =
-        rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { isGranted ->
-            if (isGranted) {
-                checkMicrophonePermission(context, viewModel, openGlView)
-            } else {
-                viewModel.showPermissionDialog("camera")
-            }
-        }
+    lateinit var requestCameraPermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>
+    lateinit var requestMicrophonePermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>
 
-    val requestMicrophonePermissionLauncher =
+    // Define microphone permission launcher first
+    requestMicrophonePermissionLauncher =
         rememberLauncherForActivityResult(
             ActivityResultContracts.RequestPermission()
         ) { isGranted ->
@@ -76,6 +69,26 @@ fun CameraScreen(
                 openGlView?.let { view -> initializeCamera(viewModel, view) }
             } else {
                 viewModel.showPermissionDialog("microphone")
+                // Request again after showing dialog
+                Handler(Looper.getMainLooper()).postDelayed({
+                    requestMicrophonePermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+                }, 1000)
+            }
+        }
+
+    // Then define camera permission launcher
+    requestCameraPermissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted ->
+            if (isGranted) {
+                requestMicrophonePermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+            } else {
+                viewModel.showPermissionDialog("camera")
+                // Request again after showing dialog
+                Handler(Looper.getMainLooper()).postDelayed({
+                    requestCameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                }, 1000)
             }
         }
 
@@ -170,13 +183,13 @@ fun CameraScreen(
             Modifier
                 .fillMaxSize()
                 .background(Color.Black)
-                .windowInsetsPadding(if (!isLandscape) WindowInsets.safeDrawing else WindowInsets.ime )
+                .windowInsetsPadding(if (!isLandscape) WindowInsets.safeDrawing else WindowInsets.ime)
     ) {
         CameraPreview(
             viewModel = viewModel,
             onOpenGlViewCreated = { view ->
                 viewModel.setOpenGlView(view)
-                checkCameraPermission(context, viewModel, requestCameraPermissionLauncher)
+                requestCameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
             }
         )
 
