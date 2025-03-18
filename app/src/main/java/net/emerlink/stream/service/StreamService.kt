@@ -25,11 +25,8 @@ import net.emerlink.stream.core.ErrorHandler
 import net.emerlink.stream.core.notification.NotificationManager
 import net.emerlink.stream.data.model.ConnectionSettings
 import net.emerlink.stream.data.model.StreamInfo
-import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.data.repository.ConnectionProfileRepository
 import net.emerlink.stream.data.repository.SettingsRepository
-import net.emerlink.stream.service.camera.CameraManager
-import net.emerlink.stream.service.camera.ICameraManager
 import net.emerlink.stream.service.location.StreamLocationListener
 import net.emerlink.stream.service.media.MediaManager
 import net.emerlink.stream.service.stream.StreamManager
@@ -49,7 +46,6 @@ class StreamService :
     private lateinit var notificationManager: NotificationManager
     private lateinit var errorHandler: ErrorHandler
     private lateinit var streamManager: StreamManager
-    private lateinit var cameraManager: ICameraManager
     private lateinit var mediaManager: MediaManager
     private lateinit var connectionSettings: ConnectionSettings
     private lateinit var sensorManager: SensorManager
@@ -66,7 +62,6 @@ class StreamService :
     private var isPreviewActive = false
 
     private val binder = LocalBinder()
-    private val cameraIds = ArrayList<String>()
     private val gravityData = FloatArray(3)
     private val geomagneticData = FloatArray(3)
 
@@ -81,7 +76,6 @@ class StreamService :
 
         initDependencies()
         initSensors()
-        getCameraIds()
         registerCommandReceiver()
     }
 
@@ -91,7 +85,6 @@ class StreamService :
         connectionSettings = connectionRepository.activeProfileFlow.value?.settings ?: ConnectionSettings()
         streamManager = StreamManager(this, this, errorHandler, settingsRepository)
         streamManager.setStreamType(connectionSettings.protocol)
-        cameraManager = CameraManager(this, { streamManager.getVideoSource() }, { streamManager.getCameraInterface() })
         mediaManager = MediaManager(this, streamManager, notificationManager)
         locListener = StreamLocationListener(this)
         locManager = applicationContext.getSystemService(LOCATION_SERVICE) as LocationManager
@@ -319,7 +312,8 @@ class StreamService :
     override fun onAccuracyChanged(
         sensor: android.hardware.Sensor?,
         accuracy: Int,
-    ) {}
+    ) {
+    }
 
     fun startPreview(view: OpenGlView) {
         if (isPreviewActive) {
@@ -350,13 +344,13 @@ class StreamService :
         }
     }
 
-    fun toggleLantern(): Boolean = cameraManager.toggleLantern()
+    fun toggleLantern(): Boolean = streamManager.toggleLantern()
 
     fun switchCamera(): Boolean {
         try {
-            val result = cameraManager.switchCamera()
+            val result = streamManager.switchCamera()
             if (result) {
-                currentCameraId = cameraManager.getCurrentCameraId()
+                currentCameraId = streamManager.getCurrentCameraId()
             }
             return result
         } catch (e: Exception) {
@@ -365,28 +359,11 @@ class StreamService :
         }
     }
 
-    fun setZoom(motionEvent: MotionEvent) = cameraManager.setZoom(motionEvent)
+    fun setZoom(motionEvent: MotionEvent) = streamManager.setZoom(motionEvent)
 
-    fun tapToFocus(motionEvent: MotionEvent) = cameraManager.tapToFocus(motionEvent)
+    fun tapToFocus(motionEvent: MotionEvent) = streamManager.tapToFocus(motionEvent)
 
     fun takePhoto() = mediaManager.takePhoto()
-
-    private fun getCameraIds() {
-        val videoSettings = settingsRepository.videoSettingsFlow.value
-        if (videoSettings.videoSource == PreferenceKeys.VIDEO_SOURCE_DEFAULT) {
-            try {
-                val cameraManager =
-                    applicationContext.getSystemService(CAMERA_SERVICE) as android.hardware.camera2.CameraManager
-                cameraIds.addAll(cameraManager.cameraIdList.toList())
-            } catch (e: Exception) {
-                Log.e(TAG, "Error getting camera list", e)
-                if (cameraIds.isEmpty()) {
-                    cameraIds.add("0")
-                    cameraIds.add("1")
-                }
-            }
-        }
-    }
 
     fun startStream() {
         if (streamManager.isStreaming() || streamManager.isRecording()) {
