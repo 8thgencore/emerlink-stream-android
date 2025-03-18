@@ -225,8 +225,9 @@ fun CameraScreen(
         Box(
             modifier =
                 Modifier
-                    .fillMaxSize(),
-            contentAlignment = if (isLandscape) Alignment.CenterStart else Alignment.BottomStart
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.safeDrawing),
+            contentAlignment = Alignment.BottomStart
         ) {
             AudioLevelIndicator(
                 audioLevel = audioLevel,

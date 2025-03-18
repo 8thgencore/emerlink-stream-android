@@ -2,6 +2,7 @@
 
 package net.emerlink.stream.service
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Service
 import android.content.BroadcastReceiver
@@ -15,6 +16,7 @@ import android.location.LocationManager
 import android.os.*
 import android.util.Log
 import android.view.MotionEvent
+import androidx.annotation.RequiresPermission
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.pedro.common.ConnectChecker
 import com.pedro.library.util.BitrateAdapter
@@ -29,9 +31,9 @@ import net.emerlink.stream.data.repository.ConnectionProfileRepository
 import net.emerlink.stream.data.repository.SettingsRepository
 import net.emerlink.stream.service.location.StreamLocationListener
 import net.emerlink.stream.service.media.MediaManager
+import net.emerlink.stream.service.microphone.MicrophoneMonitor
 import net.emerlink.stream.service.stream.StreamManager
 import org.koin.java.KoinJavaComponent.inject
-import java.lang.reflect.Field
 import kotlin.math.log10
 
 class StreamService :
@@ -54,6 +56,7 @@ class StreamService :
     private lateinit var sensorManager: SensorManager
     private lateinit var magnetometer: android.hardware.Sensor
     private lateinit var accelerometer: android.hardware.Sensor
+    private lateinit var microphoneMonitor: MicrophoneMonitor
 
     private var bitrateAdapter: BitrateAdapter? = null
     private var exiting = false
@@ -95,6 +98,7 @@ class StreamService :
         mediaManager = MediaManager(this, streamManager, notificationManager)
         locListener = StreamLocationListener(this)
         locManager = applicationContext.getSystemService(LOCATION_SERVICE) as LocationManager
+        microphoneMonitor = MicrophoneMonitor()
     }
 
     private fun initSensors() {
@@ -125,27 +129,13 @@ class StreamService :
      */
     private fun getAudioLevel(): Float {
         try {
-            // Try to get the audio level from the StreamManager using reflection
-            // since the RootEncoder library doesn't expose this directly
-            val camera = streamManager.getGlInterface()
+            val maxAmplitude = microphoneMonitor.getAudioLevel()
 
-            // Try to get the microphone manager via reflection
-            val microphoneManagerField: Field? = camera.javaClass.getDeclaredField("microphoneManager")
-            microphoneManagerField?.isAccessible = true
-            val microphoneManager = microphoneManagerField?.get(camera) ?: return 0f
-
-            // Try to get the audio level from the microphone manager
-            val getMaxAmplitudeMethod = microphoneManager.javaClass.getDeclaredMethod("getMaxAmplitude")
-            getMaxAmplitudeMethod.isAccessible = true
-            val maxAmplitude = getMaxAmplitudeMethod.invoke(microphoneManager) as Int
-
-            // Convert to normalized value (0.0-1.0)
-            // Typical max amplitude values are around 32767
-            // Using log scale to make the visualization more useful
             val normalizedLevel =
                 if (maxAmplitude > 0) {
                     val logLevel = log10(maxAmplitude.toDouble() / 32767.0) + 1
-                    (logLevel / 2.0).coerceIn(0.0, 1.0).toFloat()
+                    val level = logLevel.coerceIn(0.0, 1.0).toFloat()
+                    level
                 } else {
                     0.0f
                 }
@@ -408,6 +398,7 @@ class StreamService :
     ) {
     }
 
+    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     fun startPreview(view: OpenGlView) {
         if (isPreviewActive) {
             return
@@ -420,6 +411,7 @@ class StreamService :
             streamManager.startPreview(view)
             isPreviewActive = true
             startAudioLevelUpdates()
+            microphoneMonitor.startMonitoring()
         } catch (e: Exception) {
             Log.e(TAG, "Error starting preview", e)
         }
@@ -436,6 +428,7 @@ class StreamService :
             if (!isStreaming()) {
                 stopAudioLevelUpdates()
             }
+            microphoneMonitor.stopMonitoring()
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping preview", e)
         }
@@ -610,9 +603,9 @@ class StreamService :
 
     private fun hasLocationPermission(): Boolean =
         (
-            checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) ==
+            checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
                 android.content.pm.PackageManager.PERMISSION_GRANTED ||
-                checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) ==
+                checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) ==
                 android.content.pm.PackageManager.PERMISSION_GRANTED
         )
 

@@ -65,12 +65,10 @@ fun AudioLevelIndicator(
         modifier =
             modifier
                 .padding(
-                    start = if (isLandscape) 16.dp else 16.dp,
-                    bottom = if (isLandscape) 0.dp else 72.dp,
-                    top = if (isLandscape) 0.dp else 0.dp,
-                    end = 0.dp
-                ).width(12.dp)
-                .height(if (isLandscape) 100.dp else 120.dp)
+                    start = if (isLandscape) 24.dp else 24.dp,
+                    bottom = if (isLandscape) 8.dp else 88.dp
+                ).width(24.dp)
+                .height(if (isLandscape) 100.dp else 150.dp)
                 .clip(RoundedCornerShape(4.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
         contentAlignment = Alignment.BottomCenter
