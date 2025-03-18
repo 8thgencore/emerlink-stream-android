@@ -67,11 +67,3 @@ val md_theme_dark_onSurfaceVariant = Color(0xFFC3C7CF)
 val md_theme_dark_outline = Color(0xFF8D9199)
 val md_theme_dark_inverseOnSurface = Color(0xFF1A1C1E)
 val md_theme_dark_inverseSurface = Color(0xFFE2E2E6)
-
-// Special streaming app colors
-val streamBlue = Color(0xFF2196F3)
-val streamRed = Color(0xFFE53935)
-val streamGreen = Color(0xFF43A047)
-val streamAccent = Color(0xFFFF4081)
-val streamOverlay = Color(0x80000000)
-val streamBackground = Color(0xFF121212)

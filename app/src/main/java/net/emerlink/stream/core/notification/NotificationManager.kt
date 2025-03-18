@@ -105,7 +105,7 @@ class NotificationManager private constructor(
     /**
      * Создает объект уведомления с заданными параметрами
      */
-    private fun createNotification(
+    fun createNotification(
         text: String,
         ongoing: Boolean,
         actionType: Int = ACTION_ALL,
@@ -146,12 +146,12 @@ class NotificationManager private constructor(
                 .setContentIntent(pendingIntent)
                 .setOngoing(ongoing)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
 
         // Настраиваем специфические параметры для ошибок
         if (isError) {
             builder
                 .setCategory(NotificationCompat.CATEGORY_ERROR)
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setAutoCancel(false)
                 .setDefaults(NotificationCompat.DEFAULT_ALL)
         }
@@ -303,9 +303,6 @@ class NotificationManager private constructor(
                     isPhoto = true
                 )
             notificationManager.notify(PHOTO_NOTIFICATION_ID, notification)
-
-            // Auto-hide photo notification after 3 seconds
-            handler.postDelayed({ clearPhotoNotifications() }, 3000)
         } catch (e: Exception) {
             Log.e(TAG, "Error showing photo notification: ${e.message}", e)
         }

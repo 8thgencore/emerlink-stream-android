@@ -84,14 +84,16 @@ fun CameraScreen(
             createScreenStateReceiver(
                 onScreenOff = {
                     viewModel.setScreenWasOff(true)
-                    viewModel.releaseCamera()
+                    // Only release camera if not streaming
+                    if (!isStreaming) {
+                        viewModel.releaseCamera()
+                    }
                 },
                 onUserPresent = {
-                    if (screenWasOff && openGlView != null) {
-                        openGlView?.let { view ->
-                            viewModel.restartPreview(view)
-                            viewModel.setScreenWasOff(false)
-                        }
+                    // Всегда восстанавливать превью после разблокировки экрана
+                    openGlView?.let { view ->
+                        viewModel.restartPreview(view)
+                        viewModel.setScreenWasOff(false)
                     }
                 }
             )
@@ -110,21 +112,29 @@ fun CameraScreen(
     DisposableEffect(lifecycleOwner) {
         val observer =
             createLifecycleObserver(
-                onPause = { viewModel.stopPreview() },
-                onStop = { viewModel.releaseCamera() },
+                onPause = {
+                    // Only stop preview but don't stop streaming
+                    if (!isStreaming) {
+                        viewModel.stopPreview()
+                    }
+                },
+                onStop = {
+                    // Only release camera resources if not streaming
+                    if (!isStreaming) {
+                        viewModel.releaseCamera()
+                    }
+                },
                 onResume = {
-                    if (!isPreviewActive && openGlView != null) {
-                        openGlView?.let { view ->
-                            if (view.holder.surface?.isValid == true) {
-                                Handler(Looper.getMainLooper()).postDelayed({
-                                    try {
-                                        viewModel.restartPreview(view)
-                                        viewModel.setScreenWasOff(false)
-                                    } catch (e: Exception) {
-                                        Log.e("CameraScreen", "Error restarting preview", e)
-                                    }
-                                }, 500)
-                            }
+                    openGlView?.let { view ->
+                        if (view.holder.surface?.isValid == true) {
+                            Handler(Looper.getMainLooper()).postDelayed({
+                                try {
+                                    viewModel.restartPreview(view)
+                                    viewModel.setScreenWasOff(false)
+                                } catch (e: Exception) {
+                                    Log.e("CameraScreen", "Error restarting preview", e)
+                                }
+                            }, 500)
                         }
                     }
                 }

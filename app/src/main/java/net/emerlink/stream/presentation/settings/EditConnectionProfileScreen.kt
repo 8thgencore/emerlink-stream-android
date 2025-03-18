@@ -43,7 +43,7 @@ fun EditConnectionProfileScreen(
     // Load existing profile or create a new one
     val existingProfile =
         if (!isNewProfile) {
-            viewModel.getProfile(profileId)
+            profileId?.let { viewModel.getProfile(it) }
         } else {
             null
         }
@@ -130,10 +130,10 @@ fun EditConnectionProfileScreen(
                                     )
 
                                 // Create or update profile
-                                val profileId = existingProfile?.id ?: UUID.randomUUID().toString()
+                                val newProfileId = existingProfile?.id ?: UUID.randomUUID().toString()
                                 val profile =
                                     ConnectionProfile(
-                                        id = profileId,
+                                        id = newProfileId,
                                         name = profileName.takeIf { it.isNotEmpty() } ?: "Unnamed Profile",
                                         settings = settings,
                                         isDefault = isDefault
@@ -143,7 +143,7 @@ fun EditConnectionProfileScreen(
                                 viewModel.saveProfile(profile)
 
                                 // Set as active profile
-                                viewModel.setActiveProfile(profileId)
+                                viewModel.setActiveProfile(newProfileId)
 
                                 onBackClick()
                             }

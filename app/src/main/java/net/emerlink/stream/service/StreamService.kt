@@ -446,6 +446,15 @@ class StreamService :
                 connectionSettings.tcp
             )
 
+            // Create notification and start foreground service to keep streaming when app is in background
+            val notification =
+                notificationManager.createNotification(
+                    getString(R.string.streaming),
+                    true,
+                    NotificationManager.ACTION_STOP_ONLY
+                )
+            startForeground(NotificationManager.NOTIFICATION_ID, notification)
+
             notificationManager.showStreamingNotification(
                 getString(R.string.streaming),
                 true,
@@ -468,6 +477,9 @@ class StreamService :
             if (streamManager.isStreaming()) {
                 streamManager.stopStream()
                 notifyStreamStopped()
+
+                // Stop being a foreground service when stream stops
+                stopForeground(STOP_FOREGROUND_REMOVE)
             }
 
             if (streamManager.isRecording()) {
@@ -546,6 +558,9 @@ class StreamService :
         try {
             refreshSettings()
 
+            val isCurrentlyStreaming = streamManager.isStreaming()
+            Log.d(TAG, "Перезапуск превью, стрим активен: $isCurrentlyStreaming")
+
             if (streamManager.isOnPreview()) {
                 streamManager.stopPreview()
             }
@@ -553,13 +568,25 @@ class StreamService :
             Thread.sleep(50)
 
             openGlView = view
-            streamManager.prepareVideo()
+
+            if (!isCurrentlyStreaming) {
+                streamManager.prepareVideo()
+            }
+
             streamManager.startPreview(view)
+            isPreviewActive = true
+
+            if (isCurrentlyStreaming) {
+                Handler(Looper.getMainLooper()).postDelayed({
+                    streamManager.restartVideoEncoder()
+                }, 300)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error restarting preview", e)
             try {
                 streamManager.stopPreview()
                 streamManager.releaseCamera()
+                isPreviewActive = false
             } catch (e2: Exception) {
                 Log.e(TAG, "Error cleaning up after failure", e2)
             }
