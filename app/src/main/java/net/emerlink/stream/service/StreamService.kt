@@ -31,6 +31,8 @@ import net.emerlink.stream.service.location.StreamLocationListener
 import net.emerlink.stream.service.media.MediaManager
 import net.emerlink.stream.service.stream.StreamManager
 import org.koin.java.KoinJavaComponent.inject
+import java.lang.reflect.Field
+import kotlin.math.log10
 
 class StreamService :
     Service(),
@@ -38,6 +40,7 @@ class StreamService :
     SensorEventListener {
     companion object {
         private const val TAG = "StreamService"
+        private const val AUDIO_LEVEL_UPDATE_INTERVAL = 200L // 200ms update interval for audio level
     }
 
     private val settingsRepository: SettingsRepository by inject(SettingsRepository::class.java)
@@ -60,6 +63,9 @@ class StreamService :
     private var openGlView: OpenGlView? = null
     private var commandReceiver: BroadcastReceiver? = null
     private var isPreviewActive = false
+    private var audioLevelUpdateHandler: Handler? = null
+    private var audioLevelRunnable: Runnable? = null
+    private var isRunningAudioLevelUpdates = false
 
     private val binder = LocalBinder()
     private val gravityData = FloatArray(3)
@@ -77,6 +83,7 @@ class StreamService :
         initDependencies()
         initSensors()
         registerCommandReceiver()
+        initAudioLevelUpdates()
     }
 
     private fun initDependencies() {
@@ -94,6 +101,91 @@ class StreamService :
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         magnetometer = sensorManager.getDefaultSensor(android.hardware.Sensor.TYPE_MAGNETIC_FIELD)!!
         accelerometer = sensorManager.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER)!!
+    }
+
+    private fun initAudioLevelUpdates() {
+        audioLevelUpdateHandler = Handler(Looper.getMainLooper())
+        audioLevelRunnable =
+            object : Runnable {
+                override fun run() {
+                    if (isPreviewActive) {
+                        val audioLevel = getAudioLevel()
+                        broadcastAudioLevel(audioLevel)
+                    }
+
+                    if (isRunningAudioLevelUpdates) {
+                        audioLevelUpdateHandler?.postDelayed(this, AUDIO_LEVEL_UPDATE_INTERVAL)
+                    }
+                }
+            }
+    }
+
+    /**
+     * Get the current audio level (0.0f - 1.0f)
+     */
+    private fun getAudioLevel(): Float {
+        try {
+            // Try to get the audio level from the StreamManager using reflection
+            // since the RootEncoder library doesn't expose this directly
+            val camera = streamManager.getGlInterface()
+
+            // Try to get the microphone manager via reflection
+            val microphoneManagerField: Field? = camera.javaClass.getDeclaredField("microphoneManager")
+            microphoneManagerField?.isAccessible = true
+            val microphoneManager = microphoneManagerField?.get(camera) ?: return 0f
+
+            // Try to get the audio level from the microphone manager
+            val getMaxAmplitudeMethod = microphoneManager.javaClass.getDeclaredMethod("getMaxAmplitude")
+            getMaxAmplitudeMethod.isAccessible = true
+            val maxAmplitude = getMaxAmplitudeMethod.invoke(microphoneManager) as Int
+
+            // Convert to normalized value (0.0-1.0)
+            // Typical max amplitude values are around 32767
+            // Using log scale to make the visualization more useful
+            val normalizedLevel =
+                if (maxAmplitude > 0) {
+                    val logLevel = log10(maxAmplitude.toDouble() / 32767.0) + 1
+                    (logLevel / 2.0).coerceIn(0.0, 1.0).toFloat()
+                } else {
+                    0.0f
+                }
+
+            return normalizedLevel
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting audio level", e)
+            return 0f
+        }
+    }
+
+    /**
+     * Broadcast audio level to the UI
+     */
+    private fun broadcastAudioLevel(audioLevel: Float) {
+        val intent = Intent(AppIntentActions.BROADCAST_AUDIO_LEVEL)
+        intent.putExtra(AppIntentActions.EXTRA_AUDIO_LEVEL, audioLevel)
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+    }
+
+    /**
+     * Start audio level updates
+     */
+    private fun startAudioLevelUpdates() {
+        if (!isRunningAudioLevelUpdates) {
+            isRunningAudioLevelUpdates = true
+            audioLevelRunnable?.let {
+                audioLevelUpdateHandler?.post(it)
+            }
+        }
+    }
+
+    /**
+     * Stop audio level updates
+     */
+    private fun stopAudioLevelUpdates() {
+        isRunningAudioLevelUpdates = false
+        audioLevelRunnable?.let {
+            audioLevelUpdateHandler?.removeCallbacks(it)
+        }
     }
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
@@ -193,6 +285,7 @@ class StreamService :
                 unregisterReceiver(commandReceiver)
                 commandReceiver = null
             }
+            stopAudioLevelUpdates()
         } catch (e: Exception) {
             Log.e(TAG, "Error destroying service", e)
         }
@@ -326,6 +419,7 @@ class StreamService :
             streamManager.prepareVideo()
             streamManager.startPreview(view)
             isPreviewActive = true
+            startAudioLevelUpdates()
         } catch (e: Exception) {
             Log.e(TAG, "Error starting preview", e)
         }
@@ -339,6 +433,9 @@ class StreamService :
         try {
             streamManager.stopPreview()
             isPreviewActive = false
+            if (!isStreaming()) {
+                stopAudioLevelUpdates()
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping preview", e)
         }

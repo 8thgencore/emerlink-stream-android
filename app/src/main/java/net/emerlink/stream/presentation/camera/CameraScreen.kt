@@ -10,12 +10,14 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,10 +52,9 @@ fun CameraScreen(
     val showSettingsConfirmDialog by viewModel.showSettingsConfirmDialog.collectAsStateWithLifecycle()
     val showStreamInfo by viewModel.showStreamInfo.collectAsStateWithLifecycle()
     val streamInfo by viewModel.streamInfo.collectAsStateWithLifecycle()
-    val screenWasOff by viewModel.screenWasOff.collectAsStateWithLifecycle()
-    val isPreviewActive by viewModel.isPreviewActive.collectAsStateWithLifecycle()
     val showPermissionDialog by viewModel.showPermissionDialog.collectAsStateWithLifecycle()
     val permissionType by viewModel.permissionType.collectAsStateWithLifecycle()
+    val audioLevel by viewModel.audioLevel.collectAsStateWithLifecycle()
 
     // Permission handling
     val requestCameraPermissionLauncher =
@@ -164,7 +165,13 @@ fun CameraScreen(
     }
 
     // UI components
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .windowInsetsPadding(if (!isLandscape) WindowInsets.safeDrawing else WindowInsets.ime )
+    ) {
         CameraPreview(
             viewModel = viewModel,
             onOpenGlViewCreated = { view ->
@@ -200,6 +207,20 @@ fun CameraScreen(
                 )
             }
         )
+
+        // Audio level indicator positioned at the bottom left with safe area padding
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize(),
+            contentAlignment = if (isLandscape) Alignment.CenterStart else Alignment.BottomStart
+        ) {
+            AudioLevelIndicator(
+                audioLevel = audioLevel,
+                isMuted = isMuted,
+                isLandscape = isLandscape
+            )
+        }
     }
 
     // Dialogs

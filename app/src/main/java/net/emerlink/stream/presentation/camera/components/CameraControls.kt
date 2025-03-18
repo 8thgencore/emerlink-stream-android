@@ -6,8 +6,36 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import net.emerlink.stream.presentation.camera.viewmodel.CameraViewModel
+
+/**
+ * AdaptiveSpacerComponent that adjusts size based on screen size and orientation
+ * 
+ * @param smallSize spacing size for small screens
+ * @param largeSize spacing size for large screens
+ * @param isVertical whether the spacer is vertical (height) or horizontal (width)
+ */
+@Composable
+fun AdaptiveSpacer(
+    smallSize: Int = 8,
+    largeSize: Int = 16,
+    isVertical: Boolean = true
+) {
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp
+    val screenHeight = configuration.screenHeightDp
+    val isLargeScreen = screenWidth >= 600 || screenHeight >= 600
+
+    val size = if (isLargeScreen) largeSize.dp else smallSize.dp
+    
+    if (isVertical) {
+        Spacer(modifier = Modifier.height(size))
+    } else {
+        Spacer(modifier = Modifier.width(size))
+    }
+}
 
 @Composable
 fun CameraControls(
@@ -73,7 +101,7 @@ fun LandscapeCameraControls(
                 }
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            AdaptiveSpacer(smallSize = 8, largeSize = 16, isVertical = true)
             RecordButton(
                 isStreaming = isStreaming,
                 onClick = {
@@ -84,7 +112,7 @@ fun LandscapeCameraControls(
                     }
                 }
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            AdaptiveSpacer(smallSize = 8, largeSize = 16, isVertical = true)
 
             PhotoButton(
                 onClick = {
@@ -100,8 +128,14 @@ fun LandscapeCameraControls(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
-        Box(modifier = Modifier.padding(start = 16.dp)) {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Box(modifier = Modifier) {
             SwitchCameraButton(onClick = { viewModel.switchCamera() })
         }
     }
@@ -140,7 +174,7 @@ fun PortraitCameraControls(
                 viewModel.toggleFlash()
             }
         )
-        Spacer(modifier = Modifier.width(16.dp))
+        AdaptiveSpacer(smallSize = 12, largeSize = 24, isVertical = false)
         PhotoButton(
             onClick = {
                 viewModel.takePhoto()
@@ -162,7 +196,7 @@ fun PortraitCameraControls(
                 viewModel.toggleMute()
             }
         )
-        Spacer(modifier = Modifier.width(16.dp))
+        AdaptiveSpacer(smallSize = 12, largeSize = 24, isVertical = false)
         SettingsButton(onClick = onSettingsClick)
     }
 

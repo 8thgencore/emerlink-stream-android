@@ -1,19 +1,23 @@
 package net.emerlink.stream.presentation.camera.viewmodel
 
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.ServiceConnection
 import android.os.IBinder
 import android.util.Log
 import android.view.MotionEvent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.pedro.library.view.OpenGlView
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import net.emerlink.stream.core.AppIntentActions
 import net.emerlink.stream.data.model.StreamInfo
 import net.emerlink.stream.service.StreamService
 import java.lang.ref.WeakReference
@@ -24,6 +28,7 @@ import java.lang.ref.WeakReference
 class CameraViewModel : ViewModel() {
     private var streamServiceRef: WeakReference<StreamService>? = null
     private var bound = false
+    private var audioLevelReceiver: BroadcastReceiver? = null
 
     // UI state
     private val _isServiceConnected = MutableStateFlow(false)
@@ -62,6 +67,10 @@ class CameraViewModel : ViewModel() {
     private val _openGlView = MutableStateFlow<OpenGlView?>(null)
     val openGlView: StateFlow<OpenGlView?> = _openGlView.asStateFlow()
 
+    // Audio level state (0.0f - 1.0f)
+    private val _audioLevel = MutableStateFlow(0.0f)
+    val audioLevel: StateFlow<Float> = _audioLevel.asStateFlow()
+
     private val connection =
         object : ServiceConnection {
             override fun onServiceConnected(
@@ -98,6 +107,27 @@ class CameraViewModel : ViewModel() {
         Intent(context, StreamService::class.java).also { intent ->
             context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
         }
+
+        // Register audio level receiver
+        registerAudioLevelReceiver(context)
+    }
+
+    private fun registerAudioLevelReceiver(context: Context) {
+        audioLevelReceiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(
+                    context: Context,
+                    intent: Intent,
+                ) {
+                    if (intent.action == AppIntentActions.BROADCAST_AUDIO_LEVEL) {
+                        val level = intent.getFloatExtra(AppIntentActions.EXTRA_AUDIO_LEVEL, 0.0f)
+                        _audioLevel.value = level
+                    }
+                }
+            }
+
+        val filter = IntentFilter(AppIntentActions.BROADCAST_AUDIO_LEVEL)
+        LocalBroadcastManager.getInstance(context).registerReceiver(audioLevelReceiver!!, filter)
     }
 
     fun unbindService(context: Context) {
@@ -109,6 +139,16 @@ class CameraViewModel : ViewModel() {
             }
             bound = false
             streamServiceRef = null
+        }
+
+        // Unregister audio level receiver
+        audioLevelReceiver?.let {
+            try {
+                LocalBroadcastManager.getInstance(context).unregisterReceiver(it)
+                audioLevelReceiver = null
+            } catch (e: Exception) {
+                Log.e("CameraViewModel", "Error unregistering audio level receiver", e)
+            }
         }
     }
 
@@ -283,16 +323,10 @@ class CameraViewModel : ViewModel() {
     fun stopStreaming() {
         viewModelScope.launch {
             try {
-                val service = streamServiceRef?.get()
-                if (service != null && service.isStreaming()) {
-                    Log.d("CameraViewModel", "Stopping stream")
-                    service.stopStream(null, null)
-                    updateStreamingState(false)
-                } else {
-                    Log.d("CameraViewModel", "Stream not running or service unavailable")
-                }
+                streamServiceRef?.get()?.stopStream(null, null)
+                updateStreamingState(false)
             } catch (e: Exception) {
-                Log.e("CameraViewModel", "Error stopping stream", e)
+                Log.e("CameraViewModel", "Error stopping streaming", e)
             }
         }
     }

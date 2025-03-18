@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.preference.PreferenceManager
+import net.emerlink.stream.R
 import net.emerlink.stream.core.navigation.AppNavigation
 import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.presentation.onboarding.OnboardingActivity
@@ -84,6 +85,9 @@ class MainActivity : ComponentActivity() {
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun startMainUI() {
+        // Установить тему с черным фоном для экрана камеры
+        setTheme(R.style.Theme_EmerlinkStream_Camera)
+        
         setContent {
             EmerlinkStreamTheme {
                 Surface(

@@ -9,6 +9,7 @@ import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.sources.video.Camera2Source
 import com.pedro.encoder.input.video.CameraHelper
+import com.pedro.library.view.GlInterface
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.core.ErrorHandler
 import net.emerlink.stream.data.model.Resolution
@@ -416,7 +417,7 @@ class StreamManager(
     /**
      * Get the GL interface for rendering
      */
-    fun getGlInterface(): Any = cameraInterface.glInterface
+    fun getGlInterface(): GlInterface = cameraInterface.glInterface
 
     /**
      * Set video bitrate on the fly

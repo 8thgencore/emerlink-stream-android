@@ -9,7 +9,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,18 +32,15 @@ fun StreamStatusIndicator(
                     if (!isLandscape) {
                         Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
                     } else {
-                        Modifier
+                        Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
                     }
-                ).padding(16.dp),
+                ).padding(start = 16.dp),
         contentAlignment = Alignment.TopStart
     ) {
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-            modifier =
-                Modifier
-                    .padding(top = 8.dp)
-                    .clickable { onInfoClick() }
+            modifier = Modifier.padding(top = 8.dp).clickable { onInfoClick() }
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -48,17 +48,15 @@ fun StreamStatusIndicator(
             ) {
                 Box(
                     modifier =
-                        Modifier
-                            .size(12.dp)
-                            .background(
-                                color =
-                                    if (isStreaming) {
-                                        MaterialTheme.colorScheme.error
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceVariant
-                                    },
-                                shape = CircleShape
-                            )
+                        Modifier.size(12.dp).background(
+                            color =
+                                if (isStreaming) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                },
+                            shape = CircleShape
+                        )
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
@@ -66,7 +64,6 @@ fun StreamStatusIndicator(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                // Добавляем иконку для подсказки, что можно нажать
                 Spacer(modifier = Modifier.width(8.dp))
                 Icon(
                     imageVector = Icons.Default.Info,
