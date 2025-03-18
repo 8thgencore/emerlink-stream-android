@@ -92,12 +92,6 @@ fun AppNavigation() {
                 onBackClick = { navController.popBackStack() }
             )
         }
-
-//        composable(NavigationRoutes.ADVANCED_SETTINGS) {
-//            AdvancedSettingsScreen(
-//                onBackClick = { navController.popBackStack() },
-//            )
-//        }
     }
 }
 

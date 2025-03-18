@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.stateIn
 import net.emerlink.stream.data.model.ConnectionProfile
 import net.emerlink.stream.data.model.ConnectionSettings
 import net.emerlink.stream.data.repository.ConnectionProfileRepository
+import org.koin.java.KoinJavaComponent.inject
 
 /**
  * ViewModel for managing connection profiles
@@ -16,7 +17,7 @@ import net.emerlink.stream.data.repository.ConnectionProfileRepository
 class ConnectionProfilesViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
-    private val repository = ConnectionProfileRepository(application)
+    private val repository: ConnectionProfileRepository by inject(ConnectionProfileRepository::class.java)
 
     // StateFlow of all profiles
     val profiles: StateFlow<List<ConnectionProfile>> =

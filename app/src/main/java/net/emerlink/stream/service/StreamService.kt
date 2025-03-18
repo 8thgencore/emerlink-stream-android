@@ -368,6 +368,9 @@ class StreamService :
         }
 
         try {
+            // Обновляем настройки через централизованный метод
+            refreshSettings()
+
             openGlView = view
 
             // Важно: сначала подготовить видео с правильной ориентацией
@@ -475,8 +478,6 @@ class StreamService :
             return
         }
 
-        streamManager.switchStreamResolution()
-
         // Используем настройки из SettingsRepository
         val videoSettings = settingsRepository.videoSettingsFlow.value
 
@@ -513,8 +514,6 @@ class StreamService :
             val streamUrl = connectionSettings.buildStreamUrl()
             // Log the URL (remove sensitive info in production)
             Log.d(TAG, "Stream URL: ${streamUrl.replace(Regex(":[^:/]*:[^:/]*"), ":****:****")}")
-
-            streamManager.switchStreamResolution()
 
             streamManager.startStream(
                 streamUrl,
@@ -666,6 +665,9 @@ class StreamService :
         try {
             Log.d(TAG, "Полный перезапуск предпросмотра с пересозданием камеры")
 
+            // Обновляем настройки через централизованный метод
+            refreshSettings()
+
             if (streamManager.isOnPreview()) {
                 streamManager.stopPreview()
             }
@@ -704,4 +706,28 @@ class StreamService :
     }
 
     fun isStreaming(): Boolean = streamManager.isStreaming()
+
+    /**
+     * Updates all settings from repositories and applies them to the stream manager.
+     * Call this when returning from settings to ensure changes are applied.
+     */
+    private fun refreshSettings() {
+        try {
+            Log.d(TAG, "Refreshing settings from repositories")
+            // Update connection settings
+            connectionSettings = connectionRepository.activeProfileFlow.value?.settings ?: ConnectionSettings()
+            // Update stream type
+            streamManager.setStreamType(connectionSettings.protocol)
+
+            // If preview is active, update resolution and other settings
+            if (isPreviewActive && openGlView != null) {
+                // Handle resolution change
+                streamManager.handleResolutionChange()
+            }
+
+            Log.d(TAG, "Settings refreshed successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error refreshing settings: ${e.message}", e)
+        }
+    }
 }
