@@ -1,6 +1,6 @@
 @file:Suppress("ktlint:standard:function-naming", "ktlint:standard:no-wildcard-imports")
 
-package net.emerlink.stream.presentation.ui.camera.components
+package net.emerlink.stream.presentation.camera.components
 
 import android.util.Log
 import android.view.MotionEvent
@@ -12,7 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.viewinterop.AndroidView
 import com.pedro.library.view.OpenGlView
-import net.emerlink.stream.presentation.ui.camera.viewmodel.CameraViewModel
+import net.emerlink.stream.presentation.camera.viewmodel.CameraViewModel
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable

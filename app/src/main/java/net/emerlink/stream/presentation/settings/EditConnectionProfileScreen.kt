@@ -1,6 +1,6 @@
 @file:Suppress("ktlint:standard:no-wildcard-imports", "ktlint:standard:function-naming")
 
-package net.emerlink.stream.presentation.ui.settings
+package net.emerlink.stream.presentation.settings
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -20,11 +20,11 @@ import net.emerlink.stream.R
 import net.emerlink.stream.data.model.ConnectionProfile
 import net.emerlink.stream.data.model.ConnectionSettings
 import net.emerlink.stream.data.model.StreamType
-import net.emerlink.stream.presentation.ui.settings.components.DropdownPreference
-import net.emerlink.stream.presentation.ui.settings.components.InputPreference
-import net.emerlink.stream.presentation.ui.settings.components.PreferenceCategory
-import net.emerlink.stream.presentation.ui.settings.components.SwitchPreference
-import net.emerlink.stream.presentation.ui.settings.viewmodel.ConnectionProfilesViewModel
+import net.emerlink.stream.presentation.settings.components.DropdownPreference
+import net.emerlink.stream.presentation.settings.components.InputPreference
+import net.emerlink.stream.presentation.settings.components.PreferenceCategory
+import net.emerlink.stream.presentation.settings.components.SwitchPreference
+import net.emerlink.stream.presentation.settings.viewmodel.ConnectionProfilesViewModel
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)

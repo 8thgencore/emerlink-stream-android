@@ -1,4 +1,4 @@
-package net.emerlink.stream.presentation.ui.settings.viewmodel
+package net.emerlink.stream.presentation.settings.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel

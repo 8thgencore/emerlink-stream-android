@@ -22,12 +22,12 @@ import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.R
 import net.emerlink.stream.core.AppIntentActions
 import net.emerlink.stream.core.ErrorHandler
+import net.emerlink.stream.core.notification.NotificationManager
 import net.emerlink.stream.data.model.ConnectionSettings
 import net.emerlink.stream.data.model.StreamInfo
 import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.data.repository.ConnectionProfileRepository
 import net.emerlink.stream.data.repository.SettingsRepository
-import net.emerlink.stream.presentation.notification.NotificationManager
 import net.emerlink.stream.service.camera.CameraManager
 import net.emerlink.stream.service.camera.ICameraManager
 import net.emerlink.stream.service.location.StreamLocationListener

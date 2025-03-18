@@ -1,13 +1,13 @@
 @file:Suppress("ktlint:standard:function-naming", "ktlint:standard:no-wildcard-imports")
 
-package net.emerlink.stream.presentation.ui.camera.components
+package net.emerlink.stream.presentation.camera.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import net.emerlink.stream.presentation.ui.camera.viewmodel.CameraViewModel
+import net.emerlink.stream.presentation.camera.viewmodel.CameraViewModel
 
 @Composable
 fun CameraControls(

@@ -1,4 +1,4 @@
-package net.emerlink.stream.presentation.notification
+package net.emerlink.stream.core.notification
 
 import android.annotation.SuppressLint
 import android.app.Notification

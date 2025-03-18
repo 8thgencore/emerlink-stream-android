@@ -1,6 +1,6 @@
 @file:Suppress("ktlint:standard:no-wildcard-imports", "ktlint:standard:function-naming")
 
-package net.emerlink.stream.presentation.ui.settings.components
+package net.emerlink.stream.presentation.settings.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*

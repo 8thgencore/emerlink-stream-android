@@ -1,6 +1,6 @@
 @file:Suppress("ktlint:standard:no-wildcard-imports", "ktlint:standard:function-naming")
 
-package net.emerlink.stream.presentation.ui.settings
+package net.emerlink.stream.presentation.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -31,10 +31,10 @@ import androidx.preference.PreferenceManager
 import net.emerlink.stream.R
 import net.emerlink.stream.data.model.ConnectionProfile
 import net.emerlink.stream.data.preferences.PreferenceKeys
-import net.emerlink.stream.presentation.ui.settings.components.PreferenceCategory
-import net.emerlink.stream.presentation.ui.settings.components.SwitchPreference
-import net.emerlink.stream.presentation.ui.settings.viewmodel.ConnectionProfilesViewModel
-import net.emerlink.stream.presentation.ui.settings.viewmodel.SettingsViewModel
+import net.emerlink.stream.presentation.settings.components.PreferenceCategory
+import net.emerlink.stream.presentation.settings.components.SwitchPreference
+import net.emerlink.stream.presentation.settings.viewmodel.ConnectionProfilesViewModel
+import net.emerlink.stream.presentation.settings.viewmodel.SettingsViewModel
 
 @Suppress("ktlint:standard:function-naming")
 @OptIn(ExperimentalMaterial3Api::class)

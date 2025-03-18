@@ -1,4 +1,4 @@
-package net.emerlink.stream.presentation.ui.onboarding
+package net.emerlink.stream.presentation.onboarding
 
 import android.Manifest
 import android.content.Intent

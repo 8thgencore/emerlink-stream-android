@@ -1,6 +1,6 @@
 @file:Suppress("ktlint:standard:function-naming", "ktlint:standard:no-wildcard-imports")
 
-package net.emerlink.stream.presentation.ui.camera
+package net.emerlink.stream.presentation.camera
 
 import android.content.res.Configuration
 import android.os.Build
@@ -20,8 +20,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import net.emerlink.stream.presentation.ui.camera.components.*
-import net.emerlink.stream.presentation.ui.camera.viewmodel.CameraViewModel
+import net.emerlink.stream.presentation.camera.components.*
+import net.emerlink.stream.presentation.camera.viewmodel.CameraViewModel
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable

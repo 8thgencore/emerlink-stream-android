@@ -4,9 +4,9 @@ import android.content.Context
 import net.emerlink.stream.core.ErrorHandler
 import net.emerlink.stream.data.repository.ConnectionProfileRepository
 import net.emerlink.stream.data.repository.SettingsRepository
-import net.emerlink.stream.presentation.ui.camera.viewmodel.CameraViewModel
-import net.emerlink.stream.presentation.ui.settings.viewmodel.ConnectionProfilesViewModel
-import net.emerlink.stream.presentation.ui.settings.viewmodel.SettingsViewModel
+import net.emerlink.stream.presentation.camera.viewmodel.CameraViewModel
+import net.emerlink.stream.presentation.settings.viewmodel.ConnectionProfilesViewModel
+import net.emerlink.stream.presentation.settings.viewmodel.SettingsViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module

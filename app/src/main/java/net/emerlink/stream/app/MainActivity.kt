@@ -17,10 +17,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.preference.PreferenceManager
+import net.emerlink.stream.core.navigation.AppNavigation
 import net.emerlink.stream.data.preferences.PreferenceKeys
-import net.emerlink.stream.presentation.navigation.AppNavigation
-import net.emerlink.stream.presentation.ui.onboarding.OnboardingActivity
-import net.emerlink.stream.presentation.ui.theme.EmerlinkStreamTheme
+import net.emerlink.stream.presentation.onboarding.OnboardingActivity
+import net.emerlink.stream.presentation.theme.EmerlinkStreamTheme
 import net.emerlink.stream.util.PermissionUtil
 
 class MainActivity : ComponentActivity() {

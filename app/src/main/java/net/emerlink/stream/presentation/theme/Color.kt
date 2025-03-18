@@ -1,4 +1,4 @@
-package net.emerlink.stream.presentation.ui.theme
+package net.emerlink.stream.presentation.theme
 
 import androidx.compose.ui.graphics.Color
 

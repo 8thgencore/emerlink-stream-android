@@ -4,7 +4,7 @@ import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import net.emerlink.stream.R
-import net.emerlink.stream.presentation.notification.NotificationManager
+import net.emerlink.stream.core.notification.NotificationManager
 
 class ErrorHandler(
     private val context: Context,

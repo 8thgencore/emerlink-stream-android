@@ -1,4 +1,4 @@
-package net.emerlink.stream.presentation.ui.camera.viewmodel
+package net.emerlink.stream.presentation.camera.viewmodel
 
 import android.content.ComponentName
 import android.content.Context

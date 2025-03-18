@@ -1,6 +1,6 @@
 @file:Suppress("ktlint:standard:function-naming", "ktlint:standard:no-wildcard-imports")
 
-package net.emerlink.stream.presentation.ui.camera.components
+package net.emerlink.stream.presentation.camera.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

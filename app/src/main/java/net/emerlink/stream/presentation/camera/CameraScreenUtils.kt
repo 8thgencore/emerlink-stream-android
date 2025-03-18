@@ -1,4 +1,4 @@
-package net.emerlink.stream.presentation.ui.camera
+package net.emerlink.stream.presentation.camera
 
 import android.Manifest
 import android.content.BroadcastReceiver
@@ -14,7 +14,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.core.AppIntentActions
-import net.emerlink.stream.presentation.ui.camera.viewmodel.CameraViewModel
+import net.emerlink.stream.presentation.camera.viewmodel.CameraViewModel
 
 /**
  * Creates a screen state broadcast receiver

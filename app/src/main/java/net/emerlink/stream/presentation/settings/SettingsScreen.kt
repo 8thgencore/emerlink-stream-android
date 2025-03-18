@@ -1,6 +1,6 @@
 @file:Suppress("ktlint:standard:no-wildcard-imports", "ktlint:standard:function-naming")
 
-package net.emerlink.stream.presentation.ui.settings
+package net.emerlink.stream.presentation.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,28 +19,32 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import net.emerlink.stream.R
-import net.emerlink.stream.presentation.ui.settings.components.DropdownPreference
-import net.emerlink.stream.presentation.ui.settings.components.InputPreference
-import net.emerlink.stream.presentation.ui.settings.components.PreferenceCategory
-import net.emerlink.stream.presentation.ui.settings.components.SwitchPreference
-import net.emerlink.stream.presentation.ui.settings.viewmodel.SettingsViewModel
+import net.emerlink.stream.presentation.settings.components.DropdownPreference
+import net.emerlink.stream.presentation.settings.components.InputPreference
+import net.emerlink.stream.presentation.settings.components.PreferenceCategory
+import net.emerlink.stream.presentation.settings.components.SwitchPreference
+import net.emerlink.stream.presentation.settings.viewmodel.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onBackClick: () -> Unit,
     onStreamSettingsClick: () -> Unit,
-    viewModel: SettingsViewModel = viewModel()
+    viewModel: SettingsViewModel = viewModel(),
 ) {
     val scrollState = rememberScrollState()
-    
+
     // Collect state flows
     val videoSettings by viewModel.videoSettings.collectAsState()
     val audioSettings by viewModel.audioSettings.collectAsState()
     val availableResolutions by viewModel.availableResolutions.collectAsState()
-    
+
     // Video Settings state
-    var videoResolution by remember { mutableStateOf(videoSettings.resolution.width.toString() + "x" + videoSettings.resolution.height.toString()) }
+    var videoResolution by remember {
+        mutableStateOf(
+            videoSettings.resolution.width.toString() + "x" + videoSettings.resolution.height.toString()
+        )
+    }
     var screenOrientation by remember { mutableStateOf(videoSettings.screenOrientation) }
     var videoFps by remember { mutableStateOf(videoSettings.fps.toString()) }
     var videoBitrate by remember { mutableStateOf(videoSettings.bitrate.toString()) }
@@ -48,7 +52,7 @@ fun SettingsScreen(
     var videoAdaptiveBitrate by remember { mutableStateOf(videoSettings.adaptiveBitrate) }
     var recordVideo by remember { mutableStateOf(videoSettings.recordVideo) }
     var keyframeInterval by remember { mutableStateOf(videoSettings.keyframeInterval.toString()) }
-    
+
     // Audio Settings state
     var enableAudio by remember { mutableStateOf(audioSettings.enabled) }
     var audioBitrate by remember { mutableStateOf(audioSettings.bitrate.toString()) }
@@ -57,7 +61,7 @@ fun SettingsScreen(
     var audioEchoCancel by remember { mutableStateOf(audioSettings.echoCancel) }
     var audioNoiseReduction by remember { mutableStateOf(audioSettings.noiseReduction) }
     var audioCodec by remember { mutableStateOf(audioSettings.codec) }
-    
+
     // Update local state when viewModel state changes
     LaunchedEffect(videoSettings) {
         videoResolution = videoSettings.resolution.width.toString() + "x" + videoSettings.resolution.height.toString()
@@ -69,7 +73,7 @@ fun SettingsScreen(
         recordVideo = videoSettings.recordVideo
         keyframeInterval = videoSettings.keyframeInterval.toString()
     }
-    
+
     LaunchedEffect(audioSettings) {
         enableAudio = audioSettings.enabled
         audioBitrate = audioSettings.bitrate.toString()
@@ -145,7 +149,17 @@ fun SettingsScreen(
                         title = stringResource(id = R.string.video_resolution),
                         summary = stringResource(id = R.string.video_resolution_summary),
                         selectedValue = videoResolution,
-                        options = if (availableResolutions.isNotEmpty()) availableResolutions else listOf("1920x1080", "1280x720", "854x480", "640x360"),
+                        options =
+                            if (availableResolutions.isNotEmpty()) {
+                                availableResolutions
+                            } else {
+                                listOf(
+                                    "1920x1080",
+                                    "1280x720",
+                                    "854x480",
+                                    "640x360"
+                                )
+                            },
                         onValueSelected = { value ->
                             videoResolution = value
                             viewModel.updateVideoResolution(value)

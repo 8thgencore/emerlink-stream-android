@@ -1,6 +1,6 @@
 @file:Suppress("ktlint:standard:no-wildcard-imports", "ktlint:standard:function-naming")
 
-package net.emerlink.stream.presentation.navigation
+package net.emerlink.stream.core.navigation
 
 import android.content.pm.ActivityInfo
 import android.os.Build
@@ -18,10 +18,10 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.preference.PreferenceManager
 import net.emerlink.stream.data.preferences.PreferenceKeys
-import net.emerlink.stream.presentation.ui.camera.CameraScreen
-import net.emerlink.stream.presentation.ui.settings.ConnectionSettingsScreen
-import net.emerlink.stream.presentation.ui.settings.EditConnectionProfileScreen
-import net.emerlink.stream.presentation.ui.settings.SettingsScreen
+import net.emerlink.stream.presentation.camera.CameraScreen
+import net.emerlink.stream.presentation.settings.ConnectionSettingsScreen
+import net.emerlink.stream.presentation.settings.EditConnectionProfileScreen
+import net.emerlink.stream.presentation.settings.SettingsScreen
 
 // Define your navigation routes
 object NavigationRoutes {
