@@ -123,6 +123,8 @@
     <string name="camera_permission_message">Для работы приложения необходим доступ к камере. Пожалуйста, предоставьте разрешение в настройках.</string>
     <string name="microphone_permission_title">Требуется доступ к микрофону</string>
     <string name="microphone_permission_message">Для работы приложения необходим доступ к микрофону. Пожалуйста, предоставьте разрешение в настройках.</string>
+    <string name="location_permission_title">Требуется доступ к местоположению</string>
+    <string name="location_permission_message">Для работы приложения необходим доступ к местоположению. Пожалуйста, предоставьте разрешение в настройках.</string>
 
     <!-- Connection Profiles -->
     <string name="connection_profiles">Профили соединений</string>

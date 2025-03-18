@@ -1,11 +1,8 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package net.emerlink.stream.presentation.camera.viewmodel
 
-import android.content.BroadcastReceiver
-import android.content.ComponentName
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import android.content.ServiceConnection
+import android.content.*
 import android.os.IBinder
 import android.util.Log
 import android.view.MotionEvent
@@ -57,12 +54,6 @@ class CameraViewModel : ViewModel() {
 
     private val _isPreviewActive = MutableStateFlow(false)
     val isPreviewActive: StateFlow<Boolean> = _isPreviewActive.asStateFlow()
-
-    private val _showPermissionDialog = MutableStateFlow(false)
-    val showPermissionDialog: StateFlow<Boolean> = _showPermissionDialog.asStateFlow()
-
-    private val _permissionType = MutableStateFlow("")
-    val permissionType: StateFlow<String> = _permissionType.asStateFlow()
 
     private val _openGlView = MutableStateFlow<OpenGlView?>(null)
     val openGlView: StateFlow<OpenGlView?> = _openGlView.asStateFlow()
@@ -249,7 +240,7 @@ class CameraViewModel : ViewModel() {
     fun toggleFlash() {
         viewModelScope.launch {
             try {
-                val result = streamServiceRef?.get()?.toggleLantern() ?: false
+                val result = streamServiceRef?.get()?.toggleLantern() == true
                 _isFlashOn.value = result
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "Error toggling flash", e)
@@ -287,15 +278,6 @@ class CameraViewModel : ViewModel() {
 
     fun setPreviewActive(isActive: Boolean) {
         _isPreviewActive.value = isActive
-    }
-
-    fun showPermissionDialog(type: String) {
-        _permissionType.value = type
-        _showPermissionDialog.value = true
-    }
-
-    fun dismissPermissionDialog() {
-        _showPermissionDialog.value = false
     }
 
     fun setOpenGlView(view: OpenGlView?) {

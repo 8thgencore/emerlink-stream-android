@@ -33,39 +33,3 @@ fun SettingsConfirmationDialog(
     )
 }
 
-@Composable
-fun PermissionDialog(
-    permissionType: String,
-    onDismiss: () -> Unit,
-) {
-    val context = LocalContext.current
-    val title =
-        when (permissionType) {
-            "camera" -> context.getString(R.string.camera_permission_title)
-            "microphone" -> context.getString(R.string.microphone_permission_title)
-            else -> context.getString(R.string.unknown_error)
-        }
-
-    val message =
-        when (permissionType) {
-            "camera" -> context.getString(R.string.camera_permission_message)
-            "microphone" -> context.getString(R.string.microphone_permission_message)
-            else -> context.getString(R.string.unknown_error)
-        }
-
-    AlertDialog(
-        onDismissRequest = { onDismiss() },
-        title = { Text(title) },
-        text = { Text(message) },
-        confirmButton = {
-            Button(onClick = { onDismiss() }) {
-                Text(context.getString(R.string.ok))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = { onDismiss() }) {
-                Text(context.getString(R.string.cancel))
-            }
-        }
-    )
-}

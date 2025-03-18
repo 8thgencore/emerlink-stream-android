@@ -2,6 +2,7 @@
 
 package net.emerlink.stream.presentation.camera
 
+import android.Manifest
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Handler
@@ -26,6 +27,7 @@ import net.emerlink.stream.presentation.camera.components.*
 import net.emerlink.stream.presentation.camera.viewmodel.CameraViewModel
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@androidx.annotation.RequiresPermission(Manifest.permission.RECORD_AUDIO)
 @Composable
 fun CameraScreen(
     onSettingsClick: () -> Unit,
@@ -52,43 +54,55 @@ fun CameraScreen(
     val showSettingsConfirmDialog by viewModel.showSettingsConfirmDialog.collectAsStateWithLifecycle()
     val showStreamInfo by viewModel.showStreamInfo.collectAsStateWithLifecycle()
     val streamInfo by viewModel.streamInfo.collectAsStateWithLifecycle()
-    val showPermissionDialog by viewModel.showPermissionDialog.collectAsStateWithLifecycle()
-    val permissionType by viewModel.permissionType.collectAsStateWithLifecycle()
     val audioLevel by viewModel.audioLevel.collectAsStateWithLifecycle()
 
     // Permission handling
     lateinit var requestCameraPermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>
     lateinit var requestMicrophonePermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>
+    lateinit var requestLocationPermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>
+    lateinit var requestNotificationPermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>
 
-    // Define microphone permission launcher first
-    requestMicrophonePermissionLauncher =
+    requestLocationPermissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted ->
+            if (isGranted) {
+                requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+//                viewModel.showPermissionDeniedDialog()
+            }
+        }
+
+    requestNotificationPermissionLauncher =
         rememberLauncherForActivityResult(
             ActivityResultContracts.RequestPermission()
         ) { isGranted ->
             if (isGranted) {
                 openGlView?.let { view -> initializeCamera(viewModel, view) }
             } else {
-                viewModel.showPermissionDialog("microphone")
-                // Request again after showing dialog
-                Handler(Looper.getMainLooper()).postDelayed({
-                    requestMicrophonePermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
-                }, 1000)
+//                viewModel.showPermissionDeniedDialog()
             }
         }
 
-    // Then define camera permission launcher
+    requestMicrophonePermissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted ->
+            if (isGranted) {
+                requestLocationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            } else {
+//                viewModel.showPermissionDeniedDialog()
+            }
+        }
+
     requestCameraPermissionLauncher =
         rememberLauncherForActivityResult(
             ActivityResultContracts.RequestPermission()
         ) { isGranted ->
             if (isGranted) {
-                requestMicrophonePermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+                requestMicrophonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
             } else {
-                viewModel.showPermissionDialog("camera")
-                // Request again after showing dialog
-                Handler(Looper.getMainLooper()).postDelayed({
-                    requestCameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
-                }, 1000)
+//                viewModel.showPermissionDeniedDialog()
             }
         }
 
@@ -189,7 +203,12 @@ fun CameraScreen(
             viewModel = viewModel,
             onOpenGlViewCreated = { view ->
                 viewModel.setOpenGlView(view)
-                requestCameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                checkCameraPermission(
+                    context = context,
+                    viewModel = viewModel,
+                    requestCameraPermissionLauncher = requestCameraPermissionLauncher,
+                    requestMicrophonePermissionLauncher = requestMicrophonePermissionLauncher
+                )
             }
         )
 
@@ -252,13 +271,6 @@ fun CameraScreen(
                     Log.e("CameraScreen", "Error transitioning to settings", e)
                 }
             }
-        )
-    }
-
-    if (showPermissionDialog) {
-        PermissionDialog(
-            permissionType = permissionType,
-            onDismiss = { viewModel.dismissPermissionDialog() }
         )
     }
 }
