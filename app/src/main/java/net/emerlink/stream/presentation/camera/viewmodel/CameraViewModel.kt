@@ -81,9 +81,11 @@ class CameraViewModel : ViewModel() {
                 // Signal that service is connected
                 _isServiceConnected.value = true
 
-                // Initialize camera if we already have OpenGlView
+                // Initialize camera if we already have OpenGlView and no preview is active
                 _openGlView.value?.let { view ->
-                    startPreview(view)
+                    if (!_isPreviewActive.value) {
+                        startPreview(view)
+                    }
                 }
             }
 

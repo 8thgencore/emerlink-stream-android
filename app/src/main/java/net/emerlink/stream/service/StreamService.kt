@@ -42,7 +42,7 @@ class StreamService :
     SensorEventListener {
     companion object {
         private const val TAG = "StreamService"
-        private const val AUDIO_LEVEL_UPDATE_INTERVAL = 200L // 200ms update interval for audio level
+        private const val AUDIO_LEVEL_UPDATE_INTERVAL = 100L // 200ms update interval for audio level
     }
 
     private val settingsRepository: SettingsRepository by inject(SettingsRepository::class.java)
@@ -627,6 +627,13 @@ class StreamService :
 
             val isCurrentlyStreaming = streamManager.isStreaming()
             Log.d(TAG, "Перезапуск превью, стрим активен: $isCurrentlyStreaming")
+
+            // If we already have a valid preview with the same view, don't restart
+            if (streamManager.isOnPreview() && openGlView == view) {
+                Log.d(TAG, "Preview already active with the same view, skipping restart")
+                isPreviewActive = true
+                return
+            }
 
             if (streamManager.isOnPreview()) {
                 streamManager.stopPreview()

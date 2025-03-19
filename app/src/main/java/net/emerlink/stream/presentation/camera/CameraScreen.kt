@@ -125,10 +125,15 @@ fun CameraScreen(
                     }
                 },
                 onUserPresent = {
-                    // Всегда восстанавливать превью после разблокировки экрана
-                    openGlView?.let { view ->
-                        viewModel.restartPreview(view)
-                        viewModel.setScreenWasOff(false)
+                    // Only restart preview if we need to - check that camera was released due to screen off
+                    if (viewModel.screenWasOff.value) {
+                        openGlView?.let { view ->
+                            // Only restart if we don't already have an active preview
+                            if (!viewModel.isPreviewActive.value) {
+                                viewModel.restartPreview(view)
+                                viewModel.setScreenWasOff(false)
+                            }
+                        }
                     }
                 }
             )
@@ -160,12 +165,15 @@ fun CameraScreen(
                     }
                 },
                 onResume = {
+                    // Only restart preview if needed - avoid multiple restart calls
                     openGlView?.let { view ->
-                        if (view.holder.surface?.isValid == true) {
+                        if (view.holder.surface?.isValid == true && 
+                            !viewModel.isPreviewActive.value && 
+                            !viewModel.screenWasOff.value) { // Don't restart if screen was off - that's handled by screen receiver
+                            
                             Handler(Looper.getMainLooper()).postDelayed({
                                 try {
                                     viewModel.restartPreview(view)
-                                    viewModel.setScreenWasOff(false)
                                 } catch (e: Exception) {
                                     Log.e("CameraScreen", "Error restarting preview", e)
                                 }
@@ -209,8 +217,11 @@ fun CameraScreen(
         CameraPreview(
             viewModel = viewModel,
             onOpenGlViewCreated = { view ->
-                viewModel.setOpenGlView(view)
-                requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                // Only set the view and request permissions if we don't already have an active preview
+                if (!viewModel.isPreviewActive.value) {
+                    viewModel.setOpenGlView(view)
+                    requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                }
             }
         )
 
