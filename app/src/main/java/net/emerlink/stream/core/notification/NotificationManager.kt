@@ -4,11 +4,10 @@ import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.PendingIntent
+import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import net.emerlink.stream.R
@@ -58,7 +57,6 @@ class NotificationManager
         private val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as
                 android.app.NotificationManager
-        private val handler = Handler(Looper.getMainLooper())
 
         init {
             createNotificationChannels()
@@ -281,12 +279,16 @@ class NotificationManager
             return builder.build()
         }
 
-        /** Очищает стандартные уведомления */
-        fun clearStreamingNotifications() {
-            try {
+        /**
+         * Безопасно очищает уведомления о стриминге, учитывая состояние foreground сервиса.
+         * @param service Сервис, который может быть в foreground состоянии
+         */
+        fun clearStreamingNotificationsSafely(service: Service?) {
+            if (service != null) {
+                service.stopForeground(Service.STOP_FOREGROUND_REMOVE)
+                Log.d(TAG, "Foreground service stopped, notification removed")
+            } else {
                 notificationManager.cancel(START_STREAM_NOTIFICATION_ID)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error clearing streaming notifications: ${e.message}", e)
             }
         }
 
@@ -327,17 +329,57 @@ class NotificationManager
         }
 
         /** Показывает уведомление об ошибке */
-        fun showErrorNotification(
+        private fun showErrorNotification(
             text: String,
             actionType: Int = ACTION_NONE,
         ) {
-            Log.d(TAG, "Showing error notification: $text")
+            val notification = createNotification(text, false, actionType, true)
+            notificationManager.notify(ERROR_STREAM_NOTIFICATION_ID, notification)
+        }
+
+        /**
+         * Безопасно показывает уведомление об ошибке, учитывая состояние foreground сервиса.
+         * @param service Сервис, который может быть в foreground состоянии
+         * @param text Текст уведомления
+         * @param actionType Тип действия для уведомления
+         */
+        fun showErrorSafely(
+            service: Service?,
+            text: String,
+            actionType: Int = ACTION_NONE,
+        ) {
+            Log.d(TAG, "Safely showing error notification with service: $text")
 
             try {
-                val notification = createNotification(text, false, actionType, true)
-                notificationManager.notify(ERROR_STREAM_NOTIFICATION_ID, notification)
+                service?.stopForeground(Service.STOP_FOREGROUND_REMOVE)
+                showErrorNotification(text, actionType)
             } catch (e: Exception) {
-                Log.e(TAG, "Error showing error notification: ${e.message}", e)
+                Log.e(TAG, "Error in showErrorSafely with service: ${e.message}", e)
+                showErrorNotification(text, actionType)
+            }
+        }
+
+        /**
+         * Безопасно показывает уведомление об ошибке без ссылки на сервис.
+         * Используется в случаях, когда нет доступа к сервису или контекст не является сервисом.
+         * @param text Текст уведомления
+         * @param actionType Тип действия для уведомления
+         */
+        fun showErrorSafely(
+            text: String,
+            actionType: Int = ACTION_NONE,
+        ) {
+            Log.d(TAG, "Safely showing error notification without service: $text")
+
+            try {
+                // Попытка отменить существующее уведомление стриминга перед показом ошибки
+                notificationManager.cancel(START_STREAM_NOTIFICATION_ID)
+
+                // Показ уведомления об ошибке
+                showErrorNotification(text, actionType)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in showErrorSafely without service: ${e.message}", e)
+                showErrorNotification(text, actionType)
             }
         }
 

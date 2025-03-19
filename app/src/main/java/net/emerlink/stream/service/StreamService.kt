@@ -199,21 +199,16 @@ class StreamService :
                         when (intent.action) {
                             AppIntentActions.ACTION_START_STREAM -> startStream()
 
-                            AppIntentActions.ACTION_STOP_STREAM -> {
-                                notificationManager.clearStreamingNotifications()
-                                stopStream(null, null)
-                            }
+                            AppIntentActions.ACTION_STOP_STREAM -> stopStream(null, null)
 
                             AppIntentActions.ACTION_EXIT_APP -> {
                                 exiting = true
-                                notificationManager.clearAllNotifications()
                                 stopStream(null, null)
+                                notificationManager.clearAllNotifications()
                                 stopSelf()
                             }
 
-                            AppIntentActions.ACTION_DISMISS_ERROR -> {
-                                notificationManager.clearErrorNotifications()
-                            }
+                            AppIntentActions.ACTION_DISMISS_ERROR -> notificationManager.clearErrorNotifications()
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error processing intent in BroadcastReceiver", e)
@@ -245,8 +240,8 @@ class StreamService :
 
                     AppIntentActions.ACTION_EXIT_APP -> {
                         exiting = true
-                        notificationManager.clearAllNotifications()
                         stopStream(null, null)
+                        notificationManager.clearAllNotifications()
                         stopSelf()
                     }
 
@@ -297,9 +292,6 @@ class StreamService :
             if (streamManager.isStreaming()) {
                 streamManager.stopStream()
                 notifyStreamStopped()
-                
-                // Stop being a foreground service first
-                stopForeground(STOP_FOREGROUND_REMOVE)
 
                 val errorText =
                     when {
@@ -307,7 +299,7 @@ class StreamService :
                         else -> getString(R.string.connection_failed) + ": " + reason
                     }
 
-                notificationManager.showErrorNotification(errorText)
+                notificationManager.showErrorSafely(this, errorText)
                 applicationContext.sendBroadcast(Intent(AppIntentActions.ACTION_CONNECTION_FAILED))
                 Handler(Looper.getMainLooper()).postDelayed(
                     { stopStream(null, null, false) },
@@ -319,11 +311,8 @@ class StreamService :
             try {
                 streamManager.stopStream()
                 notifyStreamStopped()
-                
-                // Stop being a foreground service first
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                
-                notificationManager.showErrorNotification("Critical error: ${e.message}")
+
+                notificationManager.showErrorSafely(this, "Critical error: ${e.message}")
             } catch (e2: Exception) {
                 Log.e(TAG, "Double error", e2)
             }
@@ -471,19 +460,17 @@ class StreamService :
         val videoInitialized = streamManager.prepareVideo()
 
         if (!audioInitialized) {
-            // If we're in foreground mode, stop it first
-            if (streamManager.isStreaming()) {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-            }
-            notificationManager.showErrorNotification(getString(R.string.failed_to_prepare_audio))
+            notificationManager.showErrorSafely(
+                this,
+                getString(R.string.failed_to_prepare_audio)
+            )
         }
 
         if (!videoInitialized) {
-            // If we're in foreground mode, stop it first
-            if (streamManager.isStreaming()) {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-            }
-            notificationManager.showErrorNotification(getString(R.string.failed_to_prepare))
+            notificationManager.showErrorSafely(
+                this,
+                getString(R.string.failed_to_prepare)
+            )
             return
         }
 
@@ -554,14 +541,12 @@ class StreamService :
         isError: Boolean = false,
     ) {
         try {
-            notificationManager.clearStreamingNotifications()
+            // Use the safe method to clear streaming notifications
+            notificationManager.clearStreamingNotificationsSafely(this)
 
             if (streamManager.isStreaming()) {
                 streamManager.stopStream()
                 notifyStreamStopped()
-
-                // Stop being a foreground service when stream stops
-                stopForeground(STOP_FOREGROUND_REMOVE)
             }
 
             if (streamManager.isRecording()) {
@@ -577,7 +562,7 @@ class StreamService :
             }
 
             when {
-                message != null && isError -> notificationManager.showErrorNotification(message)
+                message != null && isError -> notificationManager.showErrorSafely(this, message)
                 message != null -> notificationManager.showStreamingNotification(message, false)
             }
 
@@ -593,7 +578,7 @@ class StreamService :
             notifyStreamStopped()
 
             val errorMsg = message?.let { "$it (${e.message})" } ?: e.message ?: "Unknown error"
-            notificationManager.showErrorNotification(errorMsg)
+            notificationManager.showErrorSafely(this, errorMsg)
             errorHandler.handleStreamError(e)
         }
     }
@@ -685,19 +670,6 @@ class StreamService :
             bitrate = "${streamSettings.bitrate} kbps",
             fps = "${streamSettings.fps} fps"
         )
-    }
-
-    /**
-     * Helper method to safely show error notifications.
-     * This ensures we properly stop foreground service first if needed.
-     */
-    fun showErrorSafely(errorMessage: String, actionType: Int = NotificationManager.ACTION_NONE) {
-        // First check if we need to stop foreground service
-        if (streamManager.isStreaming()) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
-        }
-        // Then show the error notification
-        notificationManager.showErrorNotification(errorMessage, actionType)
     }
 
     fun isStreaming(): Boolean = streamManager.isStreaming()

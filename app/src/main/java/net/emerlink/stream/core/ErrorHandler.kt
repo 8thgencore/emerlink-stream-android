@@ -2,7 +2,6 @@ package net.emerlink.stream.core
 
 import android.content.Context
 import android.util.Log
-import kotlinx.coroutines.flow.MutableStateFlow
 import net.emerlink.stream.R
 import net.emerlink.stream.core.notification.NotificationManager
 
@@ -10,8 +9,6 @@ class ErrorHandler(
     private val context: Context,
 ) {
     @Suppress("ktlint:standard:backing-property-naming")
-    private val _errorState = MutableStateFlow<ErrorState>(ErrorState.None)
-
     private val notificationManager = NotificationManager.getInstance(context)
 
     fun handleStreamError(e: Exception) {
@@ -21,26 +18,19 @@ class ErrorHandler(
             when {
                 e.message?.contains("Wrong address") == true ->
                     context.getString(R.string.unknown_host)
+
                 e.message?.contains("Connection timeout") == true ->
                     context.getString(R.string.connection_failed)
+
                 e.message?.contains("Unauthorized") == true ->
                     context.getString(R.string.auth_error)
+
                 e.message?.contains("Permission denied") == true ->
                     context.getString(R.string.permission_error)
+
                 else -> context.getString(R.string.unknown_error) + ": " + e.message
             }
 
-        _errorState.value = ErrorState.Error(errorMessage)
-        notificationManager.showErrorNotification(errorMessage)
+        notificationManager.showErrorSafely(errorMessage)
     }
-}
-
-sealed class ErrorState(
-    val message: String,
-) {
-    data object None : ErrorState("")
-
-    data class Error(
-        val errorMessage: String,
-    ) : ErrorState(errorMessage)
 }

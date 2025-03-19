@@ -53,9 +53,8 @@ class MediaManager(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error taking photo: ${e.message}", e)
-            notificationManager.showErrorNotification(
-                context.getString(R.string.saved_photo_failed) + ": " + e.message
-            )
+            val errorMessage = context.getString(R.string.saved_photo_failed) + ": " + e.message
+            notificationManager.showErrorSafely(errorMessage)
         }
     }
 
@@ -83,9 +82,8 @@ class MediaManager(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error saving photo: ${e.message}", e)
-            notificationManager.showErrorNotification(
-                context.getString(R.string.saved_photo_failed) + ": " + e.message
-            )
+            val errorMessage = context.getString(R.string.saved_photo_failed) + ": " + e.message
+            notificationManager.showErrorSafely(errorMessage)
         }
     }
 
@@ -120,9 +118,8 @@ class MediaManager(
                 context.sendBroadcast(Intent(AppIntentActions.ACTION_TOOK_PICTURE))
                 notificationManager.showPhotoNotification(context.getString(R.string.saved_photo))
             } ?: run {
-                notificationManager.showErrorNotification(
-                    context.getString(R.string.saved_photo_failed)
-                )
+                val errorMessage = context.getString(R.string.saved_photo_failed)
+                notificationManager.showErrorSafely(errorMessage)
             }
         }
     }
@@ -187,7 +184,8 @@ class MediaManager(
                 // For pre-Android 10, ensure the public folder exists
                 if (!videoFolder.exists() && !videoFolder.mkdirs()) {
                     Log.e(TAG, "Failed to create folder: ${videoFolder.absolutePath}")
-                    notificationManager.showErrorNotification(context.getString(R.string.failed_to_record))
+                    val errorMessage = context.getString(R.string.failed_to_record)
+                    notificationManager.showErrorSafely(errorMessage)
                     return false
                 }
                 filePath = "${videoFolder.absolutePath}/$filename"
@@ -208,9 +206,8 @@ class MediaManager(
             return true
         } catch (e: Exception) {
             Log.e(TAG, "Error starting recording: ${e.message}", e)
-            notificationManager.showErrorNotification(
-                context.getString(R.string.failed_to_record) + ": " + e.message
-            )
+            val errorMessage = context.getString(R.string.failed_to_record) + ": " + e.message
+            notificationManager.showErrorSafely(errorMessage)
             return false
         }
     }
