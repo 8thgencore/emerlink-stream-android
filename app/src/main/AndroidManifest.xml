@@ -60,7 +60,7 @@
         </activity>
 
         <activity
-            android:name=".presentation.ui.onboarding.OnboardingActivity"
+            android:name=".presentation.onboarding.OnboardingActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:exported="false"
             android:screenOrientation="fullSensor"

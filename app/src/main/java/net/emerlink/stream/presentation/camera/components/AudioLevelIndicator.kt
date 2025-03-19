@@ -65,7 +65,7 @@ fun AudioLevelIndicator(
         modifier =
             modifier
                 .padding(
-                    start = if (isLandscape) 24.dp else 24.dp,
+                    start = if (isLandscape) 28.dp else 28.dp,
                     bottom = if (isLandscape) 8.dp else 88.dp
                 ).width(24.dp)
                 .height(if (isLandscape) 100.dp else 150.dp)

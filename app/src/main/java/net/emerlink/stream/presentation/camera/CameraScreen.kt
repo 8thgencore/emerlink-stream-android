@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
@@ -38,14 +39,6 @@ fun CameraScreen(
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    // Service connection
-    DisposableEffect(Unit) {
-        viewModel.bindService(context)
-        onDispose {
-            viewModel.unbindService(context)
-        }
-    }
-
     // State collection
     val openGlView by viewModel.openGlView.collectAsStateWithLifecycle()
     val isStreaming by viewModel.isStreaming.collectAsStateWithLifecycle()
@@ -56,55 +49,69 @@ fun CameraScreen(
     val streamInfo by viewModel.streamInfo.collectAsStateWithLifecycle()
     val audioLevel by viewModel.audioLevel.collectAsStateWithLifecycle()
 
+    lateinit var requestCameraPermissionLauncher: ActivityResultLauncher<String>
+    lateinit var requestMicrophonePermissionLauncher: ActivityResultLauncher<String>
+    lateinit var requestLocationPermissionLauncher: ActivityResultLauncher<String>
+    lateinit var requestNotificationPermissionLauncher: ActivityResultLauncher<String>
+
+    @Composable
+    fun createPermissionLauncher(
+        permission: String,
+        onGranted: () -> Unit,
+    ): ActivityResultLauncher<String> =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted ->
+            if (isGranted) {
+                onGranted()
+            } else {
+                Log.e("CameraScreen", "Permission $permission denied")
+            }
+        }
+
     // Permission handling
-    lateinit var requestCameraPermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>
-    lateinit var requestMicrophonePermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>
-    lateinit var requestLocationPermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>
-    lateinit var requestNotificationPermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>
-
-    requestLocationPermissionLauncher =
-        rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { isGranted ->
-            if (isGranted) {
-                requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            } else {
-//                viewModel.showPermissionDeniedDialog()
-            }
-        }
-
-    requestNotificationPermissionLauncher =
-        rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { isGranted ->
-            if (isGranted) {
-                openGlView?.let { view -> initializeCamera(viewModel, view) }
-            } else {
-//                viewModel.showPermissionDeniedDialog()
-            }
-        }
-
-    requestMicrophonePermissionLauncher =
-        rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { isGranted ->
-            if (isGranted) {
-                requestLocationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-            } else {
-//                viewModel.showPermissionDeniedDialog()
-            }
-        }
-
     requestCameraPermissionLauncher =
-        rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { isGranted ->
-            if (isGranted) {
+        createPermissionLauncher(
+            permission = Manifest.permission.CAMERA,
+            onGranted = {
                 requestMicrophonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-            } else {
-//                viewModel.showPermissionDeniedDialog()
             }
+        )
+    requestMicrophonePermissionLauncher =
+        createPermissionLauncher(
+            permission = Manifest.permission.RECORD_AUDIO,
+            onGranted = {
+                requestLocationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            }
+        )
+    requestLocationPermissionLauncher =
+        createPermissionLauncher(
+            permission = Manifest.permission.ACCESS_FINE_LOCATION,
+            onGranted = {
+                requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        )
+    requestNotificationPermissionLauncher =
+        createPermissionLauncher(
+            permission = Manifest.permission.POST_NOTIFICATIONS,
+            onGranted = {
+                openGlView?.let { view -> initializeCamera(viewModel, view) }
+            }
+        )
+
+    // Permission check on mount
+    DisposableEffect(Unit) {
+        requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        onDispose { /* No-op */ }
+    }
+
+    // Service connection
+    DisposableEffect(Unit) {
+        viewModel.bindService(context)
+        onDispose {
+            viewModel.unbindService(context)
         }
+    }
 
     // Screen state receiver handling
     DisposableEffect(Unit) {
@@ -203,12 +210,7 @@ fun CameraScreen(
             viewModel = viewModel,
             onOpenGlViewCreated = { view ->
                 viewModel.setOpenGlView(view)
-                checkCameraPermission(
-                    context = context,
-                    viewModel = viewModel,
-                    requestCameraPermissionLauncher = requestCameraPermissionLauncher,
-                    requestMicrophonePermissionLauncher = requestMicrophonePermissionLauncher
-                )
+                requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
             }
         )
 

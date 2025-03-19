@@ -5,11 +5,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.util.Log
-import androidx.activity.result.ActivityResultLauncher
 import androidx.annotation.RequiresPermission
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
@@ -157,29 +154,6 @@ fun handleSettingsClick(
             navigateToSettings()
         } catch (e: Exception) {
             Log.e("CameraScreen", "Error stopping preview before settings", e)
-        }
-    }
-}
-
-/**
- * Check camera permission and request it if not granted
- */
-fun checkCameraPermission(
-    context: Context,
-    viewModel: CameraViewModel,
-    requestCameraPermissionLauncher: ActivityResultLauncher<String>,
-    requestMicrophonePermissionLauncher: ActivityResultLauncher<String>,
-) {
-    when {
-        ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.CAMERA
-        ) == PackageManager.PERMISSION_GRANTED -> {
-            requestMicrophonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-        }
-
-        else -> {
-            requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
 }
