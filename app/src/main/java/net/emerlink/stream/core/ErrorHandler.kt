@@ -33,11 +33,6 @@ class ErrorHandler(
         _errorState.value = ErrorState.Error(errorMessage)
         notificationManager.showErrorNotification(errorMessage)
     }
-
-    fun clearError() {
-        _errorState.value = ErrorState.None
-        notificationManager.clearErrorNotifications()
-    }
 }
 
 sealed class ErrorState(

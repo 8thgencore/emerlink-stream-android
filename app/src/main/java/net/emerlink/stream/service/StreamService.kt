@@ -297,6 +297,9 @@ class StreamService :
             if (streamManager.isStreaming()) {
                 streamManager.stopStream()
                 notifyStreamStopped()
+                
+                // Stop being a foreground service first
+                stopForeground(STOP_FOREGROUND_REMOVE)
 
                 val errorText =
                     when {
@@ -316,6 +319,10 @@ class StreamService :
             try {
                 streamManager.stopStream()
                 notifyStreamStopped()
+                
+                // Stop being a foreground service first
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                
                 notificationManager.showErrorNotification("Critical error: ${e.message}")
             } catch (e2: Exception) {
                 Log.e(TAG, "Double error", e2)
@@ -464,10 +471,18 @@ class StreamService :
         val videoInitialized = streamManager.prepareVideo()
 
         if (!audioInitialized) {
+            // If we're in foreground mode, stop it first
+            if (streamManager.isStreaming()) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            }
             notificationManager.showErrorNotification(getString(R.string.failed_to_prepare_audio))
         }
 
         if (!videoInitialized) {
+            // If we're in foreground mode, stop it first
+            if (streamManager.isStreaming()) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            }
             notificationManager.showErrorNotification(getString(R.string.failed_to_prepare))
             return
         }
@@ -520,7 +535,7 @@ class StreamService :
                     true,
                     NotificationManager.ACTION_STOP_ONLY
                 )
-            startForeground(NotificationManager.NOTIFICATION_ID, notification)
+            startForeground(NotificationManager.START_STREAM_NOTIFICATION_ID, notification)
 
             notificationManager.showStreamingNotification(
                 getString(R.string.streaming),
@@ -670,6 +685,19 @@ class StreamService :
             bitrate = "${streamSettings.bitrate} kbps",
             fps = "${streamSettings.fps} fps"
         )
+    }
+
+    /**
+     * Helper method to safely show error notifications.
+     * This ensures we properly stop foreground service first if needed.
+     */
+    fun showErrorSafely(errorMessage: String, actionType: Int = NotificationManager.ACTION_NONE) {
+        // First check if we need to stop foreground service
+        if (streamManager.isStreaming()) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        }
+        // Then show the error notification
+        notificationManager.showErrorNotification(errorMessage, actionType)
     }
 
     fun isStreaming(): Boolean = streamManager.isStreaming()

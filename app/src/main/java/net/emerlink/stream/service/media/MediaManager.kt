@@ -10,7 +10,6 @@ import android.media.MediaScannerConnection
 import android.os.*
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
-import com.pedro.library.view.GlInterface
 import net.emerlink.stream.R
 import net.emerlink.stream.core.AppIntentActions
 import net.emerlink.stream.core.notification.NotificationManager
@@ -47,17 +46,10 @@ class MediaManager(
 
             val glInterface = streamManager.getGlInterface()
 
-            if (glInterface is GlInterface) {
-                glInterface.takePhoto { bitmap ->
-                    val handlerThread = HandlerThread("PhotoSaveThread")
-                    handlerThread.start()
-                    Handler(handlerThread.looper).post { saveBitmapToGallery(bitmap) }
-                }
-            } else {
-                Log.e(TAG, "glInterface is of wrong type: ${glInterface.javaClass.name}")
-                notificationManager.showErrorNotification(
-                    context.getString(R.string.saved_photo_failed)
-                )
+            glInterface.takePhoto { bitmap ->
+                val handlerThread = HandlerThread("PhotoSaveThread")
+                handlerThread.start()
+                Handler(handlerThread.looper).post { saveBitmapToGallery(bitmap) }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error taking photo: ${e.message}", e)
