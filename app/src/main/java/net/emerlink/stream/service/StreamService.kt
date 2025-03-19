@@ -403,11 +403,23 @@ class StreamService :
         try {
             refreshSettings()
             openGlView = view
-            streamManager.prepareVideo()
+
+            val isCurrentlyStreaming = streamManager.isStreaming()
+            if (!isCurrentlyStreaming) {
+                streamManager.prepareVideo()
+            }
+
             streamManager.startPreview(view)
             isPreviewActive = true
             startAudioLevelUpdates()
             microphoneMonitor.startMonitoring()
+
+            if (isCurrentlyStreaming) {
+                Handler(Looper.getMainLooper()).postDelayed({
+                    streamManager.restartVideoEncoder()
+                    Log.d(TAG, "Video encoder restarted after starting preview during streaming")
+                }, 300)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error starting preview", e)
         }
@@ -651,15 +663,19 @@ class StreamService :
             isPreviewActive = true
 
             if (isCurrentlyStreaming) {
+                Log.d(TAG, "Stream is active, restarting video encoder...")
                 Handler(Looper.getMainLooper()).postDelayed({
                     streamManager.restartVideoEncoder()
+                    Log.d(TAG, "Video encoder restarted while streaming")
                 }, 300)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error restarting preview", e)
             try {
                 streamManager.stopPreview()
-                streamManager.releaseCamera()
+                if (!streamManager.isStreaming()) {
+                    streamManager.releaseCamera()
+                }
                 isPreviewActive = false
             } catch (e2: Exception) {
                 Log.e(TAG, "Error cleaning up after failure", e2)

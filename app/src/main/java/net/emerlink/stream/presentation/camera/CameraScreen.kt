@@ -119,19 +119,20 @@ fun CameraScreen(
             createScreenStateReceiver(
                 onScreenOff = {
                     viewModel.setScreenWasOff(true)
-                    // Only release camera if not streaming
+                    viewModel.stopPreview()
                     if (!isStreaming) {
                         viewModel.releaseCamera()
                     }
                 },
                 onUserPresent = {
-                    // Only restart preview if we need to - check that camera was released due to screen off
                     if (viewModel.screenWasOff.value) {
                         openGlView?.let { view ->
-                            // Only restart if we don't already have an active preview
                             if (!viewModel.isPreviewActive.value) {
-                                viewModel.restartPreview(view)
-                                viewModel.setScreenWasOff(false)
+                                Handler(Looper.getMainLooper()).postDelayed({
+                                    viewModel.restartPreview(view)
+                                    viewModel.setScreenWasOff(false)
+                                    Log.d("CameraScreen", "Restored preview after screen unlock")
+                                }, 300)
                             }
                         }
                     }
@@ -153,31 +154,26 @@ fun CameraScreen(
         val observer =
             createLifecycleObserver(
                 onPause = {
-                    // Only stop preview but don't stop streaming
-                    if (!isStreaming) {
-                        viewModel.stopPreview()
-                    }
+                    viewModel.stopPreview()
                 },
                 onStop = {
-                    // Only release camera resources if not streaming
                     if (!isStreaming) {
                         viewModel.releaseCamera()
                     }
                 },
                 onResume = {
-                    // Only restart preview if needed - avoid multiple restart calls
                     openGlView?.let { view ->
-                        if (view.holder.surface?.isValid == true && 
-                            !viewModel.isPreviewActive.value && 
-                            !viewModel.screenWasOff.value) { // Don't restart if screen was off - that's handled by screen receiver
-                            
+                        if (view.holder.surface?.isValid == true &&
+                            !viewModel.isPreviewActive.value
+                        ) {
                             Handler(Looper.getMainLooper()).postDelayed({
                                 try {
                                     viewModel.restartPreview(view)
+                                    Log.d("CameraScreen", "Restored preview after app resumed")
                                 } catch (e: Exception) {
                                     Log.e("CameraScreen", "Error restarting preview", e)
                                 }
-                            }, 500)
+                            }, 300)
                         }
                     }
                 }
