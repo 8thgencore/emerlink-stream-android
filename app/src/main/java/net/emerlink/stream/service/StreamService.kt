@@ -16,7 +16,6 @@ import android.location.LocationManager
 import android.os.*
 import android.util.Log
 import android.view.MotionEvent
-import androidx.annotation.RequiresPermission
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.pedro.common.ConnectChecker
 import com.pedro.library.util.BitrateAdapter
@@ -394,7 +393,6 @@ class StreamService :
     ) {
     }
 
-    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     fun startPreview(view: OpenGlView) {
         if (isPreviewActive) {
             return

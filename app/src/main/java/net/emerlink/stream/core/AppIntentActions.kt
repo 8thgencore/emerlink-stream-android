@@ -18,7 +18,7 @@ object AppIntentActions {
     // Broadcast события
     const val BROADCAST_STREAM_STOPPED = "net.emerlink.stream.STREAM_STOPPED"
     const val BROADCAST_AUDIO_LEVEL = "net.emerlink.stream.AUDIO_LEVEL"
-    
+
     // Extras для Intent
     const val EXTRA_AUDIO_LEVEL = "audio_level"
 }

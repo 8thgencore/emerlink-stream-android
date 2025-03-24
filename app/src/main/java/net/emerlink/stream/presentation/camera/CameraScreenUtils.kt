@@ -1,12 +1,10 @@
 package net.emerlink.stream.presentation.camera
 
-import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.util.Log
-import androidx.annotation.RequiresPermission
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
@@ -17,7 +15,6 @@ import net.emerlink.stream.presentation.camera.viewmodel.CameraViewModel
 /**
  * Initialize camera with the provided OpenGlView
  */
-@RequiresPermission(Manifest.permission.RECORD_AUDIO)
 fun initializeCamera(
     viewModel: CameraViewModel,
     view: OpenGlView,

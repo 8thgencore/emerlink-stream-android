@@ -1,12 +1,11 @@
 package net.emerlink.stream.service.microphone
 
-import android.Manifest
+import android.annotation.SuppressLint
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.os.Handler
 import android.os.Looper
-import androidx.annotation.RequiresPermission
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -19,7 +18,7 @@ class MicrophoneMonitor {
             AUDIO_FORMAT
         ) * 2
 
-    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
+    @SuppressLint("MissingPermission")
     fun startMonitoring() {
         audioRecord =
             AudioRecord(

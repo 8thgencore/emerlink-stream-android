@@ -28,7 +28,6 @@ import net.emerlink.stream.presentation.camera.components.*
 import net.emerlink.stream.presentation.camera.viewmodel.CameraViewModel
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-@androidx.annotation.RequiresPermission(Manifest.permission.RECORD_AUDIO)
 @Composable
 fun CameraScreen(
     onSettingsClick: () -> Unit,
@@ -49,6 +48,7 @@ fun CameraScreen(
     val streamInfo by viewModel.streamInfo.collectAsStateWithLifecycle()
     val audioLevel by viewModel.audioLevel.collectAsStateWithLifecycle()
 
+    // Existing permission launchers
     lateinit var requestCameraPermissionLauncher: ActivityResultLauncher<String>
     lateinit var requestMicrophonePermissionLauncher: ActivityResultLauncher<String>
     lateinit var requestLocationPermissionLauncher: ActivityResultLauncher<String>

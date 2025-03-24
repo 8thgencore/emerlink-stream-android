@@ -8,7 +8,6 @@
     <string name="exit">Выход</string>
     <string name="yes">Да</string>
     <string name="cancel">Отмена</string>
-    <string name="ok">Ок</string>
 
     <!-- Notifications -->
     <string name="streaming">Идет трансляция</string>
@@ -118,14 +117,6 @@
     <string name="notification_channel_photos">Фотографии</string>
     <string name="notification_channel_photos_description">Уведомления о сделанных фотографиях</string>
 
-    <!-- Camera Permissions -->
-    <string name="camera_permission_title">Требуется доступ к камере</string>
-    <string name="camera_permission_message">Для работы приложения необходим доступ к камере. Пожалуйста, предоставьте разрешение в настройках.</string>
-    <string name="microphone_permission_title">Требуется доступ к микрофону</string>
-    <string name="microphone_permission_message">Для работы приложения необходим доступ к микрофону. Пожалуйста, предоставьте разрешение в настройках.</string>
-    <string name="location_permission_title">Требуется доступ к местоположению</string>
-    <string name="location_permission_message">Для работы приложения необходим доступ к местоположению. Пожалуйста, предоставьте разрешение в настройках.</string>
-
     <!-- Connection Profiles -->
     <string name="connection_profiles">Профили соединений</string>
     <string name="add_profile">Добавить профиль</string>
@@ -143,13 +134,4 @@
     <string name="active_profile">Активный профиль: %1$s</string>
     <string name="delete">Удалить</string>
     <string name="save">Сохранить</string>
-    <string name="active_connection">Активное соединение</string>
-    <string name="no_connection">Нет соединения</string>
-    <string name="change_profile">Изменить профиль</string>
-    <string name="manage_profiles">Управление профилями</string>
-
-    <!-- New resources for restarting stream -->
-    <string name="streaming_reconnected">Трансляция перезапущена с новыми настройками</string>
-    <string name="error_reconnecting">Ошибка при перезапуске трансляции</string>
-
 </resources>
