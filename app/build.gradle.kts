@@ -63,6 +63,9 @@ dependencies {
     // Preferences
     implementation(libs.androidx.datastore.preferences)
 
+    // JSON
+    implementation(libs.gson)
+
     // Dependency Injection
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
@@ -76,13 +79,6 @@ dependencies {
     // Streaming library
     implementation(libs.library)
     implementation(libs.extra.sources)
-
-    implementation(libs.rootencoder.common)
-    implementation(libs.rootencoder.encoder)
-    implementation(libs.rootencoder.rtmp)
-    implementation(libs.rootencoder.rtsp)
-    implementation(libs.rootencoder.srt)
-    implementation(libs.rootencoder.udp)
 
     // Testing
     testImplementation(libs.junit)

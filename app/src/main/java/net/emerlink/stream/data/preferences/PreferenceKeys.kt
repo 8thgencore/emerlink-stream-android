@@ -3,40 +3,17 @@ package net.emerlink.stream.data.preferences
 object PreferenceKeys {
     // Stream settings
     const val STREAM_PROTOCOL = "stream_protocol"
-    const val STREAM_PROTOCOL_DEFAULT = "rtmp"
-
     const val STREAM_ADDRESS = "stream_address"
-    const val STREAM_ADDRESS_DEFAULT = "127.0.0.1"
-
     const val STREAM_PORT = "stream_port"
-    const val STREAM_PORT_DEFAULT = "1935"
-
     const val STREAM_PATH = "stream_path"
-    const val STREAM_PATH_DEFAULT = "live"
-
     const val STREAM_USE_TCP = "stream_use_tcp"
-    const val STREAM_USE_TCP_DEFAULT = true
-
     const val STREAM_USERNAME = "stream_username"
-    const val STREAM_USERNAME_DEFAULT = ""
-
     const val STREAM_PASSWORD = "stream_password"
-    const val STREAM_PASSWORD_DEFAULT = ""
-
     const val STREAM_SELF_SIGNED_CERT = "stream_self_signed_cert"
-    const val STREAM_SELF_SIGNED_CERT_DEFAULT = false
-
     const val STREAM_CERTIFICATE = "stream_certificate"
-    const val STREAM_CERTIFICATE_DEFAULT = ""
-
     const val STREAM_CERTIFICATE_PASSWORD = "stream_certificate_password"
-    const val STREAM_CERTIFICATE_PASSWORD_DEFAULT = ""
-
     const val STREAM_VIDEO = "stream_video"
-    const val STREAM_VIDEO_DEFAULT = true
-
     const val STREAM_KEY = "stream_key"
-    const val STREAM_KEY_DEFAULT = ""
 
     // Video settings
     const val SCREEN_ORIENTATION = "screen_orientation"
@@ -84,10 +61,6 @@ object PreferenceKeys {
 
     const val AUDIO_CODEC = "audio_codec"
     const val AUDIO_CODEC_DEFAULT = "aac"
-
-    // User settings
-    const val UID = "uid"
-    const val UID_DEFAULT = "emerlink-stream"
 
     // First run
     const val FIRST_RUN = "first_run"

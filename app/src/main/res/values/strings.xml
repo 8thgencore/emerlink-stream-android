@@ -11,7 +11,7 @@
     <string name="ok">Ок</string>
 
     <!-- Notifications -->
-    <string name="streaming">Стрим начался</string>
+    <string name="streaming">Идет трансляция</string>
     <string name="recording">Запись</string>
     <string name="failed_to_prepare">Не удалось подготовить аудио или видео</string>
     <string name="failed_to_record">Не удалось начать запись</string>
@@ -123,5 +123,33 @@
     <string name="camera_permission_message">Для работы приложения необходим доступ к камере. Пожалуйста, предоставьте разрешение в настройках.</string>
     <string name="microphone_permission_title">Требуется доступ к микрофону</string>
     <string name="microphone_permission_message">Для работы приложения необходим доступ к микрофону. Пожалуйста, предоставьте разрешение в настройках.</string>
+    <string name="location_permission_title">Требуется доступ к местоположению</string>
+    <string name="location_permission_message">Для работы приложения необходим доступ к местоположению. Пожалуйста, предоставьте разрешение в настройках.</string>
+
+    <!-- Connection Profiles -->
+    <string name="connection_profiles">Профили соединений</string>
+    <string name="add_profile">Добавить профиль</string>
+    <string name="edit_profile">Редактировать профиль</string>
+    <string name="create_profile">Создать профиль</string>
+    <string name="delete_profile">Удалить профиль</string>
+    <string name="delete_profile_confirmation">Вы уверены, что хотите удалить профиль \"%1$s\"?</string>
+    <string name="profile_name">Название профиля</string>
+    <string name="profile_name_summary">Введите название для этого профиля соединения</string>
+    <string name="default_profile">Профиль по умолчанию</string>
+    <string name="default_profile_summary">Использовать этот профиль по умолчанию при запуске приложения</string>
+    <string name="profile_details">Детали профиля</string>
+    <string name="connection_settings">Настройки соединения</string>
+    <string name="no_profiles">Профили соединений не найдены</string>
+    <string name="active_profile">Активный профиль: %1$s</string>
+    <string name="delete">Удалить</string>
+    <string name="save">Сохранить</string>
+    <string name="active_connection">Активное соединение</string>
+    <string name="no_connection">Нет соединения</string>
+    <string name="change_profile">Изменить профиль</string>
+    <string name="manage_profiles">Управление профилями</string>
+
+    <!-- New resources for restarting stream -->
+    <string name="streaming_reconnected">Трансляция перезапущена с новыми настройками</string>
+    <string name="error_reconnecting">Ошибка при перезапуске трансляции</string>
 
 </resources>

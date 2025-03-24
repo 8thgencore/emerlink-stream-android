@@ -10,11 +10,10 @@ import android.media.MediaScannerConnection
 import android.os.*
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
-import com.pedro.library.view.GlInterface
 import net.emerlink.stream.R
-import net.emerlink.stream.notification.NotificationManager
+import net.emerlink.stream.core.AppIntentActions
+import net.emerlink.stream.core.notification.NotificationManager
 import net.emerlink.stream.service.stream.StreamManager
-import net.emerlink.stream.util.AppIntentActions
 import net.emerlink.stream.util.PathUtils
 import java.io.File
 import java.io.FileOutputStream
@@ -47,23 +46,15 @@ class MediaManager(
 
             val glInterface = streamManager.getGlInterface()
 
-            if (glInterface is GlInterface) {
-                glInterface.takePhoto { bitmap ->
-                    val handlerThread = HandlerThread("PhotoSaveThread")
-                    handlerThread.start()
-                    Handler(handlerThread.looper).post { saveBitmapToGallery(bitmap) }
-                }
-            } else {
-                Log.e(TAG, "glInterface is of wrong type: ${glInterface.javaClass.name}")
-                notificationManager.showErrorNotification(
-                    context.getString(R.string.saved_photo_failed)
-                )
+            glInterface.takePhoto { bitmap ->
+                val handlerThread = HandlerThread("PhotoSaveThread")
+                handlerThread.start()
+                Handler(handlerThread.looper).post { saveBitmapToGallery(bitmap) }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error taking photo: ${e.message}", e)
-            notificationManager.showErrorNotification(
-                context.getString(R.string.saved_photo_failed) + ": " + e.message
-            )
+            val errorMessage = context.getString(R.string.saved_photo_failed) + ": " + e.message
+            notificationManager.showErrorSafely(errorMessage)
         }
     }
 
@@ -91,9 +82,8 @@ class MediaManager(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error saving photo: ${e.message}", e)
-            notificationManager.showErrorNotification(
-                context.getString(R.string.saved_photo_failed) + ": " + e.message
-            )
+            val errorMessage = context.getString(R.string.saved_photo_failed) + ": " + e.message
+            notificationManager.showErrorSafely(errorMessage)
         }
     }
 
@@ -128,9 +118,8 @@ class MediaManager(
                 context.sendBroadcast(Intent(AppIntentActions.ACTION_TOOK_PICTURE))
                 notificationManager.showPhotoNotification(context.getString(R.string.saved_photo))
             } ?: run {
-                notificationManager.showErrorNotification(
-                    context.getString(R.string.saved_photo_failed)
-                )
+                val errorMessage = context.getString(R.string.saved_photo_failed)
+                notificationManager.showErrorSafely(errorMessage)
             }
         }
     }
@@ -195,7 +184,8 @@ class MediaManager(
                 // For pre-Android 10, ensure the public folder exists
                 if (!videoFolder.exists() && !videoFolder.mkdirs()) {
                     Log.e(TAG, "Failed to create folder: ${videoFolder.absolutePath}")
-                    notificationManager.showErrorNotification(context.getString(R.string.failed_to_record))
+                    val errorMessage = context.getString(R.string.failed_to_record)
+                    notificationManager.showErrorSafely(errorMessage)
                     return false
                 }
                 filePath = "${videoFolder.absolutePath}/$filename"
@@ -216,9 +206,8 @@ class MediaManager(
             return true
         } catch (e: Exception) {
             Log.e(TAG, "Error starting recording: ${e.message}", e)
-            notificationManager.showErrorNotification(
-                context.getString(R.string.failed_to_record) + ": " + e.message
-            )
+            val errorMessage = context.getString(R.string.failed_to_record) + ": " + e.message
+            notificationManager.showErrorSafely(errorMessage)
             return false
         }
     }
