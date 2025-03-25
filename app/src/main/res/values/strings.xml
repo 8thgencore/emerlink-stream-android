@@ -24,8 +24,6 @@
     <string name="welcome_description">Приложение для стриминга видео по протоколам RTSP(S), RTMP(S) и SRT</string>
     <string name="camera_and_mic_permissions">Доступ к камере и микрофону</string>
     <string name="camera_and_mic_permissions_description">Для стриминга видео и аудио необходим доступ к камере и микрофону устройства</string>
-    <string name="location_permission">Доступ к местоположению</string>
-    <string name="location_permission_description">Для отслеживания местоположения необходим доступ к GPS</string>
     <string name="storage_permission">Доступ к хранилищу</string>
     <string name="storage_permission_description">Для сохранения записей и фото необходим доступ к хранилищу</string>
     <string name="notification_permission">Доступ к уведомлениям</string>

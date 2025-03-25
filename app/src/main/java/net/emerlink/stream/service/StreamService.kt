@@ -2,7 +2,6 @@
 
 package net.emerlink.stream.service
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Service
 import android.content.BroadcastReceiver
@@ -13,7 +12,6 @@ import android.content.pm.ServiceInfo
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.location.LocationManager
 import android.os.*
 import android.util.Log
 import android.view.MotionEvent
@@ -29,7 +27,6 @@ import net.emerlink.stream.data.model.ConnectionSettings
 import net.emerlink.stream.data.model.StreamInfo
 import net.emerlink.stream.data.repository.ConnectionProfileRepository
 import net.emerlink.stream.data.repository.SettingsRepository
-import net.emerlink.stream.service.location.StreamLocationListener
 import net.emerlink.stream.service.media.MediaManager
 import net.emerlink.stream.service.microphone.MicrophoneMonitor
 import net.emerlink.stream.service.stream.StreamManager
@@ -61,8 +58,6 @@ class StreamService :
     private var bitrateAdapter: BitrateAdapter? = null
     private var exiting = false
     private var currentCameraId = 0
-    private var locListener: StreamLocationListener? = null
-    private var locManager: LocationManager? = null
     private var openGlView: OpenGlView? = null
     private var commandReceiver: BroadcastReceiver? = null
     private var isPreviewActive = false
@@ -96,8 +91,6 @@ class StreamService :
         streamManager = StreamManager(this, this, errorHandler, settingsRepository)
         streamManager.setStreamType(connectionSettings.protocol)
         mediaManager = MediaManager(this, streamManager, notificationManager)
-        locListener = StreamLocationListener(this)
-        locManager = applicationContext.getSystemService(LOCATION_SERVICE) as LocationManager
         microphoneMonitor = MicrophoneMonitor()
     }
 
@@ -489,24 +482,8 @@ class StreamService :
             mediaManager.startRecording()
         }
 
-        startLocationTracking()
         sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
         sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_NORMAL)
-    }
-
-    private fun startLocationTracking() {
-        try {
-            if (hasLocationPermission()) {
-                locManager?.requestLocationUpdates(
-                    LocationManager.GPS_PROVIDER,
-                    1000,
-                    1f,
-                    locListener!!
-                )
-            }
-        } catch (e: SecurityException) {
-            Log.e(TAG, "Failed to request location updates", e)
-        }
     }
 
     private fun startStreaming() {
@@ -556,7 +533,7 @@ class StreamService :
                 startForeground(
                     1,
                     notification,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
                 )
             } else {
                 startForeground(1, notification)
@@ -586,8 +563,6 @@ class StreamService :
                 mediaManager.stopRecording()
             }
 
-            stopLocationTracking()
-
             try {
                 sensorManager.unregisterListener(this)
             } catch (e: Exception) {
@@ -616,16 +591,6 @@ class StreamService :
         }
     }
 
-    private fun stopLocationTracking() {
-        locListener?.let {
-            try {
-                locManager?.removeUpdates(it)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error stopping location updates", e)
-            }
-        }
-    }
-
     fun toggleMute(muted: Boolean) {
         try {
             if (muted) streamManager.disableAudio() else streamManager.enableAudio()
@@ -633,14 +598,6 @@ class StreamService :
             Log.e(TAG, "Error toggling mute state", e)
         }
     }
-
-    private fun hasLocationPermission(): Boolean =
-        (
-            checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
-                android.content.pm.PackageManager.PERMISSION_GRANTED ||
-                checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) ==
-                android.content.pm.PackageManager.PERMISSION_GRANTED
-        )
 
     fun releaseCamera() {
         try {

@@ -51,7 +51,6 @@ fun CameraScreen(
     // Existing permission launchers
     lateinit var requestCameraPermissionLauncher: ActivityResultLauncher<String>
     lateinit var requestMicrophonePermissionLauncher: ActivityResultLauncher<String>
-    lateinit var requestLocationPermissionLauncher: ActivityResultLauncher<String>
     lateinit var requestNotificationPermissionLauncher: ActivityResultLauncher<String>
 
     @Composable
@@ -80,13 +79,6 @@ fun CameraScreen(
     requestMicrophonePermissionLauncher =
         createPermissionLauncher(
             permission = Manifest.permission.RECORD_AUDIO,
-            onGranted = {
-                requestLocationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-            }
-        )
-    requestLocationPermissionLauncher =
-        createPermissionLauncher(
-            permission = Manifest.permission.ACCESS_FINE_LOCATION,
             onGranted = {
                 requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
