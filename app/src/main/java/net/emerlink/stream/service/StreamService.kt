@@ -8,7 +8,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.ServiceInfo
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
@@ -527,19 +526,7 @@ class StreamService :
                     true,
                     NotificationManager.ACTION_STOP_ONLY
                 )
-
-            // На Android 10+ (Q) и выше используем более точные типы сервисов
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(
-                    1,
-                    notification,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-                )
-            } else {
-                startForeground(1, notification)
-            }
-
-            Log.d(TAG, "Keep-alive trick applied to foreground service")
+            startForeground(1, notification)
         } catch (e: Exception) {
             Log.e(TAG, "Error starting foreground service: ${e.message}", e)
         }
