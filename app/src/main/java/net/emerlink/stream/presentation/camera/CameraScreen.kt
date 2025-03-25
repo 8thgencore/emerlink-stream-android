@@ -154,11 +154,19 @@ fun CameraScreen(
         val observer =
             createLifecycleObserver(
                 onPause = {
-                    viewModel.stopPreview()
+                    // Only stop preview if not streaming
+                    if (!isStreaming) {
+                        viewModel.stopPreview()
+                    } else {
+                        Log.d("CameraScreen", "Not stopping preview on pause because streaming is active")
+                    }
                 },
                 onStop = {
+                    // Only release camera if not streaming
                     if (!isStreaming) {
                         viewModel.releaseCamera()
+                    } else {
+                        Log.d("CameraScreen", "Not releasing camera on stop because streaming is active")
                     }
                 },
                 onResume = {

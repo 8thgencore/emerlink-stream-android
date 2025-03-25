@@ -294,9 +294,12 @@ class StreamManager(
      */
     fun stopPreview() {
         try {
-            if (isOnPreview()) {
+            // Don't stop preview if streaming is active
+            if (isOnPreview() && !isStreaming()) {
                 Log.d(TAG, "Stopping Preview")
                 cameraInterface.stopPreview()
+            } else if (isStreaming()) {
+                Log.d(TAG, "Not stopping preview because streaming is active")
             }
         } catch (e: Exception) {
             errorHandler.handleStreamError(e)
@@ -581,39 +584,6 @@ class StreamManager(
         }
     }
 
-    // /**
-    //  * Fallback method to toggle lantern using Android's CameraManager
-    //  * when Camera2Source is not available
-    //  */
-    // private fun fallbackToggleLantern(): Boolean {
-    //     try {
-    //         Log.d(TAG, "Using fallback lantern toggle")
-    //         val camManager = context.getSystemService(Context.CAMERA_SERVICE) as android.hardware.camera2.CameraManager
-
-    //         // Find a camera that supports flash
-    //         val cameraId =
-    //             camManager.cameraIdList.firstOrNull { id ->
-    //                 val characteristics = camManager.getCameraCharacteristics(id)
-    //                 val flashAvailable =
-    //                     characteristics.get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE)
-    //                 flashAvailable == true
-    //             }
-
-    //         if (cameraId != null) {
-    //             lanternEnabled = !lanternEnabled
-    //             Log.d(TAG, "Setting torch mode to $lanternEnabled for camera $cameraId")
-    //             camManager.setTorchMode(cameraId, lanternEnabled)
-    //             return lanternEnabled
-    //         } else {
-    //             Log.e(TAG, "No camera with flash found")
-    //             return false
-    //         }
-    //     } catch (e: Exception) {
-    //         Log.e(TAG, "Error in fallback lantern toggle", e)
-    //         lanternEnabled = false
-    //         return false
-    //     }
-    // }
 
     /**
      * Handles zoom gestures

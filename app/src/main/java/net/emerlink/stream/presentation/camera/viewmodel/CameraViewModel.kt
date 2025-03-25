@@ -164,8 +164,13 @@ class CameraViewModel : ViewModel() {
     fun stopPreview() {
         viewModelScope.launch {
             try {
-                streamServiceRef?.get()?.stopPreview()
-                setPreviewActive(false)
+                // Don't stop preview if streaming is active
+                if (!_isStreaming.value) {
+                    streamServiceRef?.get()?.stopPreview()
+                    setPreviewActive(false)
+                } else {
+                    Log.d("CameraViewModel", "Not stopping preview because streaming is active")
+                }
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "Error stopping preview", e)
             }
@@ -175,8 +180,13 @@ class CameraViewModel : ViewModel() {
     fun releaseCamera() {
         viewModelScope.launch {
             try {
-                streamServiceRef?.get()?.releaseCamera()
-                setPreviewActive(false)
+                // Don't release camera if streaming is active
+                if (!_isStreaming.value) {
+                    streamServiceRef?.get()?.releaseCamera()
+                    setPreviewActive(false)
+                } else {
+                    Log.d("CameraViewModel", "Not releasing camera because streaming is active")
+                }
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "Error releasing camera", e)
             }

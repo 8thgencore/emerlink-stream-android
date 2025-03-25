@@ -532,8 +532,10 @@ class StreamService :
                     true,
                     NotificationManager.ACTION_STOP_ONLY
                 )
-            startForeground(NotificationManager.START_STREAM_NOTIFICATION_ID, notification)
-
+            
+            // Start as foreground service BEFORE showing notification
+            startForegroundKeepAlive(NotificationManager.START_STREAM_NOTIFICATION_ID)
+            
             notificationManager.showStreamingNotification(
                 getString(R.string.streaming),
                 true,
@@ -542,6 +544,28 @@ class StreamService :
         } catch (e: Exception) {
             Log.e(TAG, "Error starting streaming", e)
             errorHandler.handleStreamError(e)
+        }
+    }
+
+    /**
+     * Keep-alive trick to ensure the service continues running in background
+     * Similar to RootEncoder implementation
+     */
+    private fun startForegroundKeepAlive(notificationId: Int) {
+        try {
+            // Create a basic notification that will be replaced immediately
+            val notification = notificationManager.createNotification(
+                getString(R.string.streaming),
+                true,
+                NotificationManager.ACTION_STOP_ONLY
+            )
+            
+            // Start foreground service with notification
+            startForeground(notificationId, notification)
+            
+            Log.d(TAG, "Service started in foreground mode with notification ID: $notificationId")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting foreground service: ${e.message}", e)
         }
     }
 
