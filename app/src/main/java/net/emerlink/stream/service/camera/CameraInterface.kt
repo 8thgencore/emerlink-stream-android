@@ -80,8 +80,6 @@ interface CameraInterface {
 
     fun setAudioCodec(codec: AudioCodec)
 
-    fun restartVideoEncoder()
-
     companion object {
         fun create(
             context: Context,

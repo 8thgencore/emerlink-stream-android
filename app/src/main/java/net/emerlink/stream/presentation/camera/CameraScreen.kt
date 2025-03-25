@@ -154,30 +154,29 @@ fun CameraScreen(
         val observer =
             createLifecycleObserver(
                 onPause = {
-                    // Only stop preview if not streaming
+                    // Don't stop preview when streaming is active
                     if (!isStreaming) {
                         viewModel.stopPreview()
-                    } else {
-                        Log.d("CameraScreen", "Not stopping preview on pause because streaming is active")
                     }
                 },
                 onStop = {
-                    // Only release camera if not streaming
+                    // Always stop preview on stop to release GL context
+                    viewModel.stopPreview()
+                    // But don't release camera if streaming
                     if (!isStreaming) {
                         viewModel.releaseCamera()
-                    } else {
-                        Log.d("CameraScreen", "Not releasing camera on stop because streaming is active")
                     }
                 },
                 onResume = {
                     openGlView?.let { view ->
-                        if (view.holder.surface?.isValid == true &&
-                            !viewModel.isPreviewActive.value
-                        ) {
+                        if (!viewModel.isPreviewActive.value) {
                             Handler(Looper.getMainLooper()).postDelayed({
                                 try {
-                                    viewModel.restartPreview(view)
-                                    Log.d("CameraScreen", "Restored preview after app resumed")
+                                    // Always restart preview on resume if we have a valid surface
+                                    if (view.holder.surface?.isValid == true) {
+                                        viewModel.restartPreview(view)
+                                        Log.d("CameraScreen", "Restored preview after app resumed")
+                                    }
                                 } catch (e: Exception) {
                                     Log.e("CameraScreen", "Error restarting preview", e)
                                 }

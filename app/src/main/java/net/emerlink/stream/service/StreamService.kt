@@ -9,6 +9,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.ServiceInfo
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
@@ -262,9 +263,12 @@ class StreamService :
     override fun onDestroy() {
         try {
             Log.d(TAG, "onDestroy")
-            if (streamManager.isStreaming()) {
+
+            // Только останавливаем явный стриминг, если приложение закрывается через FLAG_EXIT
+            if (exiting && streamManager.isStreaming()) {
                 stopStream(null, null)
             }
+
             if (commandReceiver != null) {
                 unregisterReceiver(commandReceiver)
                 commandReceiver = null
@@ -411,13 +415,6 @@ class StreamService :
             isPreviewActive = true
             startAudioLevelUpdates()
             microphoneMonitor.startMonitoring()
-
-            if (isCurrentlyStreaming) {
-                Handler(Looper.getMainLooper()).postDelayed({
-                    streamManager.restartVideoEncoder()
-                    Log.d(TAG, "Video encoder restarted after starting preview during streaming")
-                }, 300)
-            }
         } catch (e: Exception) {
             Log.e(TAG, "Error starting preview", e)
         }
@@ -517,6 +514,9 @@ class StreamService :
             val streamUrl = connectionSettings.buildStreamUrl()
             Log.d(TAG, "Stream URL: ${streamUrl.replace(Regex(":[^:/]*:[^:/]*"), ":****:****")}")
 
+            // Apply keep-alive trick BEFORE starting the stream
+            keepAliveTrick()
+
             streamManager.startStream(
                 streamUrl,
                 connectionSettings.protocol.toString(),
@@ -526,16 +526,6 @@ class StreamService :
             )
 
             // Create notification and start foreground service to keep streaming when app is in background
-            val notification =
-                notificationManager.createNotification(
-                    getString(R.string.streaming),
-                    true,
-                    NotificationManager.ACTION_STOP_ONLY
-                )
-            
-            // Start as foreground service BEFORE showing notification
-            startForegroundKeepAlive(NotificationManager.START_STREAM_NOTIFICATION_ID)
-            
             notificationManager.showStreamingNotification(
                 getString(R.string.streaming),
                 true,
@@ -548,22 +538,31 @@ class StreamService :
     }
 
     /**
-     * Keep-alive trick to ensure the service continues running in background
+     * Keep alive trick to ensure the service continues running in background
      * Similar to RootEncoder implementation
      */
-    private fun startForegroundKeepAlive(notificationId: Int) {
+    private fun keepAliveTrick() {
         try {
             // Create a basic notification that will be replaced immediately
-            val notification = notificationManager.createNotification(
-                getString(R.string.streaming),
-                true,
-                NotificationManager.ACTION_STOP_ONLY
-            )
-            
-            // Start foreground service with notification
-            startForeground(notificationId, notification)
-            
-            Log.d(TAG, "Service started in foreground mode with notification ID: $notificationId")
+            val notification =
+                notificationManager.createNotification(
+                    getString(R.string.streaming),
+                    true,
+                    NotificationManager.ACTION_STOP_ONLY
+                )
+
+            // На Android 10+ (Q) и выше используем более точные типы сервисов
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(
+                    1,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+                )
+            } else {
+                startForeground(1, notification)
+            }
+
+            Log.d(TAG, "Keep-alive trick applied to foreground service")
         } catch (e: Exception) {
             Log.e(TAG, "Error starting foreground service: ${e.message}", e)
         }
@@ -660,7 +659,7 @@ class StreamService :
             refreshSettings()
 
             val isCurrentlyStreaming = streamManager.isStreaming()
-            Log.d(TAG, "Перезапуск превью, стрим активен: $isCurrentlyStreaming")
+            Log.d(TAG, "Restarting preview, stream active: $isCurrentlyStreaming")
 
             // If we already have a valid preview with the same view, don't restart
             if (streamManager.isOnPreview() && openGlView == view) {
@@ -683,14 +682,6 @@ class StreamService :
 
             streamManager.startPreview(view)
             isPreviewActive = true
-
-            if (isCurrentlyStreaming) {
-                Log.d(TAG, "Stream is active, restarting video encoder...")
-                Handler(Looper.getMainLooper()).postDelayed({
-                    streamManager.restartVideoEncoder()
-                    Log.d(TAG, "Video encoder restarted while streaming")
-                }, 300)
-            }
         } catch (e: Exception) {
             Log.e(TAG, "Error restarting preview", e)
             try {

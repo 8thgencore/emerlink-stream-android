@@ -45,6 +45,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.preference.ktx)
+    implementation("androidx.appcompat:appcompat:1.7.0")
 
     // Compose dependencies
     implementation(platform(libs.androidx.compose.bom))

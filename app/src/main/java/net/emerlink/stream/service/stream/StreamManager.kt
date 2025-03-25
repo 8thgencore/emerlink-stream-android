@@ -87,17 +87,6 @@ class StreamManager(
     }
 
     /**
-     * Принудительно перезапускает видеокодер, если стрим активен
-     * Используется для восстановления видеопотока после сворачивания приложения
-     */
-    fun restartVideoEncoder() {
-        if (isStreaming()) {
-            Log.d(TAG, "Перезапускаем видеокодер для возобновления видеопотока")
-            cameraInterface.restartVideoEncoder()
-        }
-    }
-
-    /**
      * Restarts the camera preview
      * @param view The OpenGlView to display the preview on
      */
@@ -132,11 +121,6 @@ class StreamManager(
                     // Запускаем превью
                     startPreviewInternal(view)
 
-                    // Если стрим был активен, перезапускаем видеоэнкодер чтобы видео возобновилось
-                    if (wasStreaming) {
-                        scheduleVideoEncoderRestart()
-                    }
-
                     Log.d(TAG, "Превью успешно перезапущено после разворачивания")
                 } catch (e: Exception) {
                     Log.e(TAG, "Ошибка при запуске превью во время restartPreview: ${e.message}", e)
@@ -145,15 +129,6 @@ class StreamManager(
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при перезапуске превью: ${e.message}", e)
         }
-    }
-
-    /**
-     * Schedule restart of video encoder with delay
-     */
-    private fun scheduleVideoEncoderRestart() {
-        Handler(Looper.getMainLooper()).postDelayed({
-            restartVideoEncoder()
-        }, DELAY_RESTART_ENCODER_MS)
     }
 
     /**
@@ -583,7 +558,6 @@ class StreamManager(
             // return fallbackToggleLantern()
         }
     }
-
 
     /**
      * Handles zoom gestures

@@ -14,14 +14,6 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
-    <uses-permission android:name="android.permission.PROJECT_MEDIA" />
-    <uses-permission
-        android:name="android.permission.CAPTURE_VIDEO_OUTPUT"
-        android:protectionLevel="signature"
-        tools:ignore="ProtectedPermissions" />
-
-    <!-- For Android 10+ -->
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
     <!-- For Android 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -78,7 +70,7 @@
             android:name=".service.StreamService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="camera|microphone|location|mediaProjection" />
+            android:foregroundServiceType="camera|microphone|location" />
     </application>
 
 </manifest>

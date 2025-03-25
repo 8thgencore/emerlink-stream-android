@@ -12,35 +12,6 @@ import com.pedro.library.view.GlInterface
 import com.pedro.library.view.OpenGlView
 import com.pedro.rtsp.rtsp.Protocol
 
-private fun restartVideoEncoderImpl(
-    camera: com.pedro.library.base.Camera2Base,
-    tag: String
-) {
-    try {
-        if (camera.isStreaming) {
-            android.util.Log.d(tag, "Форсированное восстановление видеопотока")
-            val currentBitrate = camera.bitrate
-            
-            camera.setVideoBitrateOnFly(10)
-            
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                camera.setVideoBitrateOnFly(currentBitrate)
-                
-                try {
-                    val forceKeyFrameMethod = camera.javaClass.getDeclaredMethod("forceKeyFrame")
-                    forceKeyFrameMethod.isAccessible = true
-                    forceKeyFrameMethod.invoke(camera)
-                    android.util.Log.d(tag, "Запрошен ключевой кадр через рефлексию")
-                } catch (e: Exception) {
-                    android.util.Log.e(tag, "Не удалось вызвать forceKeyFrame: ${e.message}")
-                }
-            }, 100)
-        }
-    } catch (e: Exception) {
-        android.util.Log.e(tag, "Ошибка перезапуска видеоэнкодера: ${e.message}")
-    }
-}
-
 class RtmpCameraImpl(
     context: Context,
     connectChecker: ConnectChecker,
@@ -129,10 +100,6 @@ class RtmpCameraImpl(
     }
 
     override fun setAudioCodec(codec: AudioCodec) = camera.setAudioCodec(codec)
-
-    override fun restartVideoEncoder() {
-        restartVideoEncoderImpl(camera, "RtmpCameraImpl")
-    }
 }
 
 class RtspCameraImpl(
@@ -223,10 +190,6 @@ class RtspCameraImpl(
     }
 
     override fun setAudioCodec(codec: AudioCodec) = camera.setAudioCodec(codec)
-
-    override fun restartVideoEncoder() {
-        restartVideoEncoderImpl(camera, "RtspCameraImpl")
-    }
 }
 
 class SrtCameraImpl(
@@ -317,10 +280,6 @@ class SrtCameraImpl(
     }
 
     override fun setAudioCodec(codec: AudioCodec) = camera.setAudioCodec(codec)
-
-    override fun restartVideoEncoder() {
-        restartVideoEncoderImpl(camera, "SrtCameraImpl")
-    }
 }
 
 class UdpCameraImpl(
@@ -411,8 +370,4 @@ class UdpCameraImpl(
     }
 
     override fun setAudioCodec(codec: AudioCodec) = camera.setAudioCodec(codec)
-
-    override fun restartVideoEncoder() {
-        restartVideoEncoderImpl(camera, "UdpCameraImpl")
-    }
 }
