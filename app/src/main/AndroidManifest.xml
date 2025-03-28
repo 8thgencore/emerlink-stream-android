@@ -7,11 +7,11 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <!--  Android 14 background compatibility-->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 
     <!-- For Android 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -68,7 +68,7 @@
             android:name=".service.StreamService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="mediaProjection|camera|microphone" />
+            android:foregroundServiceType="camera|microphone" />
     </application>
 
 </manifest>

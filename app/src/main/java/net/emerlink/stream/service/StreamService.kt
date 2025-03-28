@@ -8,6 +8,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.ServiceInfo
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
@@ -32,13 +33,11 @@ import net.emerlink.stream.service.stream.StreamManager
 import org.koin.java.KoinJavaComponent.inject
 import kotlin.math.log10
 
-class StreamService :
-    Service(),
-    ConnectChecker,
-    SensorEventListener {
+class StreamService : Service(), ConnectChecker, SensorEventListener {
     companion object {
         private const val TAG = "StreamService"
         private const val AUDIO_LEVEL_UPDATE_INTERVAL = 100L // 200ms update interval for audio level
+        private const val WAKELOCK_TIMEOUT = 10 * 60 * 60 * 1000L // 10 hours timeout
     }
 
     private val settingsRepository: SettingsRepository by inject(SettingsRepository::class.java)
@@ -64,6 +63,10 @@ class StreamService :
     private var audioLevelRunnable: Runnable? = null
     private var isRunningAudioLevelUpdates = false
 
+    // Wake lock for keeping CPU running during streaming
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var isWakeLockHeld = false
+
     private val binder = LocalBinder()
     private val gravityData = FloatArray(3)
     private val geomagneticData = FloatArray(3)
@@ -80,7 +83,50 @@ class StreamService :
         initDependencies()
         initSensors()
         registerCommandReceiver()
+        initForeground()
         initAudioLevelUpdates()
+        initWakeLock()
+    }
+
+    private fun initWakeLock() {
+        try {
+            val powerManager = getSystemService(POWER_SERVICE) as PowerManager
+
+            // Create a wake lock to keep CPU running during streaming
+            wakeLock = powerManager.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK, "${applicationContext.packageName}:StreamServiceWakeLock"
+            ).apply {
+                setReferenceCounted(false)
+            }
+
+            Log.d(TAG, "WakeLock initialized")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing WakeLock: ${e.message}", e)
+        }
+    }
+
+    private fun acquireWakeLock() {
+        try {
+            if (!isWakeLockHeld && wakeLock?.isHeld == false) {
+                wakeLock?.acquire(WAKELOCK_TIMEOUT)
+                isWakeLockHeld = true
+                Log.d(TAG, "WakeLock acquired")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error acquiring WakeLock: ${e.message}", e)
+        }
+    }
+
+    private fun releaseWakeLock() {
+        try {
+            if (isWakeLockHeld && wakeLock?.isHeld == true) {
+                wakeLock?.release()
+                isWakeLockHeld = false
+                Log.d(TAG, "WakeLock released")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error releasing WakeLock: ${e.message}", e)
+        }
     }
 
     private fun initDependencies() {
@@ -99,21 +145,67 @@ class StreamService :
         accelerometer = sensorManager.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER)!!
     }
 
-    private fun initAudioLevelUpdates() {
-        audioLevelUpdateHandler = Handler(Looper.getMainLooper())
-        audioLevelRunnable =
-            object : Runnable {
-                override fun run() {
-                    if (isPreviewActive) {
-                        val audioLevel = getAudioLevel()
-                        broadcastAudioLevel(audioLevel)
-                    }
+    private fun initForeground() {
+        try {
+            // Create a basic notification that will be replaced immediately
+            val notifyId = NotificationManager.START_STREAM_NOTIFICATION_ID
+            val notification = notificationManager.createNotification(
+                getString(R.string.streaming), true, NotificationManager.ACTION_STOP_ONLY
+            )
 
-                    if (isRunningAudioLevelUpdates) {
-                        audioLevelUpdateHandler?.postDelayed(this, AUDIO_LEVEL_UPDATE_INTERVAL)
+            // Handle foreground service types based on Android version
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                var types = 0
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    types = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        // Add foreground service type for media projection on Android 14+
+                        types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
                     }
                 }
+
+                if (types != 0) {
+                    startForeground(notifyId, notification, types)
+                    Log.d(TAG, "Started foreground service with types: $types")
+                } else {
+                    startForeground(notifyId, notification)
+                    Log.d(TAG, "Started foreground service without specific types")
+                }
+            } else {
+                startForeground(notifyId, notification)
+                Log.d(TAG, "Started legacy foreground service")
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting foreground service: ${e.message}", e)
+
+            // Fallback to basic foreground if something went wrong
+            try {
+                val notification = notificationManager.createNotification(
+                    getString(R.string.streaming), true, NotificationManager.ACTION_STOP_ONLY
+                )
+                startForeground(NotificationManager.START_STREAM_NOTIFICATION_ID, notification)
+            } catch (fallbackEx: Exception) {
+                Log.e(TAG, "Critical error starting foreground service: ${fallbackEx.message}", fallbackEx)
+            }
+        }
+    }
+
+    private fun initAudioLevelUpdates() {
+        audioLevelUpdateHandler = Handler(Looper.getMainLooper())
+        audioLevelRunnable = object : Runnable {
+            override fun run() {
+                if (isPreviewActive) {
+                    val audioLevel = getAudioLevel()
+                    broadcastAudioLevel(audioLevel)
+                }
+
+                if (isRunningAudioLevelUpdates) {
+                    audioLevelUpdateHandler?.postDelayed(this, AUDIO_LEVEL_UPDATE_INTERVAL)
+                }
+            }
+        }
     }
 
     /**
@@ -123,14 +215,13 @@ class StreamService :
         try {
             val maxAmplitude = microphoneMonitor.getAudioLevel()
 
-            val normalizedLevel =
-                if (maxAmplitude > 0) {
-                    val logLevel = log10(maxAmplitude.toDouble() / 32767.0) + 1
-                    val level = logLevel.coerceIn(0.0, 1.0).toFloat()
-                    level
-                } else {
-                    0.0f
-                }
+            val normalizedLevel = if (maxAmplitude > 0) {
+                val logLevel = log10(maxAmplitude.toDouble() / 32767.0) + 1
+                val level = logLevel.coerceIn(0.0, 1.0).toFloat()
+                level
+            } else {
+                0.0f
+            }
 
             return normalizedLevel
         } catch (e: Exception) {
@@ -172,41 +263,39 @@ class StreamService :
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private fun registerCommandReceiver() {
-        val intentFilter =
-            IntentFilter().apply {
-                addAction(AppIntentActions.ACTION_START_STREAM)
-                addAction(AppIntentActions.ACTION_STOP_STREAM)
-                addAction(AppIntentActions.ACTION_EXIT_APP)
-                addAction(AppIntentActions.ACTION_DISMISS_ERROR)
-            }
+        val intentFilter = IntentFilter().apply {
+            addAction(AppIntentActions.ACTION_START_STREAM)
+            addAction(AppIntentActions.ACTION_STOP_STREAM)
+            addAction(AppIntentActions.ACTION_EXIT_APP)
+            addAction(AppIntentActions.ACTION_DISMISS_ERROR)
+        }
 
-        val receiver =
-            object : BroadcastReceiver() {
-                override fun onReceive(
-                    context: Context,
-                    intent: Intent,
-                ) {
-                    Log.d(TAG, "Received intent: ${intent.action}")
-                    try {
-                        when (intent.action) {
-                            AppIntentActions.ACTION_START_STREAM -> startStream()
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context,
+                intent: Intent,
+            ) {
+                Log.d(TAG, "Received intent: ${intent.action}")
+                try {
+                    when (intent.action) {
+                        AppIntentActions.ACTION_START_STREAM -> startStream()
 
-                            AppIntentActions.ACTION_STOP_STREAM -> stopStream(null, null)
+                        AppIntentActions.ACTION_STOP_STREAM -> stopStream(null, null)
 
-                            AppIntentActions.ACTION_EXIT_APP -> {
-                                exiting = true
-                                stopStream(null, null)
-                                notificationManager.clearAllNotifications()
-                                stopSelf()
-                            }
-
-                            AppIntentActions.ACTION_DISMISS_ERROR -> notificationManager.clearErrorNotifications()
+                        AppIntentActions.ACTION_EXIT_APP -> {
+                            exiting = true
+                            stopStream(null, null)
+                            notificationManager.clearAllNotifications()
+                            stopSelf()
                         }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error processing intent in BroadcastReceiver", e)
+
+                        AppIntentActions.ACTION_DISMISS_ERROR -> notificationManager.clearErrorNotifications()
                     }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error processing intent in BroadcastReceiver", e)
                 }
             }
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(receiver, intentFilter, RECEIVER_NOT_EXPORTED)
@@ -256,7 +345,7 @@ class StreamService :
         try {
             Log.d(TAG, "onDestroy")
 
-            // Только останавливаем явный стриминг, если приложение закрывается через FLAG_EXIT
+            // Only stop streaming if the app is explicitly exiting
             if (exiting && streamManager.isStreaming()) {
                 stopStream(null, null)
             }
@@ -265,7 +354,9 @@ class StreamService :
                 unregisterReceiver(commandReceiver)
                 commandReceiver = null
             }
+
             stopAudioLevelUpdates()
+            releaseWakeLock()
         } catch (e: Exception) {
             Log.e(TAG, "Error destroying service", e)
         }
@@ -288,17 +379,15 @@ class StreamService :
                 streamManager.stopStream()
                 notifyStreamStopped()
 
-                val errorText =
-                    when {
-                        reason.contains("461") -> getString(R.string.error_unsupported_transport)
-                        else -> getString(R.string.connection_failed) + ": " + reason
-                    }
+                val errorText = when {
+                    reason.contains("461") -> getString(R.string.error_unsupported_transport)
+                    else -> getString(R.string.connection_failed) + ": " + reason
+                }
 
                 notificationManager.showErrorSafely(this, errorText)
                 applicationContext.sendBroadcast(Intent(AppIntentActions.ACTION_CONNECTION_FAILED))
                 Handler(Looper.getMainLooper()).postDelayed(
-                    { stopStream(null, null, false) },
-                    500
+                    { stopStream(null, null, false) }, 500
                 )
             }
         } catch (e: Exception) {
@@ -315,9 +404,7 @@ class StreamService :
     }
 
     private fun notifyStreamStopped() {
-        LocalBroadcastManager
-            .getInstance(this)
-            .sendBroadcast(Intent(AppIntentActions.BROADCAST_STREAM_STOPPED))
+        LocalBroadcastManager.getInstance(this).sendBroadcast(Intent(AppIntentActions.BROADCAST_STREAM_STOPPED))
     }
 
     override fun onConnectionStarted(url: String) {}
@@ -325,10 +412,9 @@ class StreamService :
     override fun onConnectionSuccess() {
         val videoSettings = settingsRepository.videoSettingsFlow.value
         if (videoSettings.adaptiveBitrate) {
-            bitrateAdapter =
-                BitrateAdapter { bitrate ->
-                    streamManager.setVideoBitrateOnFly(bitrate)
-                }
+            bitrateAdapter = BitrateAdapter { bitrate ->
+                streamManager.setVideoBitrateOnFly(bitrate)
+            }
             bitrateAdapter?.setMaxBitrate(videoSettings.bitrate * 1024)
         }
     }
@@ -360,13 +446,9 @@ class StreamService :
         if (hasGravityData && hasGeomagneticData) {
             val identityMatrix = FloatArray(9)
             val rotationMatrix = FloatArray(9)
-            val success =
-                SensorManager.getRotationMatrix(
-                    rotationMatrix,
-                    identityMatrix,
-                    gravityData,
-                    geomagneticData
-                )
+            val success = SensorManager.getRotationMatrix(
+                rotationMatrix, identityMatrix, gravityData, geomagneticData
+            )
 
             if (success) {
                 val orientationMatrix = FloatArray(3)
@@ -391,10 +473,12 @@ class StreamService :
 
     fun startPreview(view: OpenGlView) {
         if (isPreviewActive) {
+            Log.d(TAG, "Preview is already active, skipping startPreview")
             return
         }
 
         try {
+            Log.d(TAG, "Starting preview")
             refreshSettings()
             openGlView = view
 
@@ -407,25 +491,43 @@ class StreamService :
             isPreviewActive = true
             startAudioLevelUpdates()
             microphoneMonitor.startMonitoring()
+
+            Log.d(TAG, "Preview started successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error starting preview", e)
+            isPreviewActive = false
+            openGlView = null
+
+            // Try to notify UI
+            broadcastPreviewStatus(false)
         }
     }
 
     fun stopPreview() {
         if (!isPreviewActive) {
+            Log.d(TAG, "Preview is not active, skipping stopPreview")
             return
         }
 
         try {
+            Log.d(TAG, "Stopping preview, streaming=${isStreaming()}")
             streamManager.stopPreview()
             isPreviewActive = false
+
             if (!isStreaming()) {
                 stopAudioLevelUpdates()
+                microphoneMonitor.stopMonitoring()
             }
-            microphoneMonitor.stopMonitoring()
+
+            // Broadcast preview stopped
+            broadcastPreviewStatus(false)
+
+            Log.d(TAG, "Preview stopped successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping preview", e)
+            // Force preview state to false regardless of error
+            isPreviewActive = false
+            broadcastPreviewStatus(false)
         }
     }
 
@@ -452,23 +554,29 @@ class StreamService :
 
     fun startStream() {
         if (streamManager.isStreaming() || streamManager.isRecording()) {
+            Log.d(TAG, "Stream already active, not starting again")
+            // Ensure we have foreground service active even if already streaming
+            initForeground()
             return
         }
+
+        Log.d(TAG, "Starting stream")
+
+        // Always ensure we're in foreground before we start streaming
+        initForeground()
 
         val audioInitialized = streamManager.prepareAudio()
         val videoInitialized = streamManager.prepareVideo()
 
         if (!audioInitialized) {
             notificationManager.showErrorSafely(
-                this,
-                getString(R.string.failed_to_prepare_audio)
+                this, getString(R.string.failed_to_prepare_audio)
             )
         }
 
         if (!videoInitialized) {
             notificationManager.showErrorSafely(
-                this,
-                getString(R.string.failed_to_prepare)
+                this, getString(R.string.failed_to_prepare)
             )
             return
         }
@@ -483,6 +591,8 @@ class StreamService :
 
         sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
         sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_NORMAL)
+
+        Log.d(TAG, "Stream started successfully")
     }
 
     private fun startStreaming() {
@@ -490,8 +600,9 @@ class StreamService :
             val streamUrl = connectionSettings.buildStreamUrl()
             Log.d(TAG, "Stream URL: ${streamUrl.replace(Regex(":[^:/]*:[^:/]*"), ":****:****")}")
 
-            // Apply keep-alive trick BEFORE starting the stream
-            keepAliveTrick()
+            // Apply wake lock to keep CPU active during streaming
+            // Note: initForeground() is already called in startStream()
+            acquireWakeLock()
 
             streamManager.startStream(
                 streamUrl,
@@ -501,34 +612,10 @@ class StreamService :
                 connectionSettings.tcp
             )
 
-            // Create notification and start foreground service to keep streaming when app is in background
-            notificationManager.showStreamingNotification(
-                getString(R.string.streaming),
-                true,
-                NotificationManager.ACTION_STOP_ONLY
-            )
+            Log.d(TAG, "Streaming started successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error starting streaming", e)
             errorHandler.handleStreamError(e)
-        }
-    }
-
-    /**
-     * Keep alive trick to ensure the service continues running in background
-     * Similar to RootEncoder implementation
-     */
-    private fun keepAliveTrick() {
-        try {
-            // Create a basic notification that will be replaced immediately
-            val notification =
-                notificationManager.createNotification(
-                    getString(R.string.streaming),
-                    true,
-                    NotificationManager.ACTION_STOP_ONLY
-                )
-            startForeground(1, notification)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error starting foreground service: ${e.message}", e)
         }
     }
 
@@ -555,6 +642,8 @@ class StreamService :
             } catch (e: Exception) {
                 Log.e(TAG, "Error unregistering sensor listener", e)
             }
+
+            releaseWakeLock()
 
             when {
                 message != null && isError -> notificationManager.showErrorSafely(this, message)
@@ -588,55 +677,88 @@ class StreamService :
 
     fun releaseCamera() {
         try {
+            Log.d(TAG, "Releasing camera resources")
             if (streamManager.isOnPreview()) {
                 streamManager.stopPreview()
             }
-            streamManager.releaseCamera()
+
+            if (!streamManager.isStreaming()) {
+                streamManager.releaseCamera()
+            } else {
+                Log.d(TAG, "Not releasing camera because streaming is active")
+            }
+
             openGlView = null
+            isPreviewActive = false
+            broadcastPreviewStatus(false)
+
+            Log.d(TAG, "Camera resources released")
         } catch (e: Exception) {
             Log.e(TAG, "Error releasing camera resources", e)
+            // Force state reset regardless of error
+            openGlView = null
+            isPreviewActive = false
+            broadcastPreviewStatus(false)
         }
     }
 
     fun restartPreview(view: OpenGlView) {
         try {
+            Log.d(TAG, "Restarting preview, current streaming=${streamManager.isStreaming()}")
             refreshSettings()
 
             val isCurrentlyStreaming = streamManager.isStreaming()
-            Log.d(TAG, "Restarting preview, stream active: $isCurrentlyStreaming")
 
             // If we already have a valid preview with the same view, don't restart
             if (streamManager.isOnPreview() && openGlView == view) {
                 Log.d(TAG, "Preview already active with the same view, skipping restart")
                 isPreviewActive = true
+                broadcastPreviewStatus(true)
                 return
             }
 
+            // If we had a previous preview, stop it first
             if (streamManager.isOnPreview()) {
                 streamManager.stopPreview()
             }
 
-            Thread.sleep(50)
+            // Small delay to ensure resources are released
+            Handler(Looper.getMainLooper()).postDelayed({
+                try {
+                    openGlView = view
 
-            openGlView = view
+                    if (!isCurrentlyStreaming) {
+                        streamManager.prepareVideo()
+                    }
 
-            if (!isCurrentlyStreaming) {
-                streamManager.prepareVideo()
-            }
+                    streamManager.startPreview(view)
+                    isPreviewActive = true
+                    startAudioLevelUpdates()
+                    microphoneMonitor.startMonitoring()
 
-            streamManager.startPreview(view)
-            isPreviewActive = true
-        } catch (e: Exception) {
-            Log.e(TAG, "Error restarting preview", e)
-            try {
-                streamManager.stopPreview()
-                if (!streamManager.isStreaming()) {
-                    streamManager.releaseCamera()
+                    broadcastPreviewStatus(true)
+
+                    Log.d(TAG, "Preview restarted successfully")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error during preview restart", e)
+                    isPreviewActive = false
+                    broadcastPreviewStatus(false)
+
+                    // If we're not streaming, try to clean up resources
+                    if (!isCurrentlyStreaming) {
+                        try {
+                            streamManager.releaseCamera()
+                            openGlView = null
+                        } catch (e2: Exception) {
+                            Log.e(TAG, "Error cleaning up after failed restart", e2)
+                        }
+                    }
                 }
-                isPreviewActive = false
-            } catch (e2: Exception) {
-                Log.e(TAG, "Error cleaning up after failure", e2)
-            }
+            }, 100) // 100ms delay
+        } catch (e: Exception) {
+            Log.e(TAG, "Fatal error restarting preview", e)
+            isPreviewActive = false
+            broadcastPreviewStatus(false)
         }
     }
 
@@ -665,6 +787,15 @@ class StreamService :
         } catch (e: Exception) {
             Log.e(TAG, "Error refreshing settings", e)
         }
+    }
+
+    /**
+     * Broadcast preview status to UI components
+     */
+    private fun broadcastPreviewStatus(active: Boolean) {
+        val intent = Intent(AppIntentActions.BROADCAST_PREVIEW_STATUS)
+        intent.putExtra(AppIntentActions.EXTRA_PREVIEW_ACTIVE, active)
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
     }
 
     inner class LocalBinder : Binder() {

@@ -94,40 +94,62 @@ class StreamManager(
         try {
             Log.d(
                 TAG,
-                "Перезапуск превью. Статус: стриминг=${isStreaming()}, запись=${isRecording()}, наПревью=${isOnPreview()}"
+                "Restarting preview. Status: streaming=${isStreaming()}, recording=${isRecording()}, onPreview=${isOnPreview()}"
             )
 
-            // Сохраняем текущий статус стрима, чтобы знать, нужно ли его возобновлять
+            // Save current streaming state to know if we need to resume it
             val wasStreaming = isStreaming()
 
-            // Останавливаем превью, но НЕ останавливаем стрим
+            // Stop preview but DO NOT stop streaming
             if (isOnPreview()) {
                 stopPreview()
             }
 
-            // Небольшая задержка для того, чтобы убедиться, что предыдущие ресурсы освобождены
+            // Small delay to ensure previous resources are released
             Handler(Looper.getMainLooper()).postDelayed({
                 try {
-                    Log.d(TAG, "Запускаем новое превью при restartPreview")
+                    Log.d(TAG, "Starting new preview during restartPreview")
 
-                    // Заменяем отображение
+                    // Replace view
                     cameraInterface.replaceView(view)
 
-                    // Если стрим уже идет, нужно быть осторожными с перенастройкой видео
+                    // If stream is not active, we can safely reconfigure video
                     if (!wasStreaming) {
                         prepareVideoWithCurrentSettings()
                     }
 
-                    // Запускаем превью
+                    // Start preview
                     startPreviewInternal(view)
 
-                    Log.d(TAG, "Превью успешно перезапущено после разворачивания")
+                    Log.d(TAG, "Preview successfully restarted")
                 } catch (e: Exception) {
-                    Log.e(TAG, "Ошибка при запуске превью во время restartPreview: ${e.message}", e)
+                    Log.e(TAG, "Error starting preview during restartPreview: ${e.message}", e)
+                    
+                    // If we're not streaming, try one more time with a clean camera interface
+                    if (!wasStreaming) {
+                        try {
+                            Log.d(TAG, "Trying final recovery attempt with new camera interface")
+                            cameraInterface = CameraInterface.create(context, connectChecker, streamType)
+                            cameraInterface.replaceView(view)
+                            prepareVideoWithCurrentSettings()
+                            
+                            val rotation = CameraHelper.getCameraOrientation(context)
+                            cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
+                            currentView = view
+                            
+                            Log.d(TAG, "Final recovery successful")
+                        } catch (finalEx: Exception) {
+                            Log.e(TAG, "Final recovery attempt failed: ${finalEx.message}", finalEx)
+                            throw finalEx
+                        }
+                    } else {
+                        throw e
+                    }
                 }
             }, DELAY_RESTART_PREVIEW_MS)
         } catch (e: Exception) {
-            Log.e(TAG, "Ошибка при перезапуске превью: ${e.message}", e)
+            Log.e(TAG, "Fatal error restarting preview: ${e.message}", e)
+            throw e
         }
     }
 
@@ -252,16 +274,47 @@ class StreamManager(
      * Internal helper method to start preview
      */
     private fun startPreviewInternal(view: OpenGlView) {
-        val rotation = CameraHelper.getCameraOrientation(context)
-        cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
-        currentView = view
-
-        val videoSettings = settingsRepository.videoSettingsFlow.value
-        val resolution = Resolution.parseFromSize(videoSettings.resolution)
-        Log.d(
-            TAG,
-            "Превью успешно запущено ${resolution.width}x${resolution.height}, rotation=$rotation, streaming=${isStreaming()}"
-        )
+        try {
+            val rotation = CameraHelper.getCameraOrientation(context)
+            
+            // Use a try-catch block to handle potential camera errors
+            try {
+                cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
+                currentView = view
+                
+                val videoSettings = settingsRepository.videoSettingsFlow.value
+                val resolution = Resolution.parseFromSize(videoSettings.resolution)
+                Log.d(
+                    TAG,
+                    "Preview successfully started ${resolution.width}x${resolution.height}, rotation=$rotation, streaming=${isStreaming()}"
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Error starting camera preview: ${e.message}")
+                
+                // Try to recover by recreating camera interface
+                if (!isStreaming()) {
+                    Log.d(TAG, "Attempting to recover from preview start failure...")
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        try {
+                            cameraInterface = CameraInterface.create(context, connectChecker, streamType)
+                            cameraInterface.replaceView(view)
+                            prepareVideoWithCurrentSettings()
+                            cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
+                            currentView = view
+                            Log.d(TAG, "Successfully recovered from preview start failure")
+                        } catch (recoverEx: Exception) {
+                            Log.e(TAG, "Failed to recover from preview start failure: ${recoverEx.message}", recoverEx)
+                            throw recoverEx
+                        }
+                    }, DELAY_RESTART_PREVIEW_MS)
+                } else {
+                    throw e
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Fatal error starting preview: ${e.message}", e)
+            throw e
+        }
     }
 
     /**

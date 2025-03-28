@@ -112,14 +112,23 @@ class CameraViewModel : ViewModel() {
                     context: Context,
                     intent: Intent,
                 ) {
-                    if (intent.action == AppIntentActions.BROADCAST_AUDIO_LEVEL) {
-                        val level = intent.getFloatExtra(AppIntentActions.EXTRA_AUDIO_LEVEL, 0.0f)
-                        _audioLevel.value = level
+                    when (intent.action) {
+                        AppIntentActions.BROADCAST_AUDIO_LEVEL -> {
+                            val level = intent.getFloatExtra(AppIntentActions.EXTRA_AUDIO_LEVEL, 0.0f)
+                            _audioLevel.value = level
+                        }
+                        AppIntentActions.BROADCAST_PREVIEW_STATUS -> {
+                            val isActive = intent.getBooleanExtra(AppIntentActions.EXTRA_PREVIEW_ACTIVE, false)
+                            setPreviewActive(isActive)
+                        }
                     }
                 }
             }
 
-        val filter = IntentFilter(AppIntentActions.BROADCAST_AUDIO_LEVEL)
+        val filter = IntentFilter().apply { 
+            addAction(AppIntentActions.BROADCAST_AUDIO_LEVEL)
+            addAction(AppIntentActions.BROADCAST_PREVIEW_STATUS)
+        }
         LocalBroadcastManager.getInstance(context).registerReceiver(audioLevelReceiver!!, filter)
     }
 

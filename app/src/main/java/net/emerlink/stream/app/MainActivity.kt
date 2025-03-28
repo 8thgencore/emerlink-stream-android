@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -24,6 +25,10 @@ import net.emerlink.stream.presentation.theme.EmerlinkStreamTheme
 import net.emerlink.stream.util.PermissionUtil
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        private const val TAG = "MainActivity"
+    }
+    
     private val requiredPermissions =
         mutableListOf(
             Manifest.permission.CAMERA,
@@ -39,6 +44,8 @@ class MainActivity : ComponentActivity() {
                 add(Manifest.permission.POST_NOTIFICATIONS)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                add(Manifest.permission.FOREGROUND_SERVICE_CAMERA)
+                add(Manifest.permission.FOREGROUND_SERVICE_MICROPHONE)
                 add(Manifest.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION)
             }
         }.toTypedArray()
@@ -47,7 +54,14 @@ class MainActivity : ComponentActivity() {
     private val requestPermissionsLauncher =
         registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
-        ) { _ -> startMainUI() }
+        ) { permissions -> 
+            // Log permission results
+            permissions.forEach { (permission, granted) ->
+                Log.d(TAG, "Permission $permission: ${if (granted) "Granted" else "Denied"}")
+            }
+            
+            startMainUI()
+        }
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
