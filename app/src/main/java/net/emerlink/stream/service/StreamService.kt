@@ -37,7 +37,6 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
     companion object {
         private const val TAG = "StreamService"
         private const val AUDIO_LEVEL_UPDATE_INTERVAL = 100L // 200ms update interval for audio level
-        private const val WAKELOCK_TIMEOUT = 10 * 60 * 60 * 1000L // 10 hours timeout
     }
 
     private val settingsRepository: SettingsRepository by inject(SettingsRepository::class.java)
@@ -63,10 +62,6 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
     private var audioLevelRunnable: Runnable? = null
     private var isRunningAudioLevelUpdates = false
 
-    // Wake lock for keeping CPU running during streaming
-    private var wakeLock: PowerManager.WakeLock? = null
-    private var isWakeLockHeld = false
-
     private val binder = LocalBinder()
     private val gravityData = FloatArray(3)
     private val geomagneticData = FloatArray(3)
@@ -85,48 +80,6 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
         registerCommandReceiver()
         initForeground()
         initAudioLevelUpdates()
-        initWakeLock()
-    }
-
-    private fun initWakeLock() {
-        try {
-            val powerManager = getSystemService(POWER_SERVICE) as PowerManager
-
-            // Create a wake lock to keep CPU running during streaming
-            wakeLock = powerManager.newWakeLock(
-                PowerManager.PARTIAL_WAKE_LOCK, "${applicationContext.packageName}:StreamServiceWakeLock"
-            ).apply {
-                setReferenceCounted(false)
-            }
-
-            Log.d(TAG, "WakeLock initialized")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error initializing WakeLock: ${e.message}", e)
-        }
-    }
-
-    private fun acquireWakeLock() {
-        try {
-            if (!isWakeLockHeld && wakeLock?.isHeld == false) {
-                wakeLock?.acquire(WAKELOCK_TIMEOUT)
-                isWakeLockHeld = true
-                Log.d(TAG, "WakeLock acquired")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error acquiring WakeLock: ${e.message}", e)
-        }
-    }
-
-    private fun releaseWakeLock() {
-        try {
-            if (isWakeLockHeld && wakeLock?.isHeld == true) {
-                wakeLock?.release()
-                isWakeLockHeld = false
-                Log.d(TAG, "WakeLock released")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error releasing WakeLock: ${e.message}", e)
-        }
     }
 
     private fun initDependencies() {
@@ -356,7 +309,6 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
             }
 
             stopAudioLevelUpdates()
-            releaseWakeLock()
         } catch (e: Exception) {
             Log.e(TAG, "Error destroying service", e)
         }
@@ -600,10 +552,6 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
             val streamUrl = connectionSettings.buildStreamUrl()
             Log.d(TAG, "Stream URL: ${streamUrl.replace(Regex(":[^:/]*:[^:/]*"), ":****:****")}")
 
-            // Apply wake lock to keep CPU active during streaming
-            // Note: initForeground() is already called in startStream()
-            acquireWakeLock()
-
             streamManager.startStream(
                 streamUrl,
                 connectionSettings.protocol.toString(),
@@ -642,8 +590,6 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
             } catch (e: Exception) {
                 Log.e(TAG, "Error unregistering sensor listener", e)
             }
-
-            releaseWakeLock()
 
             when {
                 message != null && isError -> notificationManager.showErrorSafely(this, message)
@@ -697,66 +643,6 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
             Log.e(TAG, "Error releasing camera resources", e)
             // Force state reset regardless of error
             openGlView = null
-            isPreviewActive = false
-            broadcastPreviewStatus(false)
-        }
-    }
-
-    fun restartPreview(view: OpenGlView) {
-        try {
-            Log.d(TAG, "Restarting preview, current streaming=${streamManager.isStreaming()}")
-            refreshSettings()
-
-            val isCurrentlyStreaming = streamManager.isStreaming()
-
-            // If we already have a valid preview with the same view, don't restart
-            if (streamManager.isOnPreview() && openGlView == view) {
-                Log.d(TAG, "Preview already active with the same view, skipping restart")
-                isPreviewActive = true
-                broadcastPreviewStatus(true)
-                return
-            }
-
-            // If we had a previous preview, stop it first
-            if (streamManager.isOnPreview()) {
-                streamManager.stopPreview()
-            }
-
-            // Small delay to ensure resources are released
-            Handler(Looper.getMainLooper()).postDelayed({
-                try {
-                    openGlView = view
-
-                    if (!isCurrentlyStreaming) {
-                        streamManager.prepareVideo()
-                    }
-
-                    streamManager.startPreview(view)
-                    isPreviewActive = true
-                    startAudioLevelUpdates()
-                    microphoneMonitor.startMonitoring()
-
-                    broadcastPreviewStatus(true)
-
-                    Log.d(TAG, "Preview restarted successfully")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error during preview restart", e)
-                    isPreviewActive = false
-                    broadcastPreviewStatus(false)
-
-                    // If we're not streaming, try to clean up resources
-                    if (!isCurrentlyStreaming) {
-                        try {
-                            streamManager.releaseCamera()
-                            openGlView = null
-                        } catch (e2: Exception) {
-                            Log.e(TAG, "Error cleaning up after failed restart", e2)
-                        }
-                    }
-                }
-            }, 100) // 100ms delay
-        } catch (e: Exception) {
-            Log.e(TAG, "Fatal error restarting preview", e)
             isPreviewActive = false
             broadcastPreviewStatus(false)
         }

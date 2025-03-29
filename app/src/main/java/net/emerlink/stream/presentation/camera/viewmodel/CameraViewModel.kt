@@ -125,7 +125,7 @@ class CameraViewModel : ViewModel() {
                 }
             }
 
-        val filter = IntentFilter().apply { 
+        val filter = IntentFilter().apply {
             addAction(AppIntentActions.BROADCAST_AUDIO_LEVEL)
             addAction(AppIntentActions.BROADCAST_PREVIEW_STATUS)
         }
@@ -202,16 +202,6 @@ class CameraViewModel : ViewModel() {
         }
     }
 
-    fun restartPreview(view: OpenGlView) {
-        viewModelScope.launch {
-            try {
-                streamServiceRef?.get()?.restartPreview(view)
-                setPreviewActive(true)
-            } catch (e: Exception) {
-                Log.e("CameraViewModel", "Error restarting preview", e)
-            }
-        }
-    }
 
     fun tapToFocus(event: MotionEvent) {
         viewModelScope.launch {

@@ -111,8 +111,8 @@ fun CameraScreen(
             createScreenStateReceiver(
                 onScreenOff = {
                     viewModel.setScreenWasOff(true)
-                    viewModel.stopPreview()
                     if (!isStreaming) {
+                        viewModel.stopPreview()
                         viewModel.releaseCamera()
                     }
                 },
@@ -120,11 +120,7 @@ fun CameraScreen(
                     if (viewModel.screenWasOff.value) {
                         openGlView?.let { view ->
                             if (!viewModel.isPreviewActive.value) {
-                                Handler(Looper.getMainLooper()).postDelayed({
-                                    viewModel.restartPreview(view)
                                     viewModel.setScreenWasOff(false)
-                                    Log.d("CameraScreen", "Restored preview after screen unlock")
-                                }, 300)
                             }
                         }
                     }
@@ -162,17 +158,6 @@ fun CameraScreen(
                 onResume = {
                     openGlView?.let { view ->
                         if (!viewModel.isPreviewActive.value) {
-                            Handler(Looper.getMainLooper()).postDelayed({
-                                try {
-                                    // Always restart preview on resume if we have a valid surface
-                                    if (view.holder.surface?.isValid == true) {
-                                        viewModel.restartPreview(view)
-                                        Log.d("CameraScreen", "Restored preview after app resumed")
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e("CameraScreen", "Error restarting preview", e)
-                                }
-                            }, 300)
                         }
                     }
                 }
