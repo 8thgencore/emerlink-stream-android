@@ -13,7 +13,7 @@ import androidx.lifecycle.MutableLiveData
 import net.emerlink.stream.R
 import net.emerlink.stream.core.AppIntentActions
 import net.emerlink.stream.core.notification.NotificationManager
-import net.emerlink.stream.service.stream.StreamManager
+import net.emerlink.stream.service.StreamService
 import net.emerlink.stream.util.PathUtils
 import java.io.File
 import java.io.FileOutputStream
@@ -25,7 +25,7 @@ import java.util.*
  */
 class MediaManager(
     private val context: Context,
-    private val streamManager: StreamManager,
+    private val streamService: StreamService,
     private val notificationManager: NotificationManager,
 ) {
     companion object {
@@ -44,9 +44,9 @@ class MediaManager(
         try {
             Log.d(TAG, "Taking photo")
 
-            val glInterface = streamManager.getGlInterface()
+            val glInterface = streamService.getGlInterface()
 
-            glInterface.takePhoto { bitmap ->
+            glInterface.takePhoto { bitmap: Bitmap ->
                 val handlerThread = HandlerThread("PhotoSaveThread")
                 handlerThread.start()
                 Handler(handlerThread.looper).post { saveBitmapToGallery(bitmap) }
@@ -194,7 +194,7 @@ class MediaManager(
             Log.d(TAG, "Recording to: $filePath")
 
             // Start recording
-            streamManager.startRecord(filePath)
+            streamService.startRecord(filePath)
 
             // Show notification
             notificationManager.showStreamingNotification(
@@ -217,9 +217,9 @@ class MediaManager(
      */
     fun stopRecording() {
         try {
-            if (streamManager.isRecording()) {
+            if (streamService.isRecording()) {
                 Log.d(TAG, "Stopping recording")
-                streamManager.stopRecord()
+                streamService.stopRecord()
 
                 // Get the recorded file path
                 val filename = "EmerlinkStream_$currentDateAndTime.mp4"
