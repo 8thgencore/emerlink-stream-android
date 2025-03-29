@@ -181,13 +181,9 @@ class RtspCameraImpl(
     override fun setAuthorization(
         username: String,
         password: String,
-    ) {
-        camera.getStreamClient().setAuthorization(username, password)
-    }
+    ) = camera.getStreamClient().setAuthorization(username, password)
 
-    override fun setProtocol(tcp: Boolean) {
-        camera.getStreamClient().setProtocol(if (tcp) Protocol.TCP else Protocol.UDP)
-    }
+    override fun setProtocol(tcp: Boolean) = camera.getStreamClient().setProtocol(if (tcp) Protocol.TCP else Protocol.UDP)
 
     override fun setAudioCodec(codec: AudioCodec) = camera.setAudioCodec(codec)
 }
