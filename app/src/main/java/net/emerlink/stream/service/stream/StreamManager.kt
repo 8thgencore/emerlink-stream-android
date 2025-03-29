@@ -87,22 +87,61 @@ class StreamManager(
     }
 
     /**
-     * Restarts the camera preview
-     * @param view The OpenGlView to display the preview on
+     * Public method to restart preview, delegates to the appropriate logic
      */
-    private fun restartPreview(view: OpenGlView) {
+    fun restartPreview(view: OpenGlView) {
+        Log.d(TAG, "Public restartPreview called")
+        
+        // Проверка валидности поверхности
+        if (view.holder.surface?.isValid != true) {
+            Log.w(TAG, "Surface not valid in public restartPreview")
+            
+            // Сохраняем ссылку на view для будущего использования
+            currentView = view
+            
+            // Если стримим, не пытаемся перезапустить превью, просто вернемся
+            if (isStreaming()) {
+                Log.d(TAG, "Streaming active, will recover preview when surface becomes valid")
+                return
+            }
+        }
+        
+        // Если поверхность валидна или мы не стримим, пробуем перезапустить превью
+        try {
+            restartPreviewInternal(view)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in public restartPreview: ${e.message}", e)
+            // Если стримим, глотаем исключение
+            if (!isStreaming()) {
+                throw e
+            }
+        }
+    }
+
+    /**
+     * Internal method to restart preview implementation
+     */
+    private fun restartPreviewInternal(view: OpenGlView) {
         try {
             Log.d(
                 TAG,
-                "Restarting preview. Status: streaming=${isStreaming()}, recording=${isRecording()}, onPreview=${isOnPreview()}"
+                "Restarting preview internal. Status: streaming=${isStreaming()}, recording=${isRecording()}, onPreview=${isOnPreview()}"
             )
 
             // Save current streaming state to know if we need to resume it
             val wasStreaming = isStreaming()
 
-            // Stop preview but DO NOT stop streaming
+            // Only stop preview, NOT streaming
             if (isOnPreview()) {
-                stopPreview()
+                // Don't stop the preview if we're streaming in background and surface is invalid
+                if (!wasStreaming || view.holder.surface?.isValid == true) {
+                    stopPreview()
+                } else {
+                    Log.d(TAG, "Skipping stopPreview because streaming is active and surface is invalid")
+                    // Just update the reference without stopping
+                    currentView = view
+                    return
+                }
             }
 
             // Small delay to ensure previous resources are released
@@ -110,46 +149,65 @@ class StreamManager(
                 try {
                     Log.d(TAG, "Starting new preview during restartPreview")
 
-                    // Replace view
-                    cameraInterface.replaceView(view)
+                    // Replace view only if the surface is valid
+                    if (view.holder.surface?.isValid == true) {
+                        cameraInterface.replaceView(view)
 
-                    // If stream is not active, we can safely reconfigure video
-                    if (!wasStreaming) {
-                        prepareVideoWithCurrentSettings()
+                        // If stream is not active, we can safely reconfigure video
+                        if (!wasStreaming) {
+                            prepareVideoWithCurrentSettings()
+                        }
+
+                        // Start preview
+                        startPreviewInternal(view)
+                        
+                        Log.d(TAG, "Preview successfully restarted")
+                    } else {
+                        Log.w(TAG, "Surface not valid, skipping preview restart")
+                        // Just keep streaming in background if active
+                        currentView = view
                     }
-
-                    // Start preview
-                    startPreviewInternal(view)
-
-                    Log.d(TAG, "Preview successfully restarted")
                 } catch (e: Exception) {
                     Log.e(TAG, "Error starting preview during restartPreview: ${e.message}", e)
 
                     // If we're not streaming, try one more time with a clean camera interface
                     if (!wasStreaming) {
                         try {
+                            // Recovery code
                             Log.d(TAG, "Trying final recovery attempt with new camera interface")
                             cameraInterface = CameraInterface.create(context, connectChecker, streamType)
-                            cameraInterface.replaceView(view)
-                            prepareVideoWithCurrentSettings()
+                            
+                            if (view.holder.surface?.isValid == true) {
+                                cameraInterface.replaceView(view)
+                                prepareVideoWithCurrentSettings()
 
-                            val rotation = CameraHelper.getCameraOrientation(context)
-                            cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
-                            currentView = view
-
-                            Log.d(TAG, "Final recovery successful")
+                                val rotation = CameraHelper.getCameraOrientation(context)
+                                cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
+                                currentView = view
+                                Log.d(TAG, "Final recovery successful")
+                            } else {
+                                Log.w(TAG, "Surface still not valid during recovery")
+                                currentView = view
+                            }
                         } catch (finalEx: Exception) {
                             Log.e(TAG, "Final recovery attempt failed: ${finalEx.message}", finalEx)
                             throw finalEx
                         }
                     } else {
-                        throw e
+                        Log.w(TAG, "Keeping stream active in background despite preview error")
+                        currentView = view
+                        // Don't throw the exception if we're streaming - just continue in background
                     }
                 }
             }, DELAY_RESTART_PREVIEW_MS)
         } catch (e: Exception) {
             Log.e(TAG, "Fatal error restarting preview: ${e.message}", e)
-            throw e
+            currentView = view
+            if (!isStreaming()) {
+                throw e
+            } else {
+                Log.w(TAG, "Keeping stream active despite preview error")
+            }
         }
     }
 
@@ -188,6 +246,9 @@ class StreamManager(
                 cameraInterface.setAuthorization(username, password)
             }
 
+            // Важно: подготавливаем видео перед запуском стрима, независимо от состояния превью
+            prepareVideoWithCurrentSettings()
+            
             cameraInterface.startStream(url)
             Log.d(TAG, "Stream started successfully")
         } catch (e: Exception) {
@@ -238,6 +299,13 @@ class StreamManager(
      */
     fun startPreview(view: OpenGlView) {
         try {
+            // Проверка валидности поверхности
+            if (view.holder.surface?.isValid != true) {
+                Log.w(TAG, "Surface not valid in startPreview, only storing reference")
+                currentView = view
+                return
+            }
+            
             currentView = view
 
             // Сохраняем текущий статус стрима
@@ -262,6 +330,7 @@ class StreamManager(
             startPreviewInternal(view)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при запуске preview: ${e.message}")
+            currentView = view
             errorHandler.handleStreamError(e)
         }
     }
@@ -314,16 +383,15 @@ class StreamManager(
     }
 
     /**
-     * Stop the camera preview
+     * Stop the camera preview without disrupting streaming
      */
     fun stopPreview() {
         try {
-            // Don't stop preview if streaming is active
             if (isOnPreview() && !isStreaming()) {
                 Log.d(TAG, "Stopping Preview")
                 cameraInterface.stopPreview()
             } else if (isStreaming()) {
-                Log.d(TAG, "Not stopping preview because streaming is active")
+                Log.d(TAG, "Not stopping preview because streaming is active - would cause freeze")
             }
         } catch (e: Exception) {
             errorHandler.handleStreamError(e)
@@ -379,6 +447,7 @@ class StreamManager(
      */
     fun prepareVideo(): Boolean {
         try {
+            // Принципиально важно всегда подготавливать видео перед стримингом
             prepareVideoWithCurrentSettings()
             return true
         } catch (e: Exception) {
@@ -506,18 +575,22 @@ class StreamManager(
      */
     fun releaseCamera() {
         try {
-            Log.d(TAG, "Освобождение ресурсов камеры")
+            Log.d(TAG, "Releasing camera resources")
 
+            if (isStreaming()) {
+                Log.d(TAG, "Not releasing camera because streaming is active")
+                return;  // Раннее возвращение без изменения состояния
+            }
+            
             if (isOnPreview()) stopPreview()
-            if (isStreaming()) stopStream()
             if (isRecording()) stopRecord()
 
             cameraInterface = CameraInterface.create(context, connectChecker, streamType)
             currentView = null
 
-            Log.d(TAG, "Ресурсы камеры освобождены")
+            Log.d(TAG, "Camera resources released")
         } catch (e: Exception) {
-            Log.e(TAG, "Ошибка освобождения камеры: ${e.message}", e)
+            Log.e(TAG, "Error releasing camera: ${e.message}", e)
         }
     }
 

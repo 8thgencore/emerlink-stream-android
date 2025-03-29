@@ -4,6 +4,8 @@ package net.emerlink.stream.presentation.camera.viewmodel
 
 import android.content.*
 import android.os.IBinder
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.MotionEvent
 import androidx.lifecycle.ViewModel
@@ -52,9 +54,6 @@ class CameraViewModel : ViewModel() {
     private val _screenWasOff = MutableStateFlow(false)
     val screenWasOff: StateFlow<Boolean> = _screenWasOff.asStateFlow()
 
-    private val _isPreviewActive = MutableStateFlow(false)
-    val isPreviewActive: StateFlow<Boolean> = _isPreviewActive.asStateFlow()
-
     private val _openGlView = MutableStateFlow<OpenGlView?>(null)
     val openGlView: StateFlow<OpenGlView?> = _openGlView.asStateFlow()
 
@@ -75,7 +74,6 @@ class CameraViewModel : ViewModel() {
 
                 // Initialize states
                 updateStreamingState(streamService.isStreaming())
-                setPreviewActive(streamService.isPreviewRunning())
                 updateStreamInfo(streamService.getStreamInfo())
 
                 // Signal that service is connected
@@ -83,9 +81,7 @@ class CameraViewModel : ViewModel() {
 
                 // Initialize camera if we already have OpenGlView and no preview is active
                 _openGlView.value?.let { view ->
-                    if (!_isPreviewActive.value) {
-                        startPreview(view)
-                    }
+                    startPreview(view)
                 }
             }
 
@@ -117,17 +113,12 @@ class CameraViewModel : ViewModel() {
                             val level = intent.getFloatExtra(AppIntentActions.EXTRA_AUDIO_LEVEL, 0.0f)
                             _audioLevel.value = level
                         }
-                        AppIntentActions.BROADCAST_PREVIEW_STATUS -> {
-                            val isActive = intent.getBooleanExtra(AppIntentActions.EXTRA_PREVIEW_ACTIVE, false)
-                            setPreviewActive(isActive)
-                        }
                     }
                 }
             }
 
-        val filter = IntentFilter().apply { 
+        val filter = IntentFilter().apply {
             addAction(AppIntentActions.BROADCAST_AUDIO_LEVEL)
-            addAction(AppIntentActions.BROADCAST_PREVIEW_STATUS)
         }
         LocalBroadcastManager.getInstance(context).registerReceiver(audioLevelReceiver!!, filter)
     }
@@ -163,7 +154,6 @@ class CameraViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 streamServiceRef?.get()?.startPreview(view)
-                setPreviewActive(true)
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "Error starting preview", e)
             }
@@ -173,12 +163,13 @@ class CameraViewModel : ViewModel() {
     fun stopPreview() {
         viewModelScope.launch {
             try {
-                // Don't stop preview if streaming is active
+                // Самый критический момент: никогда не останавливаем превью при активном стриме
                 if (!_isStreaming.value) {
                     streamServiceRef?.get()?.stopPreview()
-                    setPreviewActive(false)
                 } else {
+                    // НЕ меняем состояние превью если идет стрим
                     Log.d("CameraViewModel", "Not stopping preview because streaming is active")
+                    // ВАЖНО: НЕ вызываем setPreviewActive(false) при активном стриме
                 }
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "Error stopping preview", e)
@@ -189,10 +180,8 @@ class CameraViewModel : ViewModel() {
     fun releaseCamera() {
         viewModelScope.launch {
             try {
-                // Don't release camera if streaming is active
                 if (!_isStreaming.value) {
                     streamServiceRef?.get()?.releaseCamera()
-                    setPreviewActive(false)
                 } else {
                     Log.d("CameraViewModel", "Not releasing camera because streaming is active")
                 }
@@ -205,8 +194,37 @@ class CameraViewModel : ViewModel() {
     fun restartPreview(view: OpenGlView) {
         viewModelScope.launch {
             try {
-                streamServiceRef?.get()?.restartPreview(view)
-                setPreviewActive(true)
+                // Получаем сервис и проверяем состояние стрима
+                val service = streamServiceRef?.get()
+                val isCurrentlyStreaming = service?.isStreaming() == true
+
+                // Важно: проверяем валидность поверхности
+                if (view.holder.surface?.isValid != true) {
+                    Log.d("CameraViewModel", "Surface not valid, delaying preview restart")
+                    // Пробуем снова через 300ms
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        if (view.holder.surface?.isValid == true) {
+                            try {
+                                streamServiceRef?.get()?.restartPreview(view)
+                                streamServiceRef?.get()?.checkAndRestorePreview()
+                                Log.d("CameraViewModel", "Delayed preview restart successful")
+                            } catch (e: Exception) {
+                                Log.e("CameraViewModel", "Error in delayed preview restart", e)
+                            }
+                        } else {
+                            Log.e("CameraViewModel", "Surface still invalid after delay")
+                        }
+                    }, 300)
+                    return@launch
+                }
+
+                // Обычный путь перезапуска превью
+                service?.restartPreview(view)
+
+                // Если стрим был активен, проверяем его состояние
+                if (isCurrentlyStreaming) {
+                    service.checkAndRestorePreview()
+                }
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "Error restarting preview", e)
             }
@@ -295,10 +313,6 @@ class CameraViewModel : ViewModel() {
 
     fun setScreenWasOff(wasOff: Boolean) {
         _screenWasOff.value = wasOff
-    }
-
-    fun setPreviewActive(isActive: Boolean) {
-        _isPreviewActive.value = isActive
     }
 
     fun setOpenGlView(view: OpenGlView?) {

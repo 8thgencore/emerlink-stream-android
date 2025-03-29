@@ -13,7 +13,7 @@
     <!--  Android 14 background compatibility-->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+<!--    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />-->
 
     <!-- For Android 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />

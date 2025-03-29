@@ -54,9 +54,7 @@ class NotificationManager
                     }
         }
 
-        private val notificationManager =
-            context.getSystemService(Context.NOTIFICATION_SERVICE) as
-                android.app.NotificationManager
+
 
         init {
             createNotificationChannels()
@@ -395,4 +393,7 @@ class NotificationManager
                 Log.e(TAG, "Error showing photo notification: ${e.message}", e)
             }
         }
+
+        val notificationManager: android.app.NotificationManager
+            get() = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
     }

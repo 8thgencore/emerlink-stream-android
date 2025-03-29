@@ -119,13 +119,11 @@ fun CameraScreen(
                 onUserPresent = {
                     if (viewModel.screenWasOff.value) {
                         openGlView?.let { view ->
-                            if (!viewModel.isPreviewActive.value) {
                                 Handler(Looper.getMainLooper()).postDelayed({
                                     viewModel.restartPreview(view)
                                     viewModel.setScreenWasOff(false)
                                     Log.d("CameraScreen", "Restored preview after screen unlock")
                                 }, 300)
-                            }
                         }
                     }
                 }
@@ -146,22 +144,28 @@ fun CameraScreen(
         val observer =
             createLifecycleObserver(
                 onPause = {
-                    // Don't stop preview when streaming is active
+                    // КРИТИЧЕСКИЙ МОМЕНТ: если стриминг активен, НЕ трогаем preview!
                     if (!isStreaming) {
                         viewModel.stopPreview()
+                    } else {
+                        // ВАЖНО: НЕ ИСПОЛЬЗУЕМ viewModel.setPreviewActive(false) при активном стриме
+                        // Здесь ничего не делаем, чтобы сохранить состояние камеры
+                        Log.d("CameraScreen", "App paused while streaming, keeping camera running")
                     }
                 },
                 onStop = {
-                    // Always stop preview on stop to release GL context
-                    viewModel.stopPreview()
-                    // But don't release camera if streaming
+                    // Также никогда не останавливаем камеру при активном стриме
                     if (!isStreaming) {
+                        viewModel.stopPreview()
                         viewModel.releaseCamera()
+                    } else {
+                        // ВАЖНО: НЕ ИСПОЛЬЗУЕМ viewModel.setPreviewActive(false) при активном стриме
+                        // Просто логируем событие, но не меняем состояние
+                        Log.d("CameraScreen", "App stopped while streaming, keeping camera running")
                     }
                 },
                 onResume = {
                     openGlView?.let { view ->
-                        if (!viewModel.isPreviewActive.value) {
                             Handler(Looper.getMainLooper()).postDelayed({
                                 try {
                                     // Always restart preview on resume if we have a valid surface
@@ -173,7 +177,6 @@ fun CameraScreen(
                                     Log.e("CameraScreen", "Error restarting preview", e)
                                 }
                             }, 300)
-                        }
                     }
                 }
             )
@@ -182,23 +185,6 @@ fun CameraScreen(
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
-    }
-
-    // Stream status receiver
-    DisposableEffect(isStreaming) {
-        val streamStatusReceiver =
-            createStreamStatusReceiver {
-                viewModel.updateStreamingState(false)
-            }
-
-        val disposeStreamReceiver =
-            registerStreamStatusReceiver(
-                context = context,
-                receiver = streamStatusReceiver,
-                onDispose = {}
-            )
-
-        onDispose(disposeStreamReceiver)
     }
 
     // UI components
@@ -212,11 +198,8 @@ fun CameraScreen(
         CameraPreview(
             viewModel = viewModel,
             onOpenGlViewCreated = { view ->
-                // Only set the view and request permissions if we don't already have an active preview
-                if (!viewModel.isPreviewActive.value) {
                     viewModel.setOpenGlView(view)
                     requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                }
             }
         )
 

@@ -57,7 +57,6 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
     private var currentCameraId = 0
     private var openGlView: OpenGlView? = null
     private var commandReceiver: BroadcastReceiver? = null
-    private var isPreviewActive = false
     private var audioLevelUpdateHandler: Handler? = null
     private var audioLevelRunnable: Runnable? = null
     private var isRunningAudioLevelUpdates = false
@@ -80,6 +79,8 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
         registerCommandReceiver()
         initForeground()
         initAudioLevelUpdates()
+
+        Intent(this, StreamService::class.java).also { startService(it) }
     }
 
     private fun initDependencies() {
@@ -101,14 +102,15 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
     private fun initForeground() {
         val notifyId = NotificationManager.START_STREAM_NOTIFICATION_ID
         val notification = notificationManager.createNotification(
-            getString(R.string.streaming), true, NotificationManager.ACTION_STOP_ONLY
+            getString(R.string.ready_to_stream), true, NotificationManager.ACTION_STOP_ONLY
         )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             var types = 0
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                types = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+                types = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
             }
 
             if (types != 0) {
@@ -128,10 +130,8 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
         audioLevelUpdateHandler = Handler(Looper.getMainLooper())
         audioLevelRunnable = object : Runnable {
             override fun run() {
-                if (isPreviewActive) {
-                    val audioLevel = getAudioLevel()
-                    broadcastAudioLevel(audioLevel)
-                }
+                val audioLevel = getAudioLevel()
+                broadcastAudioLevel(audioLevel)
 
                 if (isRunningAudioLevelUpdates) {
                     audioLevelUpdateHandler?.postDelayed(this, AUDIO_LEVEL_UPDATE_INTERVAL)
@@ -308,7 +308,6 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
         try {
             if (streamManager.isStreaming()) {
                 streamManager.stopStream()
-                notifyStreamStopped()
 
                 val errorText = when {
                     reason.contains("461") -> getString(R.string.error_unsupported_transport)
@@ -325,17 +324,13 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
             Log.e(TAG, "Error handling connection failure", e)
             try {
                 streamManager.stopStream()
-                notifyStreamStopped()
+
 
                 notificationManager.showErrorSafely(this, "Critical error: ${e.message}")
             } catch (e2: Exception) {
                 Log.e(TAG, "Double error", e2)
             }
         }
-    }
-
-    private fun notifyStreamStopped() {
-        LocalBroadcastManager.getInstance(this).sendBroadcast(Intent(AppIntentActions.BROADCAST_STREAM_STOPPED))
     }
 
     override fun onConnectionStarted(url: String) {}
@@ -403,11 +398,6 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
     }
 
     fun startPreview(view: OpenGlView) {
-        if (isPreviewActive) {
-            Log.d(TAG, "Preview is already active, skipping startPreview")
-            return
-        }
-
         try {
             Log.d(TAG, "Starting preview")
             refreshSettings()
@@ -419,46 +409,30 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
             }
 
             streamManager.startPreview(view)
-            isPreviewActive = true
             startAudioLevelUpdates()
             microphoneMonitor.startMonitoring()
 
             Log.d(TAG, "Preview started successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error starting preview", e)
-            isPreviewActive = false
             openGlView = null
-
-            // Try to notify UI
-            broadcastPreviewStatus(false)
         }
     }
 
     fun stopPreview() {
-        if (!isPreviewActive) {
-            Log.d(TAG, "Preview is not active, skipping stopPreview")
-            return
-        }
-
         try {
-            Log.d(TAG, "Stopping preview, streaming=${isStreaming()}")
-            streamManager.stopPreview()
-            isPreviewActive = false
+            val isCurrentlyStreaming = streamManager.isStreaming()
+            Log.d(TAG, "Stopping preview, streaming=$isCurrentlyStreaming")
 
-            if (!isStreaming()) {
+            if (!isCurrentlyStreaming) {
+                streamManager.stopPreview()
                 stopAudioLevelUpdates()
                 microphoneMonitor.stopMonitoring()
+            } else {
+                Log.d(TAG, "Keeping preview fully active because streaming is active")
             }
-
-            // Broadcast preview stopped
-            broadcastPreviewStatus(false)
-
-            Log.d(TAG, "Preview stopped successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping preview", e)
-            // Force preview state to false regardless of error
-            isPreviewActive = false
-            broadcastPreviewStatus(false)
         }
     }
 
@@ -484,34 +458,47 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
     fun takePhoto() = mediaManager.takePhoto()
 
     fun startStream() {
-        val audioInitialized = streamManager.prepareAudio()
-        val videoInitialized = streamManager.prepareVideo()
+        try {
+            val audioInitialized = streamManager.prepareAudio()
+            val videoInitialized = streamManager.prepareVideo()
 
-        if (!audioInitialized) {
-            notificationManager.showErrorSafely(
-                this, getString(R.string.failed_to_prepare_audio)
+            if (!audioInitialized) {
+                notificationManager.showErrorSafely(
+                    this, getString(R.string.failed_to_prepare_audio)
+                )
+            }
+
+            if (!videoInitialized) {
+                notificationManager.showErrorSafely(
+                    this, getString(R.string.failed_to_prepare)
+                )
+                return
+            }
+
+            val videoSettings = settingsRepository.videoSettingsFlow.value
+
+            val notification = notificationManager.createNotification(
+                getString(R.string.streaming), true, NotificationManager.ACTION_STOP_ONLY
             )
-        }
 
-        if (!videoInitialized) {
-            notificationManager.showErrorSafely(
-                this, getString(R.string.failed_to_prepare)
-            )
-            return
-        }
+            val notifyId = NotificationManager.START_STREAM_NOTIFICATION_ID
+            notificationManager.notificationManager.notify(notifyId, notification)
 
-        val videoSettings = settingsRepository.videoSettingsFlow.value
-        if (videoSettings.streamVideo) {
-            startStreaming()
-        }
-        if (videoSettings.recordVideo) {
-            mediaManager.startRecording()
-        }
+            if (videoSettings.streamVideo) {
+                startStreaming()
+            }
+            if (videoSettings.recordVideo) {
+                mediaManager.startRecording()
+            }
 
-        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
-        sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_NORMAL)
+            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
+            sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_NORMAL)
 
-        Log.d(TAG, "Stream started successfully")
+            Log.d(TAG, "Stream started successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in startStream", e)
+            errorHandler.handleStreamError(e)
+        }
     }
 
     private fun startStreaming() {
@@ -545,7 +532,6 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
 
             if (streamManager.isStreaming()) {
                 streamManager.stopStream()
-                notifyStreamStopped()
             }
 
             if (streamManager.isRecording()) {
@@ -572,7 +558,6 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error in stopStream", e)
-            notifyStreamStopped()
 
             val errorMsg = message?.let { "$it (${e.message})" } ?: e.message ?: "Unknown error"
             notificationManager.showErrorSafely(this, errorMsg)
@@ -587,91 +572,67 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
     fun releaseCamera() {
         try {
             Log.d(TAG, "Releasing camera resources")
-            if (streamManager.isOnPreview()) {
-                streamManager.stopPreview()
-            }
 
             if (!streamManager.isStreaming()) {
+                if (streamManager.isOnPreview()) {
+                    streamManager.stopPreview()
+                }
                 streamManager.releaseCamera()
+                Log.d(TAG, "Camera resources released")
+
+                openGlView = null
             } else {
                 Log.d(TAG, "Not releasing camera because streaming is active")
             }
-
-            openGlView = null
-            isPreviewActive = false
-            broadcastPreviewStatus(false)
-
-            Log.d(TAG, "Camera resources released")
         } catch (e: Exception) {
             Log.e(TAG, "Error releasing camera resources", e)
-            // Force state reset regardless of error
-            openGlView = null
-            isPreviewActive = false
-            broadcastPreviewStatus(false)
+            if (!streamManager.isStreaming()) {
+                openGlView = null
+            }
         }
     }
 
+    /**
+     * Restart camera preview with the given view
+     */
     fun restartPreview(view: OpenGlView) {
         try {
             Log.d(TAG, "Restarting preview, current streaming=${streamManager.isStreaming()}")
             refreshSettings()
 
-            val isCurrentlyStreaming = streamManager.isStreaming()
-
-            // If we already have a valid preview with the same view, don't restart
-            if (streamManager.isOnPreview() && openGlView == view) {
-                Log.d(TAG, "Preview already active with the same view, skipping restart")
-                isPreviewActive = true
-                broadcastPreviewStatus(true)
+            if (view.holder.surface?.isValid != true) {
+                Log.w(TAG, "Surface not valid, only saving reference")
+                openGlView = view
                 return
             }
 
-            // If we had a previous preview, stop it first
+            if (streamManager.isStreaming()) {
+                try {
+                    openGlView = view
+                    streamManager.startPreview(view)
+                    startAudioLevelUpdates()
+                    microphoneMonitor.startMonitoring()
+                    Log.d(TAG, "Preview restarted during active streaming")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error restarting preview during streaming", e)
+                }
+                return
+            }
+
             if (streamManager.isOnPreview()) {
                 streamManager.stopPreview()
             }
 
-            // Small delay to ensure resources are released
-            Handler(Looper.getMainLooper()).postDelayed({
-                try {
-                    openGlView = view
-
-                    if (!isCurrentlyStreaming) {
-                        streamManager.prepareVideo()
-                    }
-
-                    streamManager.startPreview(view)
-                    isPreviewActive = true
-                    startAudioLevelUpdates()
-                    microphoneMonitor.startMonitoring()
-
-                    broadcastPreviewStatus(true)
-
-                    Log.d(TAG, "Preview restarted successfully")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error during preview restart", e)
-                    isPreviewActive = false
-                    broadcastPreviewStatus(false)
-
-                    // If we're not streaming, try to clean up resources
-                    if (!isCurrentlyStreaming) {
-                        try {
-                            streamManager.releaseCamera()
-                            openGlView = null
-                        } catch (e2: Exception) {
-                            Log.e(TAG, "Error cleaning up after failed restart", e2)
-                        }
-                    }
-                }
-            }, 100) // 100ms delay
+            openGlView = view
+            streamManager.prepareVideo()
+            streamManager.startPreview(view)
+            startAudioLevelUpdates()
+            microphoneMonitor.startMonitoring()
+            Log.d(TAG, "Preview started successfully")
         } catch (e: Exception) {
-            Log.e(TAG, "Fatal error restarting preview", e)
-            isPreviewActive = false
-            broadcastPreviewStatus(false)
+            Log.e(TAG, "Error restarting preview", e)
         }
     }
-
-    fun isPreviewRunning(): Boolean = isPreviewActive
 
     fun getStreamInfo(): StreamInfo {
         val streamSettings = settingsRepository.videoSettingsFlow.value
@@ -690,7 +651,7 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
             connectionSettings = connectionRepository.activeProfileFlow.value?.settings ?: ConnectionSettings()
             streamManager.setStreamType(connectionSettings.protocol)
 
-            if (isPreviewActive && openGlView != null) {
+            if (openGlView != null) {
                 streamManager.handleResolutionChange()
             }
         } catch (e: Exception) {
@@ -698,13 +659,19 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
         }
     }
 
-    /**
-     * Broadcast preview status to UI components
-     */
-    private fun broadcastPreviewStatus(active: Boolean) {
-        val intent = Intent(AppIntentActions.BROADCAST_PREVIEW_STATUS)
-        intent.putExtra(AppIntentActions.EXTRA_PREVIEW_ACTIVE, active)
-        LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+    fun checkAndRestorePreview() {
+        if (streamManager.isStreaming() && openGlView != null && openGlView?.holder?.surface?.isValid == true) {
+            Log.d(TAG, "Restoring preview connection after app resume")
+            try {
+                if (!streamManager.isOnPreview()) {
+                    streamManager.startPreview(openGlView!!)
+                    startAudioLevelUpdates()
+                    microphoneMonitor.startMonitoring()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to restore preview", e)
+            }
+        }
     }
 
     inner class LocalBinder : Binder() {

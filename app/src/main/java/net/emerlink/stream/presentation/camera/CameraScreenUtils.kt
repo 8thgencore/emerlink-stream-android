@@ -19,12 +19,8 @@ fun initializeCamera(
     viewModel: CameraViewModel,
     view: OpenGlView,
 ) {
-    if (!viewModel.isPreviewActive.value && viewModel.isServiceConnected.value) {
-        try {
-            viewModel.startPreview(view)
-        } catch (e: Exception) {
-            Log.e("CameraScreen", "Error starting preview", e)
-        }
+    if (viewModel.isServiceConnected.value) {
+        viewModel.startPreview(view)
     }
 }
 
@@ -43,6 +39,8 @@ fun createScreenStateReceiver(
             when (intent.action) {
                 Intent.ACTION_SCREEN_OFF -> {
                     Log.d("CameraScreen", "Screen turned off")
+                    // ВАЖНО: не останавливаем камеру при активном стриме
+                    // Здесь нужно проверить состояние стрима перед вызовом onScreenOff
                     onScreenOff()
                 }
 
@@ -72,41 +70,7 @@ fun createLifecycleObserver(
         }
     }
 
-/**
- * Creates a stream status broadcast receiver
- */
-fun createStreamStatusReceiver(onStreamStopped: () -> Unit): BroadcastReceiver =
-    object : BroadcastReceiver() {
-        override fun onReceive(
-            context: Context,
-            intent: Intent,
-        ) {
-            if (intent.action == AppIntentActions.BROADCAST_STREAM_STOPPED) {
-                onStreamStopped()
-            }
-        }
-    }
 
-/**
- * Registers a broadcast receiver for stream status events
- */
-fun registerStreamStatusReceiver(
-    context: Context,
-    receiver: BroadcastReceiver,
-    onDispose: () -> Unit,
-): () -> Unit {
-    val filter = IntentFilter(AppIntentActions.BROADCAST_STREAM_STOPPED)
-    LocalBroadcastManager.getInstance(context).registerReceiver(receiver, filter)
-
-    return {
-        try {
-            LocalBroadcastManager.getInstance(context).unregisterReceiver(receiver)
-        } catch (e: Exception) {
-            Log.e("CameraScreen", "Error unregistering broadcast receiver", e)
-        }
-        onDispose()
-    }
-}
 
 /**
  * Registers a screen state receiver
