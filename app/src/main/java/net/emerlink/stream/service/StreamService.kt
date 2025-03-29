@@ -37,7 +37,6 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
     companion object {
         private const val TAG = "StreamService"
         private const val AUDIO_LEVEL_UPDATE_INTERVAL = 100L // 200ms update interval for audio level
-        private const val WAKELOCK_TIMEOUT = 10 * 60 * 60 * 1000L // 10 hours timeout
     }
 
     private val settingsRepository: SettingsRepository by inject(SettingsRepository::class.java)
@@ -63,10 +62,6 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
     private var audioLevelRunnable: Runnable? = null
     private var isRunningAudioLevelUpdates = false
 
-    // Wake lock for keeping CPU running during streaming
-    private var wakeLock: PowerManager.WakeLock? = null
-    private var isWakeLockHeld = false
-
     private val binder = LocalBinder()
     private val gravityData = FloatArray(3)
     private val geomagneticData = FloatArray(3)
@@ -85,48 +80,6 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
         registerCommandReceiver()
         initForeground()
         initAudioLevelUpdates()
-        initWakeLock()
-    }
-
-    private fun initWakeLock() {
-        try {
-            val powerManager = getSystemService(POWER_SERVICE) as PowerManager
-
-            // Create a wake lock to keep CPU running during streaming
-            wakeLock = powerManager.newWakeLock(
-                PowerManager.PARTIAL_WAKE_LOCK, "${applicationContext.packageName}:StreamServiceWakeLock"
-            ).apply {
-                setReferenceCounted(false)
-            }
-
-            Log.d(TAG, "WakeLock initialized")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error initializing WakeLock: ${e.message}", e)
-        }
-    }
-
-    private fun acquireWakeLock() {
-        try {
-            if (!isWakeLockHeld && wakeLock?.isHeld == false) {
-                wakeLock?.acquire(WAKELOCK_TIMEOUT)
-                isWakeLockHeld = true
-                Log.d(TAG, "WakeLock acquired")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error acquiring WakeLock: ${e.message}", e)
-        }
-    }
-
-    private fun releaseWakeLock() {
-        try {
-            if (isWakeLockHeld && wakeLock?.isHeld == true) {
-                wakeLock?.release()
-                isWakeLockHeld = false
-                Log.d(TAG, "WakeLock released")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error releasing WakeLock: ${e.message}", e)
-        }
     }
 
     private fun initDependencies() {
@@ -146,49 +99,28 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
     }
 
     private fun initForeground() {
-        try {
-            // Create a basic notification that will be replaced immediately
-            val notifyId = NotificationManager.START_STREAM_NOTIFICATION_ID
-            val notification = notificationManager.createNotification(
-                getString(R.string.streaming), true, NotificationManager.ACTION_STOP_ONLY
-            )
+        val notifyId = NotificationManager.START_STREAM_NOTIFICATION_ID
+        val notification = notificationManager.createNotification(
+            getString(R.string.streaming), true, NotificationManager.ACTION_STOP_ONLY
+        )
 
-            // Handle foreground service types based on Android version
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                var types = 0
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            var types = 0
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    types = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                types = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+            }
 
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                        // Add foreground service type for media projection on Android 14+
-                        types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-                    }
-                }
-
-                if (types != 0) {
-                    startForeground(notifyId, notification, types)
-                    Log.d(TAG, "Started foreground service with types: $types")
-                } else {
-                    startForeground(notifyId, notification)
-                    Log.d(TAG, "Started foreground service without specific types")
-                }
+            if (types != 0) {
+                startForeground(notifyId, notification, types)
+                Log.d(TAG, "Started foreground service with types: $types")
             } else {
                 startForeground(notifyId, notification)
-                Log.d(TAG, "Started legacy foreground service")
+                Log.d(TAG, "Started foreground service without specific types")
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error starting foreground service: ${e.message}", e)
-
-            // Fallback to basic foreground if something went wrong
-            try {
-                val notification = notificationManager.createNotification(
-                    getString(R.string.streaming), true, NotificationManager.ACTION_STOP_ONLY
-                )
-                startForeground(NotificationManager.START_STREAM_NOTIFICATION_ID, notification)
-            } catch (fallbackEx: Exception) {
-                Log.e(TAG, "Critical error starting foreground service: ${fallbackEx.message}", fallbackEx)
-            }
+        } else {
+            startForeground(notifyId, notification)
+            Log.d(TAG, "Started legacy foreground service")
         }
     }
 
@@ -356,7 +288,6 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
             }
 
             stopAudioLevelUpdates()
-            releaseWakeLock()
         } catch (e: Exception) {
             Log.e(TAG, "Error destroying service", e)
         }
@@ -553,18 +484,6 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
     fun takePhoto() = mediaManager.takePhoto()
 
     fun startStream() {
-        if (streamManager.isStreaming() || streamManager.isRecording()) {
-            Log.d(TAG, "Stream already active, not starting again")
-            // Ensure we have foreground service active even if already streaming
-            initForeground()
-            return
-        }
-
-        Log.d(TAG, "Starting stream")
-
-        // Always ensure we're in foreground before we start streaming
-        initForeground()
-
         val audioInitialized = streamManager.prepareAudio()
         val videoInitialized = streamManager.prepareVideo()
 
@@ -599,10 +518,6 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
         try {
             val streamUrl = connectionSettings.buildStreamUrl()
             Log.d(TAG, "Stream URL: ${streamUrl.replace(Regex(":[^:/]*:[^:/]*"), ":****:****")}")
-
-            // Apply wake lock to keep CPU active during streaming
-            // Note: initForeground() is already called in startStream()
-            acquireWakeLock()
 
             streamManager.startStream(
                 streamUrl,
@@ -643,8 +558,6 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
                 Log.e(TAG, "Error unregistering sensor listener", e)
             }
 
-            releaseWakeLock()
-
             when {
                 message != null && isError -> notificationManager.showErrorSafely(this, message)
                 message != null -> notificationManager.showStreamingNotification(message, false)
@@ -668,11 +581,7 @@ class StreamService : Service(), ConnectChecker, SensorEventListener {
     }
 
     fun toggleMute(muted: Boolean) {
-        try {
-            if (muted) streamManager.disableAudio() else streamManager.enableAudio()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error toggling mute state", e)
-        }
+        if (muted) streamManager.disableAudio() else streamManager.enableAudio()
     }
 
     fun releaseCamera() {

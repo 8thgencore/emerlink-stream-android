@@ -124,7 +124,7 @@ class StreamManager(
                     Log.d(TAG, "Preview successfully restarted")
                 } catch (e: Exception) {
                     Log.e(TAG, "Error starting preview during restartPreview: ${e.message}", e)
-                    
+
                     // If we're not streaming, try one more time with a clean camera interface
                     if (!wasStreaming) {
                         try {
@@ -132,11 +132,11 @@ class StreamManager(
                             cameraInterface = CameraInterface.create(context, connectChecker, streamType)
                             cameraInterface.replaceView(view)
                             prepareVideoWithCurrentSettings()
-                            
+
                             val rotation = CameraHelper.getCameraOrientation(context)
                             cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
                             currentView = view
-                            
+
                             Log.d(TAG, "Final recovery successful")
                         } catch (finalEx: Exception) {
                             Log.e(TAG, "Final recovery attempt failed: ${finalEx.message}", finalEx)
@@ -238,10 +238,6 @@ class StreamManager(
      */
     fun startPreview(view: OpenGlView) {
         try {
-            Log.d(
-                TAG,
-                "Запуск превью. Статус: стриминг=${isStreaming()}, запись=${isRecording()}, наПревью=${isOnPreview()}"
-            )
             currentView = view
 
             // Сохраняем текущий статус стрима
@@ -276,12 +272,12 @@ class StreamManager(
     private fun startPreviewInternal(view: OpenGlView) {
         try {
             val rotation = CameraHelper.getCameraOrientation(context)
-            
+
             // Use a try-catch block to handle potential camera errors
             try {
                 cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
                 currentView = view
-                
+
                 val videoSettings = settingsRepository.videoSettingsFlow.value
                 val resolution = Resolution.parseFromSize(videoSettings.resolution)
                 Log.d(
@@ -290,7 +286,7 @@ class StreamManager(
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Error starting camera preview: ${e.message}")
-                
+
                 // Try to recover by recreating camera interface
                 if (!isStreaming()) {
                     Log.d(TAG, "Attempting to recover from preview start failure...")

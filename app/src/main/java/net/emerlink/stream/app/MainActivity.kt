@@ -28,7 +28,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val TAG = "MainActivity"
     }
-    
+
     private val requiredPermissions =
         mutableListOf(
             Manifest.permission.CAMERA,
@@ -54,12 +54,12 @@ class MainActivity : ComponentActivity() {
     private val requestPermissionsLauncher =
         registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
-        ) { permissions -> 
+        ) { permissions ->
             // Log permission results
             permissions.forEach { (permission, granted) ->
                 Log.d(TAG, "Permission $permission: ${if (granted) "Granted" else "Denied"}")
             }
-            
+
             startMainUI()
         }
 
@@ -86,7 +86,6 @@ class MainActivity : ComponentActivity() {
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun startMainUI() {
-        // Установить тему с черным фоном для экрана камеры
         setTheme(R.style.Theme_EmerlinkStream_Camera)
 
         setContent {
