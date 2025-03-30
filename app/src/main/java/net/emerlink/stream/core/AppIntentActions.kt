@@ -5,20 +5,20 @@ package net.emerlink.stream.core
  */
 object AppIntentActions {
     // Действия для Intent
-    const val ACTION_START_STREAM = "net.emerlink.stream.START_STREAM"
-    const val ACTION_STOP_STREAM = "net.emerlink.stream.STOP_STREAM"
-    const val ACTION_EXIT_APP = "net.emerlink.stream.EXIT_APP"
-    const val ACTION_AUTH_ERROR = "net.emerlink.stream.AUTH_ERROR"
-    const val ACTION_CONNECTION_FAILED = "net.emerlink.stream.CONNECTION_FAILED"
-    const val ACTION_TOOK_PICTURE = "net.emerlink.stream.TOOK_PICTURE"
-    const val ACTION_NEW_BITRATE = "net.emerlink.stream.NEW_BITRATE"
-    const val ACTION_DISMISS_ERROR = "net.emerlink.stream.DISMISS_ERROR"
+    const val START_STREAM = "start_stream"
+    const val STOP_STREAM = "stop_stream"
+    const val EXIT_APP = "exit_app"
+    const val AUTH_ERROR = "auth_error"
+    const val CONNECTION_FAILED = "connection_failed"
+    const val TOOK_PICTURE = "took_picture"
+    const val NEW_BITRATE = "new_bitrate"
+    const val DISMISS_ERROR = "dismiss_error"
 
     // Broadcast события
-    const val BROADCAST_STREAM_STOPPED = "net.emerlink.stream.STREAM_STOPPED"
-    const val BROADCAST_AUDIO_LEVEL = "net.emerlink.stream.AUDIO_LEVEL"
-    const val BROADCAST_PREVIEW_STATUS = "net.emerlink.stream.PREVIEW_STATUS"
-    const val BROADCAST_NEW_BITRATE = "net.emerlink.stream.NEW_BITRATE"
+    const val BROADCAST_STREAM_STOPPED = "stream_stopped"
+    const val BROADCAST_AUDIO_LEVEL = "audio_level"
+    const val BROADCAST_PREVIEW_STATUS = "preview_status"
+    const val BROADCAST_NEW_BITRATE = "new_bitrate"
 
     // Extras для Intent
     const val EXTRA_AUDIO_LEVEL = "audio_level"

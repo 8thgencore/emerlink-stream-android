@@ -178,7 +178,7 @@ private constructor(
     }
 
     private fun addStopAction(builder: NotificationCompat.Builder) {
-        val stopIntent = Intent(AppIntentActions.ACTION_STOP_STREAM).apply {
+        val stopIntent = Intent(AppIntentActions.STOP_STREAM).apply {
             setPackage(context.packageName)
         }
 
@@ -201,7 +201,7 @@ private constructor(
     }
 
     private fun addExitAction(builder: NotificationCompat.Builder) {
-        val exitIntent = Intent(AppIntentActions.ACTION_EXIT_APP).apply {
+        val exitIntent = Intent(AppIntentActions.EXIT_APP).apply {
             setPackage(context.packageName)
         }
 
@@ -224,7 +224,7 @@ private constructor(
     }
 
     private fun addDismissAction(builder: NotificationCompat.Builder) {
-        val dismissIntent = Intent(AppIntentActions.ACTION_DISMISS_ERROR).apply {
+        val dismissIntent = Intent(AppIntentActions.DISMISS_ERROR).apply {
             setPackage(context.packageName)
         }
 

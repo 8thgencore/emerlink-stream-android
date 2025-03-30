@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import android.view.MotionEvent
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
@@ -49,9 +50,6 @@ class CameraViewModel : ViewModel() {
 
     private val _streamInfo = MutableStateFlow(StreamInfo())
     val streamInfo: StateFlow<StreamInfo> = _streamInfo.asStateFlow()
-
-    private val _screenWasOff = MutableStateFlow(false)
-    val screenWasOff: StateFlow<Boolean> = _screenWasOff.asStateFlow()
 
     private val _isPreviewActive = MutableStateFlow(false)
     val isPreviewActive: StateFlow<Boolean> = _isPreviewActive.asStateFlow()
@@ -146,7 +144,7 @@ class CameraViewModel : ViewModel() {
                 Context.RECEIVER_NOT_EXPORTED
             )
         } else {
-            context.registerReceiver(streamStatusReceiver, filter)
+            ContextCompat.registerReceiver(context, streamStatusReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         }
 
         // Bind to service
@@ -317,10 +315,6 @@ class CameraViewModel : ViewModel() {
 
     fun updateStreamInfo(info: StreamInfo) {
         _streamInfo.value = info
-    }
-
-    fun setScreenWasOff(wasOff: Boolean) {
-        _screenWasOff.value = wasOff
     }
 
     fun setPreviewActive(isActive: Boolean) {

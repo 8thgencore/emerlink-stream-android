@@ -17,7 +17,10 @@ import android.util.Log
 import android.view.MotionEvent
 import androidx.lifecycle.MutableLiveData
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
+import com.pedro.encoder.input.sources.video.Camera2Source
+import com.pedro.encoder.input.video.CameraHelper
 import com.pedro.library.util.BitrateAdapter
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.R
@@ -25,12 +28,14 @@ import net.emerlink.stream.core.AppIntentActions
 import net.emerlink.stream.core.ErrorHandler
 import net.emerlink.stream.core.notification.NotificationManager
 import net.emerlink.stream.data.model.ConnectionSettings
+import net.emerlink.stream.data.model.Resolution
 import net.emerlink.stream.data.model.StreamInfo
+import net.emerlink.stream.data.model.StreamType
 import net.emerlink.stream.data.repository.ConnectionProfileRepository
 import net.emerlink.stream.data.repository.SettingsRepository
+import net.emerlink.stream.service.camera.CameraInterface
 import net.emerlink.stream.service.media.MediaManager
 import net.emerlink.stream.service.microphone.MicrophoneMonitor
-import net.emerlink.stream.service.stream.StreamManager
 import org.koin.java.KoinJavaComponent.inject
 import kotlin.math.log10
 
@@ -48,6 +53,7 @@ class StreamService :
         const val EXIT_APP = "exit_app"
         const val AUTH_ERROR = "auth_error"
         const val CONNECTION_FAILED = "connection_failed"
+        const val NEW_BITRATE = "new_bitrate"
 
         val observer = MutableLiveData<StreamService?>()
     }
@@ -57,23 +63,26 @@ class StreamService :
 
     private lateinit var notificationManager: NotificationManager
     private lateinit var errorHandler: ErrorHandler
-    private lateinit var streamManager: StreamManager
     private lateinit var mediaManager: MediaManager
     private lateinit var connectionSettings: ConnectionSettings
     private lateinit var sensorManager: SensorManager
     private lateinit var magnetometer: android.hardware.Sensor
     private lateinit var accelerometer: android.hardware.Sensor
     private lateinit var microphoneMonitor: MicrophoneMonitor
+    private lateinit var cameraInterface: CameraInterface
 
     private var bitrateAdapter: BitrateAdapter? = null
     private var exiting = false
     private var currentCameraId = 0
     private var openGlView: OpenGlView? = null
-    private var commandReceiver: BroadcastReceiver? = null
     private var isPreviewActive = false
     private var audioLevelUpdateHandler: Handler? = null
     private var audioLevelRunnable: Runnable? = null
     private var isRunningAudioLevelUpdates = false
+    private var currentView: OpenGlView? = null
+    private var streamType: StreamType = StreamType.RTMP
+    private val cameraIds = ArrayList<String>()
+    private var lanternEnabled = false
 
     private val binder = LocalBinder()
     private val gravityData = FloatArray(3)
@@ -89,7 +98,6 @@ class StreamService :
         Log.d(TAG, "onCreate")
 
         observer.postValue(this)
-
 
         // Initialize notification manager first
         notificationManager = NotificationManager.getInstance(this)
@@ -133,14 +141,14 @@ class StreamService :
         }
     }
 
-
     private fun initDependencies() {
         errorHandler = ErrorHandler(this)
         connectionSettings = connectionRepository.activeProfileFlow.value?.settings ?: ConnectionSettings()
-        streamManager = StreamManager(this, this, errorHandler, settingsRepository)
-        streamManager.setStreamType(connectionSettings.protocol)
-        mediaManager = MediaManager(this, streamManager, notificationManager)
+        streamType = connectionSettings.protocol
+        cameraInterface = CameraInterface.create(this, this, streamType)
+        mediaManager = MediaManager(this, this, notificationManager)
         microphoneMonitor = MicrophoneMonitor()
+        getCameraIds()
     }
 
     private fun initSensors() {
@@ -165,7 +173,6 @@ class StreamService :
                 }
             }
     }
-
 
     /**
      * Get the current audio level (0.0f - 1.0f)
@@ -221,7 +228,6 @@ class StreamService :
         }
     }
 
-
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private fun registerCommandReceiver() {
         val filter = IntentFilter().apply {
@@ -253,24 +259,9 @@ class StreamService :
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "onStartCommand: ${intent?.action}")
-
-//        // Handle commands similar to OpenTAK
-//        intent?.action?.let { action ->
-//            when (action) {
-//                START_STREAM -> startStream()
-//                STOP_STREAM -> stopStream(null, null)
-//
-//                EXIT_APP -> {
-//                    exiting = true
-//                    stopStream(null, null)
-//                    stopSelf()
-//                }
-//            }
-//        }
-
         return START_STICKY
     }
+
     override fun onBind(intent: Intent): IBinder = binder
 
     override fun onDestroy() {
@@ -280,12 +271,11 @@ class StreamService :
         }
         stopPreview()
         super.onDestroy()
-
     }
 
     // ConnectChecker implementation
     override fun onAuthError() {
-        stopStream(getString(R.string.auth_error), AppIntentActions.ACTION_AUTH_ERROR, true)
+        stopStream(getString(R.string.auth_error), AUTH_ERROR, true)
     }
 
     override fun onAuthSuccess() {
@@ -295,8 +285,8 @@ class StreamService :
     override fun onConnectionFailed(reason: String) {
         Log.e(TAG, "Connection failed: $reason")
         try {
-            if (streamManager.isStreaming()) {
-                streamManager.stopStream()
+            if (isStreaming()) {
+                stopStream()
                 notifyStreamStopped()
 
                 val errorText =
@@ -306,7 +296,7 @@ class StreamService :
                     }
 
                 notificationManager.showErrorSafely(this, errorText)
-                applicationContext.sendBroadcast(Intent(AppIntentActions.ACTION_CONNECTION_FAILED))
+                applicationContext.sendBroadcast(Intent(CONNECTION_FAILED))
                 Handler(Looper.getMainLooper()).postDelayed(
                     { stopStream(null, null, false) },
                     500
@@ -315,7 +305,7 @@ class StreamService :
         } catch (e: Exception) {
             Log.e(TAG, "Error handling connection failure", e)
             try {
-                streamManager.stopStream()
+                stopStream()
                 notifyStreamStopped()
 
                 notificationManager.showErrorSafely(this, "Critical error: ${e.message}")
@@ -340,7 +330,7 @@ class StreamService :
         if (videoSettings.adaptiveBitrate) {
             bitrateAdapter =
                 BitrateAdapter { bitrate ->
-                    streamManager.setVideoBitrateOnFly(bitrate)
+                    cameraInterface.setVideoBitrateOnFly(bitrate)
                 }
             bitrateAdapter?.setMaxBitrate(videoSettings.bitrate * 1024)
         }
@@ -349,9 +339,9 @@ class StreamService :
     override fun onDisconnect() {}
 
     override fun onNewBitrate(bitrate: Long) {
-        bitrateAdapter?.adaptBitrate(bitrate, streamManager.hasCongestion())
-        val intent = Intent(AppIntentActions.ACTION_NEW_BITRATE)
-        intent.putExtra(AppIntentActions.ACTION_NEW_BITRATE, bitrate)
+        bitrateAdapter?.adaptBitrate(bitrate, cameraInterface.hasCongestion())
+        val intent = Intent(NEW_BITRATE)
+        intent.putExtra(NEW_BITRATE, bitrate)
         applicationContext.sendBroadcast(intent)
     }
 
@@ -410,13 +400,33 @@ class StreamService :
         try {
             refreshSettings()
             openGlView = view
+            currentView = view
 
-            val isCurrentlyStreaming = streamManager.isStreaming()
-            if (!isCurrentlyStreaming) {
-                streamManager.prepareVideo()
+            Log.d(
+                TAG,
+                "Запуск превью. Статус: стриминг=${isStreaming()}, запись=${isRecording()}, наПревью=${isOnPreview()}"
+            )
+
+            // Сохраняем текущий статус стрима
+            val wasStreaming = isStreaming()
+
+            // Если превью уже активно, останавливаем его, но не трогаем стрим
+            if (isOnPreview()) {
+                cameraInterface.stopPreview()
             }
 
-            streamManager.startPreview(view)
+            // Заменяем View
+            cameraInterface.replaceView(view)
+
+            // Если стрим не активен, то можно спокойно обновлять параметры видео
+            if (!wasStreaming) {
+                val videoSettings = settingsRepository.videoSettingsFlow.value
+                val bitrate = cameraInterface.bitrate.takeIf { it > 0 } ?: (videoSettings.bitrate * 1000)
+                val resolution = Resolution.parseFromSize(videoSettings.resolution)
+                prepareVideoWithParams(resolution, videoSettings.fps, videoSettings.keyframeInterval, bitrate)
+            }
+
+            startPreviewInternal(view)
             isPreviewActive = true
             startAudioLevelUpdates()
             microphoneMonitor.startMonitoring()
@@ -425,13 +435,35 @@ class StreamService :
         }
     }
 
+    /**
+     * Internal helper method to start preview
+     */
+    private fun startPreviewInternal(view: OpenGlView) {
+        val rotation = CameraHelper.getCameraOrientation(this)
+        cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
+        currentView = view
+
+        val videoSettings = settingsRepository.videoSettingsFlow.value
+        val resolution = Resolution.parseFromSize(videoSettings.resolution)
+        Log.d(
+            TAG,
+            "Превью успешно запущено ${resolution.width}x${resolution.height}, rotation=$rotation, streaming=${isStreaming()}"
+        )
+    }
+
     fun stopPreview() {
         if (!isPreviewActive) {
             return
         }
 
         try {
-            streamManager.stopPreview()
+            // Don't stop preview if streaming is active
+            if (isOnPreview() && !isStreaming()) {
+                Log.d(TAG, "Stopping Preview")
+                cameraInterface.stopPreview()
+            } else if (isStreaming()) {
+                Log.d(TAG, "Not stopping preview because streaming is active")
+            }
             isPreviewActive = false
             if (!isStreaming()) {
                 stopAudioLevelUpdates()
@@ -442,35 +474,363 @@ class StreamService :
         }
     }
 
-    fun toggleLantern(): Boolean = streamManager.toggleLantern()
+    /**
+     * Prepare audio for streaming with the current settings
+     * @return true if successful, false otherwise
+     */
+    fun prepareAudio() {
+        Log.d(TAG, "Подготовка аудио")
 
-    fun switchCamera(): Boolean {
+        val audioSettings = settingsRepository.audioSettingsFlow.value
+
+        // Try with current settings first
+        cameraInterface.prepareAudio(
+            bitrate = audioSettings.bitrate * 1024,
+            sampleRate = audioSettings.sampleRate,
+            isStereo = audioSettings.stereo
+        )
+        cameraInterface.setAudioCodec(AudioCodec.AAC)
+    }
+
+    /**
+     * Prepare video for streaming with the current settings
+     * @return true if successful, false otherwise
+     */
+    fun prepareVideo(): Boolean {
         try {
-            val result = streamManager.switchCamera()
-            if (result) {
-                currentCameraId = streamManager.getCurrentCameraId()
-            }
-            return result
+            prepareVideoWithCurrentSettings()
+            return true
         } catch (e: Exception) {
-            Log.e(TAG, "Error switching camera", e)
+            Log.e(TAG, "Ошибка подготовки видео: ${e.message}", e)
             return false
         }
     }
 
-    fun setZoom(motionEvent: MotionEvent) = streamManager.setZoom(motionEvent)
+    /**
+     * Helper method to prepare video with current settings
+     */
+    private fun prepareVideoWithCurrentSettings() {
+        val videoSettings = settingsRepository.videoSettingsFlow.value
+        val resolution = Resolution.parseFromSize(videoSettings.resolution)
+        prepareVideoWithParams(
+            resolution,
+            videoSettings.fps,
+            videoSettings.keyframeInterval,
+            videoSettings.bitrate * 1000
+        )
+    }
 
-    fun tapToFocus(motionEvent: MotionEvent) = streamManager.tapToFocus(motionEvent)
+    /**
+     * Helper method to prepare video with specific parameters
+     */
+    private fun prepareVideoWithParams(
+        resolution: Resolution,
+        fps: Int,
+        iFrameInterval: Int,
+        bitrate: Int,
+    ) {
+        val rotation = CameraHelper.getCameraOrientation(this)
+        cameraInterface.prepareVideo(
+            width = resolution.width,
+            height = resolution.height,
+            fps = fps,
+            bitrate = bitrate,
+            iFrameInterval = iFrameInterval,
+            rotation = rotation
+        )
+    }
 
-    fun takePhoto() = mediaManager.takePhoto()
+    /**
+     * Switch stream resolution during streaming
+     */
+    private fun switchStreamResolution() {
+        try {
+            val videoSettings = settingsRepository.videoSettingsFlow.value
+            val resolution = Resolution.parseFromSize(videoSettings.resolution)
+
+            if (isOnPreview()) {
+                val rotation = CameraHelper.getCameraOrientation(this)
+
+                cameraInterface.stopPreview()
+
+                prepareVideoWithParams(
+                    resolution,
+                    videoSettings.fps,
+                    videoSettings.keyframeInterval,
+                    videoSettings.bitrate * 1000
+                )
+
+                currentView?.let { view ->
+                    cameraInterface.replaceView(view)
+                    cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
+                }
+            }
+
+            Log.d(
+                TAG,
+                "Установлено новое разрешение стрима: ${resolution.width}x${resolution.height}"
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при изменении разрешения стрима: ${e.message}")
+        }
+    }
+
+    /**
+     * Check if streaming is active
+     */
+    fun isStreaming(): Boolean = cameraInterface.isStreaming
+
+    /**
+     * Check if recording is active
+     */
+    fun isRecording(): Boolean = cameraInterface.isRecording
+
+    /**
+     * Check if preview is active
+     */
+    fun isOnPreview(): Boolean = cameraInterface.isOnPreview
+
+    /**
+     * Switches between available cameras
+     * @return true if camera switched successfully, false otherwise
+     */
+    fun switchCamera(): Boolean {
+        try {
+            // First try using the Camera2Source approach
+            val camera2Result =
+                withCamera2Source({ camera2Source ->
+                    Log.d(TAG, "Switching camera using Camera2Source")
+
+                    if (cameraIds.isEmpty()) getCameraIds()
+                    if (cameraIds.isEmpty()) return@withCamera2Source false
+
+                    // Switch the camera
+                    currentCameraId = (currentCameraId + 1) % cameraIds.size
+
+                    Log.d(TAG, "Switching to camera ${cameraIds[currentCameraId]}")
+                    camera2Source.openCameraId(cameraIds[currentCameraId])
+                    true
+                }, false)
+
+            // If Camera2Source approach failed, try using the CameraInterface directly
+            if (!camera2Result) {
+                Log.d(TAG, "Switching camera using CameraInterface")
+                cameraInterface.switchCamera()
+                currentCameraId = if (currentCameraId == 0) 1 else 0
+                return true
+            }
+
+            return true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error switching camera: ${e.message}", e)
+            return false
+        }
+    }
+
+    /**
+     * Toggles the flashlight/lantern
+     * @return true if lantern is enabled after toggle, false otherwise
+     */
+    fun toggleLantern(): Boolean {
+        try {
+            // First try using the Camera2Source approach
+            val camera2Result =
+                withCamera2Source({ camera2Source ->
+                    try {
+                        Log.d(TAG, "Toggling lantern using Camera2Source")
+                        val wasEnabled = camera2Source.isLanternEnabled()
+                        if (wasEnabled) {
+                            camera2Source.disableLantern()
+                            Log.d(TAG, "Lantern disabled")
+                        } else {
+                            camera2Source.enableLantern()
+                            Log.d(TAG, "Lantern enabled")
+                        }
+                        camera2Source.isLanternEnabled()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to toggle lantern with Camera2Source: ${e.localizedMessage}", e)
+                        false
+                    }
+                }, false)
+
+            // If Camera2Source approach failed, try using the CameraInterface directly
+            if (!camera2Result) {
+                Log.d(TAG, "Toggling lantern using CameraInterface")
+                lanternEnabled = !lanternEnabled
+
+                if (lanternEnabled) {
+                    cameraInterface.enableLantern()
+                    Log.d(TAG, "Lantern enabled via CameraInterface")
+                } else {
+                    cameraInterface.disableLantern()
+                    Log.d(TAG, "Lantern disabled via CameraInterface")
+                }
+
+                return lanternEnabled
+            }
+
+            return true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error toggling lantern, trying fallback: ${e.message}", e)
+            return false
+        }
+    }
+
+    /**
+     * Set video bitrate on the fly
+     */
+    fun setVideoBitrateOnFly(bitrate: Int) = cameraInterface.setVideoBitrateOnFly(bitrate)
+
+    /**
+     * Check if stream has congestion
+     */
+    fun hasCongestion(): Boolean = cameraInterface.hasCongestion()
+
+    /**
+     * Handles zoom gestures
+     */
+    fun setZoom(motionEvent: MotionEvent) {
+        withCamera2Source({ camera2Source ->
+            camera2Source.setZoom(motionEvent)
+        }, Unit)
+    }
+
+    /**
+     * Handles tap-to-focus gestures
+     */
+    fun tapToFocus(motionEvent: MotionEvent) {
+        withCamera2Source({ camera2Source ->
+            camera2Source.tapToFocus(motionEvent)
+        }, Unit)
+    }
+
+    fun startRecord(filePath: String) {
+        try {
+            cameraInterface.startRecord(filePath)
+        } catch (e: Exception) {
+            errorHandler.handleStreamError(e)
+        }
+    }
+
+    fun stopRecord() {
+        try {
+            if (isRecording()) {
+                cameraInterface.stopRecord()
+            }
+        } catch (e: Exception) {
+            errorHandler.handleStreamError(e)
+        }
+    }
+
+    fun restartPreview(view: OpenGlView) {
+        try {
+            refreshSettings()
+
+            val isCurrentlyStreaming = isStreaming()
+            Log.d(TAG, "Restarting preview, stream active: $isCurrentlyStreaming")
+
+            // If we already have a valid preview with the same view, don't restart
+            if (isOnPreview() && openGlView == view) {
+                Log.d(TAG, "Preview already active with the same view, skipping restart")
+                isPreviewActive = true
+                return
+            }
+
+            if (isOnPreview()) {
+                cameraInterface.stopPreview()
+            }
+
+            Thread.sleep(50)
+
+            openGlView = view
+            currentView = view
+
+            if (!isCurrentlyStreaming) {
+                prepareVideoWithCurrentSettings()
+            }
+
+            cameraInterface.replaceView(view)
+            startPreviewInternal(view)
+            isPreviewActive = true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error restarting preview", e)
+            try {
+                cameraInterface.stopPreview()
+                if (!isStreaming()) {
+                    releaseCamera()
+                }
+                isPreviewActive = false
+            } catch (e2: Exception) {
+                Log.e(TAG, "Error cleaning up after failure", e2)
+            }
+        }
+    }
+
+    private fun refreshSettings() {
+        try {
+            connectionSettings = connectionRepository.activeProfileFlow.value?.settings ?: ConnectionSettings()
+            setStreamType(connectionSettings.protocol)
+
+            if (isPreviewActive && openGlView != null) {
+                handleResolutionChange()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error refreshing settings", e)
+        }
+    }
+
+    /**
+     * Gets available camera IDs from the Camera2Source
+     */
+    private fun getCameraIds() {
+        withCamera2Source({ camera2Source ->
+            cameraIds.clear()
+            cameraIds.addAll(camera2Source.camerasAvailable().toList())
+            Log.d(TAG, "Got cameraIds $cameraIds")
+        }, Unit)
+    }
+
+    /**
+     * Executes an action with Camera2Source if it's available
+     */
+    private fun <T> withCamera2Source(
+        action: (Camera2Source) -> T,
+        defaultValue: T
+    ): T {
+        val videoSource = getVideoSource()
+        if (videoSource is Camera2Source) {
+            return action(videoSource)
+        }
+        return defaultValue
+    }
+
+    private fun getVideoSource(): Any =
+        cameraInterface
+
+    /**
+     * Handles resolution change by restarting preview with new settings
+     */
+    fun handleResolutionChange() {
+        currentView?.let { view ->
+            Log.d(TAG, "Перезапуск превью с новым разрешением")
+            try {
+                switchStreamResolution()
+                restartPreview(view)
+            } catch (e: Exception) {
+                Log.e(TAG, "Ошибка при обновлении разрешения: ${e.message}", e)
+            }
+        }
+    }
+
+    fun isPreviewRunning(): Boolean = openGlView != null
 
     fun startStream() {
-        if (streamManager.isStreaming() || streamManager.isRecording()) {
+        if (isStreaming() || isRecording()) {
             return
         }
 
-        streamManager.prepareAudio()
-    streamManager.prepareVideo()
-
+        prepareAudio()
+        prepareVideo()
 
         sendBroadcast(Intent(START_STREAM).setPackage(packageName))
         val videoSettings = settingsRepository.videoSettingsFlow.value
@@ -490,22 +850,24 @@ class StreamService :
             val streamUrl = connectionSettings.buildStreamUrl()
             Log.d(TAG, "Stream URL: ${streamUrl.replace(Regex(":[^:/]*:[^:/]*"), ":****:****")}")
 
+            if (connectionSettings.protocol.toString().startsWith("rtsp")) {
+                cameraInterface.setProtocol(connectionSettings.tcp)
+            }
 
-            streamManager.startStream(
-                streamUrl,
-                connectionSettings.protocol.toString(),
-                connectionSettings.username,
-                connectionSettings.password,
-                connectionSettings.tcp
-            )
+            if (connectionSettings.username.isNotEmpty() &&
+                connectionSettings.password.isNotEmpty() &&
+                (connectionSettings.protocol.toString().startsWith("rtmp") ||
+                    connectionSettings.protocol.toString().startsWith("rtsp"))
+            ) {
+                cameraInterface.setAuthorization(connectionSettings.username, connectionSettings.password)
+            }
 
+            cameraInterface.startStream(streamUrl)
         } catch (e: Exception) {
             Log.e(TAG, "Error starting streaming", e)
             errorHandler.handleStreamError(e)
         }
     }
-
-
 
     fun stopStream(
         message: String? = null,
@@ -516,12 +878,12 @@ class StreamService :
             // Use the safe method to clear streaming notifications
             notificationManager.clearStreamingNotificationsSafely(this)
 
-            if (streamManager.isStreaming()) {
-                streamManager.stopStream()
+            if (isStreaming()) {
+                cameraInterface.stopStream()
                 notifyStreamStopped()
             }
 
-            if (streamManager.isRecording()) {
+            if (isRecording()) {
                 mediaManager.stopRecording()
             }
 
@@ -555,7 +917,7 @@ class StreamService :
 
     fun toggleMute(muted: Boolean) {
         try {
-            if (muted) streamManager.disableAudio() else streamManager.enableAudio()
+            if (muted) cameraInterface.disableAudio() else cameraInterface.enableAudio()
         } catch (e: Exception) {
             Log.e(TAG, "Error toggling mute state", e)
         }
@@ -563,59 +925,21 @@ class StreamService :
 
     fun releaseCamera() {
         try {
-            if (streamManager.isOnPreview()) {
-                streamManager.stopPreview()
-            }
-            streamManager.releaseCamera()
+            Log.d(TAG, "Освобождение ресурсов камеры")
+
+            if (isOnPreview()) stopPreview()
+            if (isStreaming()) stopStream()
+            if (isRecording()) stopRecord()
+
+            cameraInterface = CameraInterface.create(this, this, streamType)
+            currentView = null
             openGlView = null
+
+            Log.d(TAG, "Ресурсы камеры освобождены")
         } catch (e: Exception) {
-            Log.e(TAG, "Error releasing camera resources", e)
+            Log.e(TAG, "Ошибка освобождения камеры: ${e.message}", e)
         }
     }
-
-    fun restartPreview(view: OpenGlView) {
-        try {
-            refreshSettings()
-
-            val isCurrentlyStreaming = streamManager.isStreaming()
-            Log.d(TAG, "Restarting preview, stream active: $isCurrentlyStreaming")
-
-            // If we already have a valid preview with the same view, don't restart
-            if (streamManager.isOnPreview() && openGlView == view) {
-                Log.d(TAG, "Preview already active with the same view, skipping restart")
-                isPreviewActive = true
-                return
-            }
-
-            if (streamManager.isOnPreview()) {
-                streamManager.stopPreview()
-            }
-
-            Thread.sleep(50)
-
-            openGlView = view
-
-            if (!isCurrentlyStreaming) {
-                streamManager.prepareVideo()
-            }
-
-            streamManager.startPreview(view)
-            isPreviewActive = true
-        } catch (e: Exception) {
-            Log.e(TAG, "Error restarting preview", e)
-            try {
-                streamManager.stopPreview()
-                if (!streamManager.isStreaming()) {
-                    streamManager.releaseCamera()
-                }
-                isPreviewActive = false
-            } catch (e2: Exception) {
-                Log.e(TAG, "Error cleaning up after failure", e2)
-            }
-        }
-    }
-
-    fun isPreviewRunning(): Boolean = isPreviewActive
 
     fun getStreamInfo(): StreamInfo {
         val streamSettings = settingsRepository.videoSettingsFlow.value
@@ -627,20 +951,24 @@ class StreamService :
         )
     }
 
-    fun isStreaming(): Boolean = streamManager.isStreaming()
-
-    private fun refreshSettings() {
-        try {
-            connectionSettings = connectionRepository.activeProfileFlow.value?.settings ?: ConnectionSettings()
-            streamManager.setStreamType(connectionSettings.protocol)
-
-            if (isPreviewActive && openGlView != null) {
-                streamManager.handleResolutionChange()
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error refreshing settings", e)
+    /**
+     * Set stream protocol type
+     * @param type The stream protocol type
+     */
+    private fun setStreamType(type: StreamType) {
+        if (type != streamType) {
+            streamType = type
+            cameraInterface = CameraInterface.create(this, this, streamType)
+            getCameraIds() // Refresh camera IDs when changing interface
         }
     }
+
+    /**
+     * Get the GL interface for rendering
+     */
+    fun getGlInterface() = cameraInterface.glInterface
+
+    fun takePhoto() = mediaManager.takePhoto()
 
     inner class LocalBinder : Binder() {
         fun getService(): StreamService = this@StreamService
