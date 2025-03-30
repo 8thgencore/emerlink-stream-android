@@ -98,8 +98,8 @@ fun CameraScreen(
     // Service lifecycle handling
     DisposableEffect(Unit) {
         // Start and bind to service
-        val intent = Intent(context, StreamService::class.java)
-        context.startForegroundService(intent)
+//        val intent = Intent(context, StreamService::class.java)
+//        context.startForegroundService(intent)
         viewModel.bindService(context)
 
         // Keep screen on

@@ -29,10 +29,6 @@ class CameraViewModel : ViewModel() {
     private var bound = false
     private var audioLevelReceiver: BroadcastReceiver? = null
 
-    // UI state
-    private val _isServiceConnected = MutableStateFlow(false)
-    val isServiceConnected: StateFlow<Boolean> = _isServiceConnected.asStateFlow()
-
     private val _isStreaming = MutableStateFlow(false)
     val isStreaming: StateFlow<Boolean> = _isStreaming.asStateFlow()
 
@@ -64,10 +60,10 @@ class CameraViewModel : ViewModel() {
     private val streamStatusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
-                StreamService.START_STREAM -> updateStreamingState(true)
-                StreamService.STOP_STREAM,
-                StreamService.AUTH_ERROR,
-                StreamService.CONNECTION_FAILED -> updateStreamingState(false)
+                AppIntentActions.START_STREAM -> updateStreamingState(true)
+                AppIntentActions.STOP_STREAM,
+                AppIntentActions.AUTH_ERROR,
+                AppIntentActions.CONNECTION_FAILED -> updateStreamingState(false)
             }
         }
     }
@@ -76,7 +72,6 @@ class CameraViewModel : ViewModel() {
         // Observe service instance
         StreamService.observer.observeForever { service ->
             streamServiceRef = service?.let { WeakReference(it) }
-            _isServiceConnected.value = service != null
 
             if (service != null) {
                 // Initialize states
@@ -110,9 +105,6 @@ class CameraViewModel : ViewModel() {
                 setPreviewActive(streamService.isPreviewRunning())
                 updateStreamInfo(streamService.getStreamInfo())
 
-                // Signal that service is connected
-                _isServiceConnected.value = true
-
                 // Initialize camera if we already have OpenGlView and no preview is active
                 _openGlView.value?.let { view ->
                     if (!_isPreviewActive.value) {
@@ -124,17 +116,15 @@ class CameraViewModel : ViewModel() {
             override fun onServiceDisconnected(arg0: ComponentName) {
                 streamServiceRef = null
                 bound = false
-                _isServiceConnected.value = false
             }
         }
 
     fun bindService(context: Context) {
-        // Register for stream status broadcasts
         val filter = IntentFilter().apply {
-            addAction(StreamService.START_STREAM)
-            addAction(StreamService.STOP_STREAM)
-            addAction(StreamService.AUTH_ERROR)
-            addAction(StreamService.CONNECTION_FAILED)
+            addAction(AppIntentActions.START_STREAM)
+            addAction(AppIntentActions.STOP_STREAM)
+            addAction(AppIntentActions.AUTH_ERROR)
+            addAction(AppIntentActions.CONNECTION_FAILED)
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

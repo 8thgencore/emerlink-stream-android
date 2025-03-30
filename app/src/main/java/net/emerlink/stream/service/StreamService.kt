@@ -47,14 +47,6 @@ class StreamService :
         private const val TAG = "StreamService"
         private const val AUDIO_LEVEL_UPDATE_INTERVAL = 100L
 
-        // Add OpenTAK-style action constants
-        const val START_STREAM = "start_stream"
-        const val STOP_STREAM = "stop_stream"
-        const val EXIT_APP = "exit_app"
-        const val AUTH_ERROR = "auth_error"
-        const val CONNECTION_FAILED = "connection_failed"
-        const val NEW_BITRATE = "new_bitrate"
-
         val observer = MutableLiveData<StreamService?>()
     }
 
@@ -231,18 +223,18 @@ class StreamService :
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private fun registerCommandReceiver() {
         val filter = IntentFilter().apply {
-            addAction(START_STREAM)
-            addAction(STOP_STREAM)
-            addAction(EXIT_APP)
+            addAction(AppIntentActions.START_STREAM)
+            addAction(AppIntentActions.STOP_STREAM)
+            addAction(AppIntentActions.EXIT_APP)
         }
 
         var receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 when (intent.action) {
-                    START_STREAM -> startStream()
-                    STOP_STREAM -> stopStream(null, null)
+                    AppIntentActions.START_STREAM -> startStream()
+                    AppIntentActions.STOP_STREAM -> stopStream(null, null)
 
-                    EXIT_APP -> {
+                    AppIntentActions.EXIT_APP -> {
                         exiting = true
                         stopStream(null, null)
                         stopSelf()
@@ -275,7 +267,7 @@ class StreamService :
 
     // ConnectChecker implementation
     override fun onAuthError() {
-        stopStream(getString(R.string.auth_error), AUTH_ERROR, true)
+        stopStream(getString(R.string.auth_error), AppIntentActions.AUTH_ERROR, true)
     }
 
     override fun onAuthSuccess() {
@@ -296,7 +288,7 @@ class StreamService :
                     }
 
                 notificationManager.showErrorSafely(this, errorText)
-                applicationContext.sendBroadcast(Intent(CONNECTION_FAILED))
+                applicationContext.sendBroadcast(Intent(AppIntentActions.CONNECTION_FAILED))
                 Handler(Looper.getMainLooper()).postDelayed(
                     { stopStream(null, null, false) },
                     500
@@ -317,7 +309,7 @@ class StreamService :
 
     private fun notifyStreamStopped() {
         LocalBroadcastManager.getInstance(this).sendBroadcast(
-            Intent(STOP_STREAM).setPackage(
+            Intent(AppIntentActions.BROADCAST_STREAM_STOPPED).setPackage(
                 packageName
             )
         )
@@ -340,8 +332,8 @@ class StreamService :
 
     override fun onNewBitrate(bitrate: Long) {
         bitrateAdapter?.adaptBitrate(bitrate, cameraInterface.hasCongestion())
-        val intent = Intent(NEW_BITRATE)
-        intent.putExtra(NEW_BITRATE, bitrate)
+        val intent = Intent(AppIntentActions.NEW_BITRATE)
+        intent.putExtra(AppIntentActions.EXTRA_NEW_BITRATE, bitrate)
         applicationContext.sendBroadcast(intent)
     }
 
@@ -832,7 +824,7 @@ class StreamService :
         prepareAudio()
         prepareVideo()
 
-        sendBroadcast(Intent(START_STREAM).setPackage(packageName))
+        sendBroadcast(Intent(AppIntentActions.START_STREAM).setPackage(packageName))
         val videoSettings = settingsRepository.videoSettingsFlow.value
         if (videoSettings.streamVideo) {
             startStreaming()

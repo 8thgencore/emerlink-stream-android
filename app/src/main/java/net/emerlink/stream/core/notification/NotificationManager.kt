@@ -259,26 +259,6 @@ private constructor(
         }
     }
 
-    /** Очищает уведомления об ошибках */
-    fun clearErrorNotifications() {
-        try {
-            notificationManager.cancel(ERROR_STREAM_NOTIFICATION_ID)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error clearing error notifications: ${e.message}", e)
-        }
-    }
-
-    /** Очищает все уведомления */
-    fun clearAllNotifications() {
-        try {
-            notificationManager.cancel(START_STREAM_NOTIFICATION_ID)
-            notificationManager.cancel(ERROR_STREAM_NOTIFICATION_ID)
-            notificationManager.cancel(TAKE_PHOTO_NOTIFICATION_ID)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error clearing all notifications: ${e.message}", e)
-        }
-    }
-
     /** Показывает уведомление о стриминге */
     fun showStreamingNotification(
         text: String,
