@@ -30,7 +30,6 @@ class MediaManager(
 ) {
     companion object {
         private const val TAG = "MediaManager"
-        const val TOOK_PICTURE = "took_picture"
         val screenshotTaken = MutableLiveData<Boolean>()
     }
 
@@ -116,7 +115,7 @@ class MediaManager(
             resolver.openOutputStream(it)?.use { outputStream ->
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
                 Log.d(TAG, "Sending broadcast ACTION_TOOK_PICTURE")
-                context.sendBroadcast(Intent(TOOK_PICTURE))
+                context.sendBroadcast(Intent(AppIntentActions.TOOK_PICTURE))
                 notificationManager.showPhotoNotification(context.getString(R.string.saved_photo))
             } ?: run {
                 val errorMessage = context.getString(R.string.saved_photo_failed)
@@ -150,7 +149,7 @@ class MediaManager(
 
         Log.d(TAG, "Saved photo to: $filePath")
         Log.d(TAG, "Sending broadcast ACTION_TOOK_PICTURE")
-        context.sendBroadcast(Intent(TOOK_PICTURE))
+        context.sendBroadcast(Intent(AppIntentActions.TOOK_PICTURE))
         notificationManager.showPhotoNotification(context.getString(R.string.saved_photo))
     }
 
@@ -196,13 +195,6 @@ class MediaManager(
 
             // Start recording
             streamService.startRecord(filePath)
-
-            // Show notification
-            notificationManager.showStreamingNotification(
-                context.getString(R.string.recording),
-                true,
-                NotificationManager.ACTION_STOP_ONLY
-            )
 
             return true
         } catch (e: Exception) {

@@ -4,7 +4,6 @@ package net.emerlink.stream.presentation.camera
 
 import android.Manifest
 import android.app.Activity
-import android.content.Intent
 import android.content.res.Configuration
 import android.os.Build
 import android.util.Log
@@ -29,7 +28,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import net.emerlink.stream.presentation.camera.components.*
 import net.emerlink.stream.presentation.camera.viewmodel.CameraViewModel
-import net.emerlink.stream.service.StreamService
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
@@ -97,9 +95,6 @@ fun CameraScreen(
 
     // Service lifecycle handling
     DisposableEffect(Unit) {
-        // Start and bind to service
-//        val intent = Intent(context, StreamService::class.java)
-//        context.startForegroundService(intent)
         viewModel.bindService(context)
 
         // Keep screen on

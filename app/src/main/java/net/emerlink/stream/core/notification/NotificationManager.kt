@@ -246,35 +246,6 @@ private constructor(
         )
     }
 
-    /**
-     * Безопасно очищает уведомления о стриминге, учитывая состояние foreground сервиса.
-     * @param service Сервис, который может быть в foreground состоянии
-     */
-    fun clearStreamingNotificationsSafely(service: Service?) {
-        if (service != null) {
-            service.stopForeground(Service.STOP_FOREGROUND_REMOVE)
-            Log.d(TAG, "Foreground service stopped, notification removed")
-        } else {
-            notificationManager.cancel(START_STREAM_NOTIFICATION_ID)
-        }
-    }
-
-    /** Показывает уведомление о стриминге */
-    fun showStreamingNotification(
-        text: String,
-        ongoing: Boolean,
-        actionType: Int = ACTION_ALL,
-    ) {
-        Log.d(TAG, "Showing streaming notification: $text")
-
-        try {
-            val notification = createNotification(text, ongoing, actionType)
-            notificationManager.notify(START_STREAM_NOTIFICATION_ID, notification)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error showing streaming notification: ${e.message}", e)
-        }
-    }
-
     /** Показывает уведомление об ошибке */
     private fun showErrorNotification(
         text: String,

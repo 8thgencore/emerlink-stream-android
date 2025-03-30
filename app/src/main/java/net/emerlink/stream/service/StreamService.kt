@@ -867,9 +867,6 @@ class StreamService :
         isError: Boolean = false,
     ) {
         try {
-            // Use the safe method to clear streaming notifications
-            notificationManager.clearStreamingNotificationsSafely(this)
-
             if (isStreaming()) {
                 cameraInterface.stopStream()
                 notifyStreamStopped()
@@ -887,7 +884,6 @@ class StreamService :
 
             when {
                 message != null && isError -> notificationManager.showErrorSafely(this, message)
-                message != null -> notificationManager.showStreamingNotification(message, false)
             }
 
             action?.let {
