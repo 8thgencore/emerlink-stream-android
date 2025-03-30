@@ -3,11 +3,12 @@
 package net.emerlink.stream.presentation.camera
 
 import android.Manifest
+import android.app.Activity
+import android.content.Intent
 import android.content.res.Configuration
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
+import android.view.WindowManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -26,6 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import net.emerlink.stream.presentation.camera.components.*
 import net.emerlink.stream.presentation.camera.viewmodel.CameraViewModel
+import net.emerlink.stream.service.StreamService
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
@@ -48,7 +50,7 @@ fun CameraScreen(
     val streamInfo by viewModel.streamInfo.collectAsStateWithLifecycle()
     val audioLevel by viewModel.audioLevel.collectAsStateWithLifecycle()
 
-    // Existing permission launchers
+    // Permission launchers
     lateinit var requestCameraPermissionLauncher: ActivityResultLauncher<String>
     lateinit var requestMicrophonePermissionLauncher: ActivityResultLauncher<String>
     lateinit var requestNotificationPermissionLauncher: ActivityResultLauncher<String>
@@ -91,114 +93,52 @@ fun CameraScreen(
             }
         )
 
-    // Permission check on mount
+    // Service lifecycle handling
     DisposableEffect(Unit) {
-        requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-        onDispose { /* No-op */ }
-    }
-
-    // Service connection
-    DisposableEffect(Unit) {
+        // Start and bind to service
+        val intent = Intent(context, StreamService::class.java)
+        context.startForegroundService(intent)
         viewModel.bindService(context)
+
+        // Keep screen on
+        val activity = context as? Activity
+        activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
         onDispose {
-            viewModel.unbindService(context)
+            if (!viewModel.isStreaming.value) {
+                viewModel.unbindService(context)
+            }
+            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
 
-    // Screen state receiver handling
-    DisposableEffect(Unit) {
-        val screenStateReceiver =
-            createScreenStateReceiver(
-                onScreenOff = {
-                    viewModel.setScreenWasOff(true)
-                    viewModel.stopPreview()
-                    if (!isStreaming) {
-                        viewModel.releaseCamera()
-                    }
-                },
-                onUserPresent = {
-                    if (viewModel.screenWasOff.value) {
-                        openGlView?.let { view ->
-                            if (!viewModel.isPreviewActive.value) {
-                                Handler(Looper.getMainLooper()).postDelayed({
-                                    viewModel.restartPreview(view)
-                                    viewModel.setScreenWasOff(false)
-                                    Log.d("CameraScreen", "Restored preview after screen unlock")
-                                }, 300)
-                            }
-                        }
-                    }
-                }
-            )
-
-        val disposeScreenReceiver =
-            registerScreenStateReceiver(
-                context = context,
-                receiver = screenStateReceiver,
-                onDispose = {}
-            )
-
-        onDispose(disposeScreenReceiver)
-    }
-
-    // Lifecycle observer
+    // Lifecycle observer - modify preview handling
     DisposableEffect(lifecycleOwner) {
-        val observer =
-            createLifecycleObserver(
-                onPause = {
-                    // Don't stop preview when streaming is active
-                    if (!isStreaming) {
-                        viewModel.stopPreview()
-                    }
-                },
-                onStop = {
-                    // Always stop preview on stop to release GL context
+        val observer = createLifecycleObserver(
+            onPause = {
+                Log.d("CameraScreen", "onPause")
+                if (!viewModel.isStreaming.value) {
                     viewModel.stopPreview()
-                    // But don't release camera if streaming
-                    if (!isStreaming) {
-                        viewModel.releaseCamera()
-                    }
-                },
-                onResume = {
-                    openGlView?.let { view ->
-                        if (!viewModel.isPreviewActive.value) {
-                            Handler(Looper.getMainLooper()).postDelayed({
-                                try {
-                                    // Always restart preview on resume if we have a valid surface
-                                    if (view.holder.surface?.isValid == true) {
-                                        viewModel.restartPreview(view)
-                                        Log.d("CameraScreen", "Restored preview after app resumed")
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e("CameraScreen", "Error restarting preview", e)
-                                }
-                            }, 300)
-                        }
+                }
+            },
+            onStop = {
+                Log.d("CameraScreen", "onStop")
+                viewModel.stopPreview()
+            },
+            onResume = {
+                Log.d("CameraScreen", "onResume")
+                openGlView?.let { view ->
+                    if (!viewModel.isStreaming.value && !viewModel.isPreviewActive.value) {
+                        viewModel.startPreview(view)
                     }
                 }
-            )
+            },
+        )
 
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
-    }
-
-    // Stream status receiver
-    DisposableEffect(isStreaming) {
-        val streamStatusReceiver =
-            createStreamStatusReceiver {
-                viewModel.updateStreamingState(false)
-            }
-
-        val disposeStreamReceiver =
-            registerStreamStatusReceiver(
-                context = context,
-                receiver = streamStatusReceiver,
-                onDispose = {}
-            )
-
-        onDispose(disposeStreamReceiver)
     }
 
     // UI components
@@ -272,7 +212,6 @@ fun CameraScreen(
                 viewModel.setShowSettingsConfirmDialog(false)
                 try {
                     viewModel.stopStreaming()
-                    viewModel.stopPreview()
                     viewModel.setOpenGlView(null)
                     onSettingsClick()
                 } catch (e: Exception) {

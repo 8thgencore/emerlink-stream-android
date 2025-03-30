@@ -8,12 +8,14 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.ServiceInfo
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.*
 import android.util.Log
 import android.view.MotionEvent
+import androidx.lifecycle.MutableLiveData
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.pedro.common.ConnectChecker
 import com.pedro.library.util.BitrateAdapter
@@ -38,7 +40,16 @@ class StreamService :
     SensorEventListener {
     companion object {
         private const val TAG = "StreamService"
-        private const val AUDIO_LEVEL_UPDATE_INTERVAL = 100L // 200ms update interval for audio level
+        private const val AUDIO_LEVEL_UPDATE_INTERVAL = 100L
+
+        // Add OpenTAK-style action constants
+        const val START_STREAM = "start_stream"
+        const val STOP_STREAM = "stop_stream"
+        const val EXIT_APP = "exit_app"
+        const val AUTH_ERROR = "auth_error"
+        const val CONNECTION_FAILED = "connection_failed"
+
+        val observer = MutableLiveData<StreamService?>()
     }
 
     private val settingsRepository: SettingsRepository by inject(SettingsRepository::class.java)
@@ -77,15 +88,54 @@ class StreamService :
         super.onCreate()
         Log.d(TAG, "onCreate")
 
+        observer.postValue(this)
+
+
+        // Initialize notification manager first
+        notificationManager = NotificationManager.getInstance(this)
+
+        // Start foreground immediately with basic notification
+        startForegroundService()
+
         initDependencies()
         initSensors()
         registerCommandReceiver()
         initAudioLevelUpdates()
     }
 
+    private fun startForegroundService() {
+        try {
+            val notification = notificationManager.createBasicNotification(
+                getString(R.string.streaming),
+                true
+            )
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                startForeground(
+                    NotificationManager.START_STREAM_NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA or
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                )
+            } else {
+                startForeground(
+                    NotificationManager.START_STREAM_NOTIFICATION_ID,
+                    notification
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting foreground service", e)
+            val fallbackNotification = notificationManager.createBasicNotification(
+                getString(R.string.recording),
+                true
+            )
+            startForeground(NotificationManager.START_STREAM_NOTIFICATION_ID, fallbackNotification)
+        }
+    }
+
+
     private fun initDependencies() {
         errorHandler = ErrorHandler(this)
-        notificationManager = NotificationManager.getInstance(this)
         connectionSettings = connectionRepository.activeProfileFlow.value?.settings ?: ConnectionSettings()
         streamManager = StreamManager(this, this, errorHandler, settingsRepository)
         streamManager.setStreamType(connectionSettings.protocol)
@@ -115,6 +165,7 @@ class StreamService :
                 }
             }
     }
+
 
     /**
      * Get the current audio level (0.0f - 1.0f)
@@ -170,106 +221,66 @@ class StreamService :
         }
     }
 
+
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private fun registerCommandReceiver() {
-        val intentFilter =
-            IntentFilter().apply {
-                addAction(AppIntentActions.ACTION_START_STREAM)
-                addAction(AppIntentActions.ACTION_STOP_STREAM)
-                addAction(AppIntentActions.ACTION_EXIT_APP)
-                addAction(AppIntentActions.ACTION_DISMISS_ERROR)
-            }
-
-        val receiver =
-            object : BroadcastReceiver() {
-                override fun onReceive(
-                    context: Context,
-                    intent: Intent,
-                ) {
-                    Log.d(TAG, "Received intent: ${intent.action}")
-                    try {
-                        when (intent.action) {
-                            AppIntentActions.ACTION_START_STREAM -> startStream()
-
-                            AppIntentActions.ACTION_STOP_STREAM -> stopStream(null, null)
-
-                            AppIntentActions.ACTION_EXIT_APP -> {
-                                exiting = true
-                                stopStream(null, null)
-                                notificationManager.clearAllNotifications()
-                                stopSelf()
-                            }
-
-                            AppIntentActions.ACTION_DISMISS_ERROR -> notificationManager.clearErrorNotifications()
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error processing intent in BroadcastReceiver", e)
-                    }
-                }
-            }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(receiver, intentFilter, RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(receiver, intentFilter)
+        val filter = IntentFilter().apply {
+            addAction(START_STREAM)
+            addAction(STOP_STREAM)
+            addAction(EXIT_APP)
         }
 
-        this.commandReceiver = receiver
-    }
+        var receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                when (intent.action) {
+                    START_STREAM -> startStream()
+                    STOP_STREAM -> stopStream(null, null)
 
-    override fun onStartCommand(
-        intent: Intent?,
-        flags: Int,
-        startId: Int,
-    ): Int {
-        Log.d(TAG, "onStartCommand: ${intent?.action}")
-
-        intent?.action?.let { action ->
-            try {
-                when (action) {
-                    AppIntentActions.ACTION_START_STREAM -> startStream()
-                    AppIntentActions.ACTION_STOP_STREAM -> stopStream(null, null)
-
-                    AppIntentActions.ACTION_EXIT_APP -> {
+                    EXIT_APP -> {
                         exiting = true
                         stopStream(null, null)
-                        notificationManager.clearAllNotifications()
                         stopSelf()
                     }
-
-                    AppIntentActions.ACTION_DISMISS_ERROR -> {
-                        notificationManager.clearErrorNotifications()
-                    }
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error processing command", e)
-                errorHandler.handleStreamError(e)
             }
         }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(receiver, filter, RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(receiver, filter)
+        }
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d(TAG, "onStartCommand: ${intent?.action}")
+
+//        // Handle commands similar to OpenTAK
+//        intent?.action?.let { action ->
+//            when (action) {
+//                START_STREAM -> startStream()
+//                STOP_STREAM -> stopStream(null, null)
+//
+//                EXIT_APP -> {
+//                    exiting = true
+//                    stopStream(null, null)
+//                    stopSelf()
+//                }
+//            }
+//        }
 
         return START_STICKY
     }
-
     override fun onBind(intent: Intent): IBinder = binder
 
     override fun onDestroy() {
-        try {
-            Log.d(TAG, "onDestroy")
-
-            // Только останавливаем явный стриминг, если приложение закрывается через FLAG_EXIT
-            if (exiting && streamManager.isStreaming()) {
-                stopStream(null, null)
-            }
-
-            if (commandReceiver != null) {
-                unregisterReceiver(commandReceiver)
-                commandReceiver = null
-            }
-            stopAudioLevelUpdates()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error destroying service", e)
+        observer.postValue(null)
+        if (isStreaming()) {
+            stopStream()
         }
+        stopPreview()
         super.onDestroy()
+
     }
 
     // ConnectChecker implementation
@@ -315,9 +326,11 @@ class StreamService :
     }
 
     private fun notifyStreamStopped() {
-        LocalBroadcastManager
-            .getInstance(this)
-            .sendBroadcast(Intent(AppIntentActions.BROADCAST_STREAM_STOPPED))
+        LocalBroadcastManager.getInstance(this).sendBroadcast(
+            Intent(STOP_STREAM).setPackage(
+                packageName
+            )
+        )
     }
 
     override fun onConnectionStarted(url: String) {}
@@ -455,24 +468,11 @@ class StreamService :
             return
         }
 
-        val audioInitialized = streamManager.prepareAudio()
-        val videoInitialized = streamManager.prepareVideo()
+        streamManager.prepareAudio()
+    streamManager.prepareVideo()
 
-        if (!audioInitialized) {
-            notificationManager.showErrorSafely(
-                this,
-                getString(R.string.failed_to_prepare_audio)
-            )
-        }
 
-        if (!videoInitialized) {
-            notificationManager.showErrorSafely(
-                this,
-                getString(R.string.failed_to_prepare)
-            )
-            return
-        }
-
+        sendBroadcast(Intent(START_STREAM).setPackage(packageName))
         val videoSettings = settingsRepository.videoSettingsFlow.value
         if (videoSettings.streamVideo) {
             startStreaming()
@@ -490,8 +490,6 @@ class StreamService :
             val streamUrl = connectionSettings.buildStreamUrl()
             Log.d(TAG, "Stream URL: ${streamUrl.replace(Regex(":[^:/]*:[^:/]*"), ":****:****")}")
 
-            // Apply keep-alive trick BEFORE starting the stream
-            keepAliveTrick()
 
             streamManager.startStream(
                 streamUrl,
@@ -501,36 +499,13 @@ class StreamService :
                 connectionSettings.tcp
             )
 
-            // Create notification and start foreground service to keep streaming when app is in background
-            notificationManager.showStreamingNotification(
-                getString(R.string.streaming),
-                true,
-                NotificationManager.ACTION_STOP_ONLY
-            )
         } catch (e: Exception) {
             Log.e(TAG, "Error starting streaming", e)
             errorHandler.handleStreamError(e)
         }
     }
 
-    /**
-     * Keep alive trick to ensure the service continues running in background
-     * Similar to RootEncoder implementation
-     */
-    private fun keepAliveTrick() {
-        try {
-            // Create a basic notification that will be replaced immediately
-            val notification =
-                notificationManager.createNotification(
-                    getString(R.string.streaming),
-                    true,
-                    NotificationManager.ACTION_STOP_ONLY
-                )
-            startForeground(1, notification)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error starting foreground service: ${e.message}", e)
-        }
-    }
+
 
     fun stopStream(
         message: String? = null,

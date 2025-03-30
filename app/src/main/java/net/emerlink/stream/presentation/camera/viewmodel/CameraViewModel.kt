@@ -3,6 +3,7 @@
 package net.emerlink.stream.presentation.camera.viewmodel
 
 import android.content.*
+import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import android.view.MotionEvent
@@ -62,6 +63,39 @@ class CameraViewModel : ViewModel() {
     private val _audioLevel = MutableStateFlow(0.0f)
     val audioLevel: StateFlow<Float> = _audioLevel.asStateFlow()
 
+    private val streamStatusReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                StreamService.START_STREAM -> updateStreamingState(true)
+                StreamService.STOP_STREAM,
+                StreamService.AUTH_ERROR,
+                StreamService.CONNECTION_FAILED -> updateStreamingState(false)
+            }
+        }
+    }
+
+    init {
+        // Observe service instance
+        StreamService.observer.observeForever { service ->
+            streamServiceRef = service?.let { WeakReference(it) }
+            _isServiceConnected.value = service != null
+
+            if (service != null) {
+                // Initialize states
+                updateStreamingState(service.isStreaming())
+                setPreviewActive(service.isPreviewRunning())
+                updateStreamInfo(service.getStreamInfo())
+
+                // Initialize camera if we have OpenGlView
+                _openGlView.value?.let { view ->
+                    if (!_isPreviewActive.value) {
+                        startPreview(view)
+                    }
+                }
+            }
+        }
+    }
+
     private val connection =
         object : ServiceConnection {
             override fun onServiceConnected(
@@ -97,44 +131,74 @@ class CameraViewModel : ViewModel() {
         }
 
     fun bindService(context: Context) {
+        // Register for stream status broadcasts
+        val filter = IntentFilter().apply {
+            addAction(StreamService.START_STREAM)
+            addAction(StreamService.STOP_STREAM)
+            addAction(StreamService.AUTH_ERROR)
+            addAction(StreamService.CONNECTION_FAILED)
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(
+                streamStatusReceiver,
+                filter,
+                Context.RECEIVER_NOT_EXPORTED
+            )
+        } else {
+            context.registerReceiver(streamStatusReceiver, filter)
+        }
+
+        // Bind to service
         Intent(context, StreamService::class.java).also { intent ->
             context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
         }
 
-        // Register audio level receiver
         registerAudioLevelReceiver(context)
     }
 
     private fun registerAudioLevelReceiver(context: Context) {
-        audioLevelReceiver =
-            object : BroadcastReceiver() {
-                override fun onReceive(
-                    context: Context,
-                    intent: Intent,
-                ) {
-                    if (intent.action == AppIntentActions.BROADCAST_AUDIO_LEVEL) {
+        audioLevelReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                when (intent.action) {
+                    AppIntentActions.BROADCAST_AUDIO_LEVEL -> {
                         val level = intent.getFloatExtra(AppIntentActions.EXTRA_AUDIO_LEVEL, 0.0f)
                         _audioLevel.value = level
                     }
+                    AppIntentActions.BROADCAST_PREVIEW_STATUS -> {
+                        val isActive = intent.getBooleanExtra(AppIntentActions.EXTRA_PREVIEW_ACTIVE, false)
+                        setPreviewActive(isActive)
+                    }
                 }
             }
+        }
 
-        val filter = IntentFilter(AppIntentActions.BROADCAST_AUDIO_LEVEL)
-        LocalBroadcastManager.getInstance(context).registerReceiver(audioLevelReceiver!!, filter)
+        val filter = IntentFilter().apply {
+            addAction(AppIntentActions.BROADCAST_AUDIO_LEVEL)
+            addAction(AppIntentActions.BROADCAST_PREVIEW_STATUS)
+        }
+
+        // LocalBroadcastManager doesn't need the exported flag since it's local to the app
+        LocalBroadcastManager.getInstance(context)
+            .registerReceiver(audioLevelReceiver!!, filter)
     }
 
     fun unbindService(context: Context) {
         if (bound) {
             try {
-                context.unbindService(connection)
+                // Отвязываемся от сервиса только если нет активного стрима
+                if (!_isStreaming.value) {
+                    context.unbindService(connection)
+                    context.unregisterReceiver(streamStatusReceiver)
+                    bound = false
+                    streamServiceRef = null
+                }
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "Error unbinding service", e)
             }
-            bound = false
-            streamServiceRef = null
         }
 
-        // Unregister audio level receiver
+        // Отписываемся от broadcast receiver в любом случае
         audioLevelReceiver?.let {
             try {
                 LocalBroadcastManager.getInstance(context).unregisterReceiver(it)
@@ -154,9 +218,10 @@ class CameraViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 streamServiceRef?.get()?.startPreview(view)
-                setPreviewActive(true)
+                _isPreviewActive.value = true
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "Error starting preview", e)
+                _isPreviewActive.value = false
             }
         }
     }
@@ -164,42 +229,12 @@ class CameraViewModel : ViewModel() {
     fun stopPreview() {
         viewModelScope.launch {
             try {
-                // Don't stop preview if streaming is active
-                if (!_isStreaming.value) {
-                    streamServiceRef?.get()?.stopPreview()
-                    setPreviewActive(false)
-                } else {
-                    Log.d("CameraViewModel", "Not stopping preview because streaming is active")
-                }
+                streamServiceRef?.get()?.stopPreview()
+                _isPreviewActive.value = false
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "Error stopping preview", e)
-            }
-        }
-    }
-
-    fun releaseCamera() {
-        viewModelScope.launch {
-            try {
-                // Don't release camera if streaming is active
-                if (!_isStreaming.value) {
-                    streamServiceRef?.get()?.releaseCamera()
-                    setPreviewActive(false)
-                } else {
-                    Log.d("CameraViewModel", "Not releasing camera because streaming is active")
-                }
-            } catch (e: Exception) {
-                Log.e("CameraViewModel", "Error releasing camera", e)
-            }
-        }
-    }
-
-    fun restartPreview(view: OpenGlView) {
-        viewModelScope.launch {
-            try {
-                streamServiceRef?.get()?.restartPreview(view)
-                setPreviewActive(true)
-            } catch (e: Exception) {
-                Log.e("CameraViewModel", "Error restarting preview", e)
+                // Still mark preview as inactive
+                _isPreviewActive.value = false
             }
         }
     }
@@ -299,15 +334,8 @@ class CameraViewModel : ViewModel() {
     fun startStreaming() {
         viewModelScope.launch {
             try {
-                val service = streamServiceRef?.get()
-                if (service != null && !service.isStreaming()) {
-                    Log.d("CameraViewModel", "Starting stream")
-                    service.startStream()
-                    updateStreamingState(true)
-                    updateStreamInfo(service.getStreamInfo())
-                } else {
-                    Log.d("CameraViewModel", "Stream already running or service unavailable")
-                }
+                streamServiceRef?.get()?.startStream()
+                updateStreamingState(true)
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "Error starting stream", e)
             }
@@ -317,10 +345,10 @@ class CameraViewModel : ViewModel() {
     fun stopStreaming() {
         viewModelScope.launch {
             try {
-                streamServiceRef?.get()?.stopStream(null, null)
+                streamServiceRef?.get()?.stopStream()
                 updateStreamingState(false)
             } catch (e: Exception) {
-                Log.e("CameraViewModel", "Error stopping streaming", e)
+                Log.e("CameraViewModel", "Error stopping stream", e)
             }
         }
     }
