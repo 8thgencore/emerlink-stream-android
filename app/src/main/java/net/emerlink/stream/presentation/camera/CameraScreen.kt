@@ -23,6 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import net.emerlink.stream.presentation.camera.components.*
@@ -89,7 +91,7 @@ fun CameraScreen(
         createPermissionLauncher(
             permission = Manifest.permission.POST_NOTIFICATIONS,
             onGranted = {
-                openGlView?.let { view -> initializeCamera(viewModel, view) }
+                openGlView?.let { view -> viewModel.startPreview(view) }
             }
         )
 
@@ -112,28 +114,33 @@ fun CameraScreen(
         }
     }
 
-    // Lifecycle observer - modify preview handling
     DisposableEffect(lifecycleOwner) {
-        val observer = createLifecycleObserver(
-            onPause = {
-                Log.d("CameraScreen", "onPause")
-                if (!viewModel.isStreaming.value) {
-                    viewModel.stopPreview()
-                }
-            },
-            onStop = {
-                Log.d("CameraScreen", "onStop")
-                viewModel.stopPreview()
-            },
-            onResume = {
-                Log.d("CameraScreen", "onResume")
-                openGlView?.let { view ->
-                    if (!viewModel.isStreaming.value && !viewModel.isPreviewActive.value) {
-                        viewModel.startPreview(view)
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> {
+                    Log.d("CameraScreen", "onPause")
+                    if (!viewModel.isStreaming.value) {
+                        viewModel.stopPreview()
                     }
                 }
-            },
-        )
+
+                Lifecycle.Event.ON_STOP -> {
+                    Log.d("CameraScreen", "onStop")
+                    viewModel.stopPreview()
+                }
+
+                Lifecycle.Event.ON_RESUME -> {
+                    Log.d("CameraScreen", "onResume")
+                    openGlView?.let { view ->
+                        if (!viewModel.isStreaming.value && !viewModel.isPreviewActive.value) {
+                            viewModel.startPreview(view)
+                        }
+                    }
+                }
+
+                else -> {}
+            }
+        }
 
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
@@ -180,11 +187,16 @@ fun CameraScreen(
             isMuted = isMuted,
             viewModel = viewModel,
             onSettingsClick = {
-                handleSettingsClick(
-                    isStreaming = isStreaming,
-                    viewModel = viewModel,
-                    navigateToSettings = onSettingsClick
-                )
+                if (isStreaming) {
+                    viewModel.setShowSettingsConfirmDialog(true)
+                } else {
+                    try {
+                        viewModel.setOpenGlView(null)
+                        onSettingsClick()
+                    } catch (e: Exception) {
+                        Log.e("CameraScreen", "Error stopping preview before settings", e)
+                    }
+                }
             }
         )
 
