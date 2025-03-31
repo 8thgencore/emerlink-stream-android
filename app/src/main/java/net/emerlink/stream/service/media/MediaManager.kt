@@ -12,7 +12,7 @@ import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import net.emerlink.stream.R
 import net.emerlink.stream.core.AppIntentActions
-import net.emerlink.stream.core.notification.NotificationManager
+import net.emerlink.stream.core.notification.AppNotificationManager
 import net.emerlink.stream.service.StreamService
 import net.emerlink.stream.util.PathUtils
 import java.io.File
@@ -26,7 +26,7 @@ import java.util.*
 class MediaManager(
     private val context: Context,
     private val streamService: StreamService,
-    private val notificationManager: NotificationManager,
+    private val notificationManager: AppNotificationManager,
 ) {
     companion object {
         private const val TAG = "MediaManager"

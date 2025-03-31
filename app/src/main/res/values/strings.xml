@@ -10,6 +10,7 @@
     <string name="cancel">Отмена</string>
 
     <!-- Notifications -->
+    <string name="ready_to_stream">Готов к трансляции</string>
     <string name="streaming">Идет трансляция</string>
     <string name="recording">Запись</string>
     <string name="failed_to_prepare">Не удалось подготовить аудио или видео</string>
@@ -132,4 +133,7 @@
     <string name="active_profile">Активный профиль: %1$s</string>
     <string name="delete">Удалить</string>
     <string name="save">Сохранить</string>
+
+    <!-- Add this line if it doesn't exist yet -->
+    <string name="start">Старт</string>
 </resources>

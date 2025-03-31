@@ -26,7 +26,7 @@ import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.R
 import net.emerlink.stream.core.AppIntentActions
 import net.emerlink.stream.core.ErrorHandler
-import net.emerlink.stream.core.notification.NotificationManager
+import net.emerlink.stream.core.notification.AppNotificationManager
 import net.emerlink.stream.data.model.ConnectionSettings
 import net.emerlink.stream.data.model.Resolution
 import net.emerlink.stream.data.model.StreamInfo
@@ -53,7 +53,7 @@ class StreamService :
     private val settingsRepository: SettingsRepository by inject(SettingsRepository::class.java)
     private val connectionRepository: ConnectionProfileRepository by inject(ConnectionProfileRepository::class.java)
 
-    private lateinit var notificationManager: NotificationManager
+    private lateinit var notificationManager: AppNotificationManager
     private lateinit var errorHandler: ErrorHandler
     private lateinit var mediaManager: MediaManager
     private lateinit var connectionSettings: ConnectionSettings
@@ -84,6 +84,28 @@ class StreamService :
     private var hasGeomagneticData = false
     private var rotationInDegrees: Double = 0.0
 
+    private val receiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context,
+                intent: Intent,
+            ) {
+                val action = intent.action
+                if (action != null) {
+                    when (action) {
+                        AppIntentActions.START_STREAM -> startStream()
+                        AppIntentActions.STOP_STREAM -> stopStream(null, null)
+
+                        AppIntentActions.EXIT_APP -> {
+                            exiting = true
+                            stopStream(null, null)
+                            stopSelf()
+                        }
+                    }
+                }
+            }
+        }
+
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onCreate() {
         super.onCreate()
@@ -92,46 +114,58 @@ class StreamService :
         observer.postValue(this)
 
         // Initialize notification manager first
-        notificationManager = NotificationManager.getInstance(this)
+        notificationManager = AppNotificationManager.getInstance(this)
 
         // Start foreground immediately with basic notification
         startForegroundService()
 
         initDependencies()
         initSensors()
-        registerCommandReceiver()
+
+        // Register broadcast receiver for commands
+        val filter =
+            IntentFilter().apply {
+                addAction(AppIntentActions.START_STREAM)
+                addAction(AppIntentActions.STOP_STREAM)
+                addAction(AppIntentActions.EXIT_APP)
+            }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(receiver, filter, RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(receiver, filter)
+        }
+
         initAudioLevelUpdates()
     }
 
     private fun startForegroundService() {
         try {
-            val notification =
-                notificationManager.createBasicNotification(
-                    getString(R.string.streaming),
-                    true
-                )
+            val notification = notificationManager.createNotification(
+                getString(R.string.ready_to_stream),
+                true
+            )
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 startForeground(
-                    NotificationManager.START_STREAM_NOTIFICATION_ID,
+                    AppNotificationManager.START_STREAM_NOTIFICATION_ID,
                     notification,
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA or
                         ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
                 )
             } else {
                 startForeground(
-                    NotificationManager.START_STREAM_NOTIFICATION_ID,
+                    AppNotificationManager.START_STREAM_NOTIFICATION_ID,
                     notification
                 )
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error starting foreground service", e)
-            val fallbackNotification =
-                notificationManager.createBasicNotification(
-                    getString(R.string.recording),
-                    true
-                )
-            startForeground(NotificationManager.START_STREAM_NOTIFICATION_ID, fallbackNotification)
+            val fallbackNotification = notificationManager.createNotification(
+                getString(R.string.ready_to_stream),
+                true
+            )
+            startForeground(AppNotificationManager.START_STREAM_NOTIFICATION_ID, fallbackNotification)
         }
     }
 
@@ -222,41 +256,6 @@ class StreamService :
         }
     }
 
-    @SuppressLint("UnspecifiedRegisterReceiverFlag")
-    private fun registerCommandReceiver() {
-        val filter =
-            IntentFilter().apply {
-                addAction(AppIntentActions.START_STREAM)
-                addAction(AppIntentActions.STOP_STREAM)
-                addAction(AppIntentActions.EXIT_APP)
-            }
-
-        var receiver =
-            object : BroadcastReceiver() {
-                override fun onReceive(
-                    context: Context,
-                    intent: Intent,
-                ) {
-                    when (intent.action) {
-                        AppIntentActions.START_STREAM -> startStream()
-                        AppIntentActions.STOP_STREAM -> stopStream(null, null)
-
-                        AppIntentActions.EXIT_APP -> {
-                            exiting = true
-                            stopStream(null, null)
-                            stopSelf()
-                        }
-                    }
-                }
-            }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(receiver, filter, RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(receiver, filter)
-        }
-    }
-
     override fun onStartCommand(
         intent: Intent?,
         flags: Int,
@@ -271,12 +270,19 @@ class StreamService :
             stopStream()
         }
         stopPreview()
+
+        try {
+            unregisterReceiver(receiver)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error unregistering receiver", e)
+        }
+
         super.onDestroy()
     }
 
     // ConnectChecker implementation
     override fun onAuthError() {
-        stopStream(getString(R.string.auth_error), AppIntentActions.AUTH_ERROR, true)
+        stopStream(getString(R.string.auth_error), AppIntentActions.AUTH_ERROR)
     }
 
     override fun onAuthSuccess() {
@@ -287,28 +293,13 @@ class StreamService :
         Log.e(TAG, "Connection failed: $reason")
         try {
             if (isStreaming()) {
-                stopStream()
-                notifyStreamStopped()
-
-                val errorText =
-                    when {
-                        reason.contains("461") -> getString(R.string.error_unsupported_transport)
-                        else -> getString(R.string.connection_failed) + ": " + reason
-                    }
-
-                notificationManager.showErrorSafely(this, errorText)
-                applicationContext.sendBroadcast(Intent(AppIntentActions.CONNECTION_FAILED))
-                Handler(Looper.getMainLooper()).postDelayed(
-                    { stopStream(null, null, false) },
-                    500
-                )
+                stopStream(getString(R.string.connection_failed), AppIntentActions.CONNECTION_FAILED)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error handling connection failure", e)
             try {
                 stopStream()
                 notifyStreamStopped()
-
                 notificationManager.showErrorSafely(this, "Critical error: ${e.message}")
             } catch (e2: Exception) {
                 Log.e(TAG, "Double error", e2)
@@ -830,19 +821,23 @@ class StreamService :
         }
 
         prepareAudio()
-        prepareVideo()
+        if (prepareVideo()) {
+            val videoSettings = settingsRepository.videoSettingsFlow.value
+            if (videoSettings.streamVideo) {
+                startStreaming()
+            }
+            if (videoSettings.recordVideo) {
+                mediaManager.startRecording()
+            }
 
-        sendBroadcast(Intent(AppIntentActions.START_STREAM).setPackage(packageName))
-        val videoSettings = settingsRepository.videoSettingsFlow.value
-        if (videoSettings.streamVideo) {
-            startStreaming()
-        }
-        if (videoSettings.recordVideo) {
-            mediaManager.startRecording()
-        }
+            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
+            sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_NORMAL)
 
-        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
-        sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_NORMAL)
+            // Show streaming notification
+            notificationManager.showNotification(getString(R.string.streaming), true)
+        } else {
+            notificationManager.showNotification(getString(R.string.failed_to_prepare), false)
+        }
     }
 
     private fun startStreaming() {
@@ -872,10 +867,11 @@ class StreamService :
     }
 
     fun stopStream(
-        message: String? = null,
-        action: String? = null,
-        isError: Boolean = false,
+        error: String? = null,
+        broadcastIntent: String? = null,
     ) {
+        Log.d(TAG, "stopStream $error")
+
         try {
             if (isStreaming()) {
                 cameraInterface.stopStream()
@@ -892,12 +888,12 @@ class StreamService :
                 Log.e(TAG, "Error unregistering sensor listener", e)
             }
 
-            when {
-                message != null && isError -> notificationManager.showErrorSafely(this, message)
-            }
-
-            action?.let {
-                applicationContext.sendBroadcast(Intent(it))
+            // Only show the "Ready to Stream" message if there is no error
+            if (error != null && broadcastIntent != null) {
+                notificationManager.showErrorNotification(error)
+                applicationContext.sendBroadcast(Intent(broadcastIntent))
+            } else {
+                notificationManager.showNotification(getString(R.string.ready_to_stream), true)
             }
 
             if (exiting) {
@@ -907,8 +903,8 @@ class StreamService :
             Log.e(TAG, "Error in stopStream", e)
             notifyStreamStopped()
 
-            val errorMsg = message?.let { "$it (${e.message})" } ?: e.message ?: "Unknown error"
-            notificationManager.showErrorSafely(this, errorMsg)
+            val errorMsg = error?.let { "$it (${e.message})" } ?: e.message ?: "Unknown error"
+            notificationManager.showErrorSafely(errorMsg)
             errorHandler.handleStreamError(e)
         }
     }
