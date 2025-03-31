@@ -105,10 +105,11 @@ class StreamService :
 
     private fun startForegroundService() {
         try {
-            val notification = notificationManager.createBasicNotification(
-                getString(R.string.streaming),
-                true
-            )
+            val notification =
+                notificationManager.createBasicNotification(
+                    getString(R.string.streaming),
+                    true
+                )
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 startForeground(
@@ -125,10 +126,11 @@ class StreamService :
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error starting foreground service", e)
-            val fallbackNotification = notificationManager.createBasicNotification(
-                getString(R.string.recording),
-                true
-            )
+            val fallbackNotification =
+                notificationManager.createBasicNotification(
+                    getString(R.string.recording),
+                    true
+                )
             startForeground(NotificationManager.START_STREAM_NOTIFICATION_ID, fallbackNotification)
         }
     }
@@ -222,26 +224,31 @@ class StreamService :
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private fun registerCommandReceiver() {
-        val filter = IntentFilter().apply {
-            addAction(AppIntentActions.START_STREAM)
-            addAction(AppIntentActions.STOP_STREAM)
-            addAction(AppIntentActions.EXIT_APP)
-        }
+        val filter =
+            IntentFilter().apply {
+                addAction(AppIntentActions.START_STREAM)
+                addAction(AppIntentActions.STOP_STREAM)
+                addAction(AppIntentActions.EXIT_APP)
+            }
 
-        var receiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) {
-                when (intent.action) {
-                    AppIntentActions.START_STREAM -> startStream()
-                    AppIntentActions.STOP_STREAM -> stopStream(null, null)
+        var receiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(
+                    context: Context,
+                    intent: Intent,
+                ) {
+                    when (intent.action) {
+                        AppIntentActions.START_STREAM -> startStream()
+                        AppIntentActions.STOP_STREAM -> stopStream(null, null)
 
-                    AppIntentActions.EXIT_APP -> {
-                        exiting = true
-                        stopStream(null, null)
-                        stopSelf()
+                        AppIntentActions.EXIT_APP -> {
+                            exiting = true
+                            stopStream(null, null)
+                            stopSelf()
+                        }
                     }
                 }
             }
-        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(receiver, filter, RECEIVER_NOT_EXPORTED)
@@ -250,9 +257,11 @@ class StreamService :
         }
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        return START_STICKY
-    }
+    override fun onStartCommand(
+        intent: Intent?,
+        flags: Int,
+        startId: Int,
+    ): Int = START_STICKY
 
     override fun onBind(intent: Intent): IBinder = binder
 
@@ -787,7 +796,7 @@ class StreamService :
      */
     private fun <T> withCamera2Source(
         action: (Camera2Source) -> T,
-        defaultValue: T
+        defaultValue: T,
     ): T {
         val videoSource = getVideoSource()
         if (videoSource is Camera2Source) {
@@ -796,8 +805,7 @@ class StreamService :
         return defaultValue
     }
 
-    private fun getVideoSource(): Any =
-        cameraInterface
+    private fun getVideoSource(): Any = cameraInterface
 
     /**
      * Handles resolution change by restarting preview with new settings
@@ -848,8 +856,10 @@ class StreamService :
 
             if (connectionSettings.username.isNotEmpty() &&
                 connectionSettings.password.isNotEmpty() &&
-                (connectionSettings.protocol.toString().startsWith("rtmp") ||
-                    connectionSettings.protocol.toString().startsWith("rtsp"))
+                (
+                    connectionSettings.protocol.toString().startsWith("rtmp") ||
+                        connectionSettings.protocol.toString().startsWith("rtsp")
+                )
             ) {
                 cameraInterface.setAuthorization(connectionSettings.username, connectionSettings.password)
             }

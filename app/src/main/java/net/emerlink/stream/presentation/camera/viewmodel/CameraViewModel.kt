@@ -12,6 +12,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.pedro.library.view.OpenGlView
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -57,16 +58,25 @@ class CameraViewModel : ViewModel() {
     private val _audioLevel = MutableStateFlow(0.0f)
     val audioLevel: StateFlow<Float> = _audioLevel.asStateFlow()
 
-    private val streamStatusReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            when (intent.action) {
-                AppIntentActions.START_STREAM -> updateStreamingState(true)
-                AppIntentActions.STOP_STREAM,
-                AppIntentActions.AUTH_ERROR,
-                AppIntentActions.CONNECTION_FAILED -> updateStreamingState(false)
+    // Flash overlay state
+    private val _flashOverlayVisible = MutableStateFlow(false)
+    val flashOverlayVisible: StateFlow<Boolean> = _flashOverlayVisible.asStateFlow()
+
+    private val streamStatusReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context,
+                intent: Intent,
+            ) {
+                when (intent.action) {
+                    AppIntentActions.START_STREAM -> updateStreamingState(true)
+                    AppIntentActions.STOP_STREAM,
+                    AppIntentActions.AUTH_ERROR,
+                    AppIntentActions.CONNECTION_FAILED,
+                        -> updateStreamingState(false)
+                }
             }
         }
-    }
 
     init {
         // Observe service instance
@@ -120,12 +130,13 @@ class CameraViewModel : ViewModel() {
         }
 
     fun bindService(context: Context) {
-        val filter = IntentFilter().apply {
-            addAction(AppIntentActions.START_STREAM)
-            addAction(AppIntentActions.STOP_STREAM)
-            addAction(AppIntentActions.AUTH_ERROR)
-            addAction(AppIntentActions.CONNECTION_FAILED)
-        }
+        val filter =
+            IntentFilter().apply {
+                addAction(AppIntentActions.START_STREAM)
+                addAction(AppIntentActions.STOP_STREAM)
+                addAction(AppIntentActions.AUTH_ERROR)
+                addAction(AppIntentActions.CONNECTION_FAILED)
+            }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             context.registerReceiver(
@@ -146,28 +157,35 @@ class CameraViewModel : ViewModel() {
     }
 
     private fun registerAudioLevelReceiver(context: Context) {
-        audioLevelReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) {
-                when (intent.action) {
-                    AppIntentActions.BROADCAST_AUDIO_LEVEL -> {
-                        val level = intent.getFloatExtra(AppIntentActions.EXTRA_AUDIO_LEVEL, 0.0f)
-                        _audioLevel.value = level
-                    }
-                    AppIntentActions.BROADCAST_PREVIEW_STATUS -> {
-                        val isActive = intent.getBooleanExtra(AppIntentActions.EXTRA_PREVIEW_ACTIVE, false)
-                        setPreviewActive(isActive)
+        audioLevelReceiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(
+                    context: Context,
+                    intent: Intent,
+                ) {
+                    when (intent.action) {
+                        AppIntentActions.BROADCAST_AUDIO_LEVEL -> {
+                            val level = intent.getFloatExtra(AppIntentActions.EXTRA_AUDIO_LEVEL, 0.0f)
+                            _audioLevel.value = level
+                        }
+
+                        AppIntentActions.BROADCAST_PREVIEW_STATUS -> {
+                            val isActive = intent.getBooleanExtra(AppIntentActions.EXTRA_PREVIEW_ACTIVE, false)
+                            setPreviewActive(isActive)
+                        }
                     }
                 }
             }
-        }
 
-        val filter = IntentFilter().apply {
-            addAction(AppIntentActions.BROADCAST_AUDIO_LEVEL)
-            addAction(AppIntentActions.BROADCAST_PREVIEW_STATUS)
-        }
+        val filter =
+            IntentFilter().apply {
+                addAction(AppIntentActions.BROADCAST_AUDIO_LEVEL)
+                addAction(AppIntentActions.BROADCAST_PREVIEW_STATUS)
+            }
 
         // LocalBroadcastManager doesn't need the exported flag since it's local to the app
-        LocalBroadcastManager.getInstance(context)
+        LocalBroadcastManager
+            .getInstance(context)
             .registerReceiver(audioLevelReceiver!!, filter)
     }
 
@@ -250,9 +268,12 @@ class CameraViewModel : ViewModel() {
     fun takePhoto() {
         viewModelScope.launch {
             try {
+                _flashOverlayVisible.value = true
                 streamServiceRef?.get()?.takePhoto()
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "Error taking photo", e)
+                // Hide flash overlay in case of error
+                _flashOverlayVisible.value = false
             }
         }
     }
@@ -334,6 +355,16 @@ class CameraViewModel : ViewModel() {
             } catch (e: Exception) {
                 Log.e("CameraViewModel", "Error stopping stream", e)
             }
+        }
+    }
+
+    /**
+     * Hide flash overlay after a short delay
+     */
+    fun hideFlashOverlayAfterDelay() {
+        viewModelScope.launch {
+            delay(150) // Show flash for 150ms
+            _flashOverlayVisible.value = false
         }
     }
 }

@@ -49,6 +49,7 @@ fun CameraScreen(
     val showStreamInfo by viewModel.showStreamInfo.collectAsStateWithLifecycle()
     val streamInfo by viewModel.streamInfo.collectAsStateWithLifecycle()
     val audioLevel by viewModel.audioLevel.collectAsStateWithLifecycle()
+    val flashOverlayVisible by viewModel.flashOverlayVisible.collectAsStateWithLifecycle()
 
     // Permission launchers
     lateinit var requestCameraPermissionLauncher: ActivityResultLauncher<String>
@@ -110,32 +111,33 @@ fun CameraScreen(
     }
 
     DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_PAUSE -> {
-                    Log.d("CameraScreen", "onPause")
-                    if (!viewModel.isStreaming.value) {
-                        viewModel.stopPreview()
-                    }
-                }
-
-                Lifecycle.Event.ON_STOP -> {
-                    Log.d("CameraScreen", "onStop")
-                    viewModel.stopPreview()
-                }
-
-                Lifecycle.Event.ON_RESUME -> {
-                    Log.d("CameraScreen", "onResume")
-                    openGlView?.let { view ->
-                        if (!viewModel.isStreaming.value && !viewModel.isPreviewActive.value) {
-                            viewModel.startPreview(view)
+        val observer =
+            LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_PAUSE -> {
+                        Log.d("CameraScreen", "onPause")
+                        if (!viewModel.isStreaming.value) {
+                            viewModel.stopPreview()
                         }
                     }
-                }
 
-                else -> {}
+                    Lifecycle.Event.ON_STOP -> {
+                        Log.d("CameraScreen", "onStop")
+                        viewModel.stopPreview()
+                    }
+
+                    Lifecycle.Event.ON_RESUME -> {
+                        Log.d("CameraScreen", "onResume")
+                        openGlView?.let { view ->
+                            if (!viewModel.isStreaming.value && !viewModel.isPreviewActive.value) {
+                                viewModel.startPreview(view)
+                            }
+                        }
+                    }
+
+                    else -> {}
+                }
             }
-        }
 
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
@@ -209,22 +211,35 @@ fun CameraScreen(
                 isLandscape = isLandscape
             )
         }
-    }
 
-    // Dialogs
-    if (showSettingsConfirmDialog) {
-        SettingsConfirmationDialog(
-            onDismiss = { viewModel.setShowSettingsConfirmDialog(false) },
-            onConfirm = {
-                viewModel.setShowSettingsConfirmDialog(false)
-                try {
-                    viewModel.stopStreaming()
-                    viewModel.setOpenGlView(null)
-                    onSettingsClick()
-                } catch (e: Exception) {
-                    Log.e("CameraScreen", "Error transitioning to settings", e)
+        // Screen flash overlay for photo capture
+        if (flashOverlayVisible) {
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(Color.White.copy(alpha = 0.5f))
+            )
+
+            // Auto-hide the flash overlay after a short delay
+            viewModel.hideFlashOverlayAfterDelay()
+        }
+
+        // Dialogs
+        if (showSettingsConfirmDialog) {
+            SettingsConfirmationDialog(
+                onDismiss = { viewModel.setShowSettingsConfirmDialog(false) },
+                onConfirm = {
+                    viewModel.setShowSettingsConfirmDialog(false)
+                    try {
+                        viewModel.stopStreaming()
+                        viewModel.setOpenGlView(null)
+                        onSettingsClick()
+                    } catch (e: Exception) {
+                        Log.e("CameraScreen", "Error transitioning to settings", e)
+                    }
                 }
-            }
-        )
+            )
+        }
     }
 }
