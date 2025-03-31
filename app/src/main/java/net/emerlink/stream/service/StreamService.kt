@@ -141,10 +141,11 @@ class StreamService :
 
     private fun startForegroundService() {
         try {
-            val notification = notificationManager.createNotification(
-                getString(R.string.ready_to_stream),
-                true
-            )
+            val notification =
+                notificationManager.createNotification(
+                    getString(R.string.ready_to_stream),
+                    true
+                )
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 startForeground(
@@ -161,10 +162,11 @@ class StreamService :
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error starting foreground service", e)
-            val fallbackNotification = notificationManager.createNotification(
-                getString(R.string.ready_to_stream),
-                true
-            )
+            val fallbackNotification =
+                notificationManager.createNotification(
+                    getString(R.string.ready_to_stream),
+                    true
+                )
             startForeground(AppNotificationManager.START_STREAM_NOTIFICATION_ID, fallbackNotification)
         }
     }
@@ -488,20 +490,7 @@ class StreamService :
      * Prepare video for streaming with the current settings
      * @return true if successful, false otherwise
      */
-    fun prepareVideo(): Boolean {
-        try {
-            prepareVideoWithCurrentSettings()
-            return true
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка подготовки видео: ${e.message}", e)
-            return false
-        }
-    }
-
-    /**
-     * Helper method to prepare video with current settings
-     */
-    private fun prepareVideoWithCurrentSettings() {
+    fun prepareVideo() {
         val videoSettings = settingsRepository.videoSettingsFlow.value
         val resolution = Resolution.parseFromSize(videoSettings.resolution)
         prepareVideoWithParams(
@@ -738,7 +727,7 @@ class StreamService :
             currentView = view
 
             if (!isCurrentlyStreaming) {
-                prepareVideoWithCurrentSettings()
+                prepareVideo()
             }
 
             cameraInterface.replaceView(view)
@@ -821,23 +810,21 @@ class StreamService :
         }
 
         prepareAudio()
-        if (prepareVideo()) {
-            val videoSettings = settingsRepository.videoSettingsFlow.value
-            if (videoSettings.streamVideo) {
-                startStreaming()
-            }
-            if (videoSettings.recordVideo) {
-                mediaManager.startRecording()
-            }
+        prepareVideo()
 
-            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
-            sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_NORMAL)
-
-            // Show streaming notification
-            notificationManager.showNotification(getString(R.string.streaming), true)
-        } else {
-            notificationManager.showNotification(getString(R.string.failed_to_prepare), false)
+        val videoSettings = settingsRepository.videoSettingsFlow.value
+        if (videoSettings.streamVideo) {
+            startStreaming()
         }
+        if (videoSettings.recordVideo) {
+            mediaManager.startRecording()
+        }
+
+        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
+        sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_NORMAL)
+
+        // Show streaming notification
+        notificationManager.showNotification(getString(R.string.streaming), true)
     }
 
     private fun startStreaming() {

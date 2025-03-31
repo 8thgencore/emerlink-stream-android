@@ -116,9 +116,6 @@ fun CameraScreen(
                 when (event) {
                     Lifecycle.Event.ON_PAUSE -> {
                         Log.d("CameraScreen", "onPause")
-                        if (!viewModel.isStreaming.value) {
-                            viewModel.stopPreview()
-                        }
                     }
 
                     Lifecycle.Event.ON_STOP -> {
@@ -128,11 +125,6 @@ fun CameraScreen(
 
                     Lifecycle.Event.ON_RESUME -> {
                         Log.d("CameraScreen", "onResume")
-                        openGlView?.let { view ->
-                            if (!viewModel.isStreaming.value && !viewModel.isPreviewActive.value) {
-                                viewModel.startPreview(view)
-                            }
-                        }
                     }
 
                     else -> {}
