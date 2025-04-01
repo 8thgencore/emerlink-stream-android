@@ -19,7 +19,6 @@ import androidx.lifecycle.MutableLiveData
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
-import com.pedro.encoder.input.sources.video.Camera2Source
 import com.pedro.encoder.input.video.CameraHelper
 import com.pedro.library.util.BitrateAdapter
 import com.pedro.library.view.OpenGlView
@@ -504,30 +503,8 @@ class StreamService :
      */
     fun switchCamera(): Boolean {
         try {
-            // First try using the Camera2Source approach
-            val camera2Result =
-                withCamera2Source { camera2Source ->
-                    Log.d(TAG, "Switching camera using Camera2Source")
-
-                    if (cameraIds.isEmpty()) getCameraIds()
-                    if (cameraIds.isEmpty()) return@withCamera2Source false
-
-                    // Switch the camera
-                    currentCameraId = (currentCameraId + 1) % cameraIds.size
-
-                    Log.d(TAG, "Switching to camera ${cameraIds[currentCameraId]}")
-                    camera2Source.openCameraId(cameraIds[currentCameraId])
-                    true
-                }
-
-            // If Camera2Source approach failed, try using the CameraInterface directly
-            if (!camera2Result) {
-                Log.d(TAG, "Switching camera using CameraInterface")
-                streamInterface.switchCamera()
-                currentCameraId = if (currentCameraId == 0) 1 else 0
-                return true
-            }
-
+            streamInterface.switchCamera()
+            currentCameraId = if (currentCameraId == 0) 1 else 0
             return true
         } catch (e: Exception) {
             Log.e(TAG, "Error switching camera: ${e.message}", e)
@@ -591,19 +568,8 @@ class StreamService :
      * Gets available camera IDs from the Camera2Source
      */
     private fun getCameraIds() {
-        withCamera2Source { camera2Source ->
-            cameraIds.clear()
-            cameraIds.addAll(camera2Source.camerasAvailable().toList())
-            Log.d(TAG, "Got cameraIds $cameraIds")
-        }
-    }
-
-    /**
-     * Executes an action with Camera2Source if it's available
-     */
-    private fun <T> withCamera2Source(action: (Camera2Source) -> T): T {
-        val camera2Source = streamInterface.stream.videoSource as Camera2Source
-        return action(camera2Source)
+        cameraIds.clear()
+        cameraIds.addAll(streamInterface.getCameraIds())
     }
 
     /**
@@ -691,7 +657,6 @@ class StreamService :
                 Log.e(TAG, "Error unregistering sensor listener", e)
             }
 
-            // Only show the "Ready to Stream" message if there is no error
             if (error != null && broadcastIntent != null) {
                 notificationManager.showErrorNotification(error)
                 applicationContext.sendBroadcast(Intent(broadcastIntent))

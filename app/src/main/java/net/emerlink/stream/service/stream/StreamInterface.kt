@@ -23,6 +23,8 @@ interface StreamInterface {
 
     val glInterface: GlInterface
 
+    fun getCameraIds(): List<String>
+
     fun prepareAudio(
         audioSource: Int = MediaRecorder.AudioSource.DEFAULT,
         bitrate: Int = 128 * 1000,

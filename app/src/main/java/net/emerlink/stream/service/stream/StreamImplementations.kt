@@ -28,6 +28,11 @@ class RtmpStreamImpl(
 
     override val glInterface: GlInterface get() = stream.getGlInterface()
 
+    override fun getCameraIds(): List<String> {
+        val camera2Source = stream.videoSource as Camera2Source
+        return camera2Source.camerasAvailable().toList()
+    }
+
     override fun prepareAudio(
         audioSource: Int,
         bitrate: Int,
@@ -136,6 +141,11 @@ class RtspStreamImpl(
     override val isOnPreview: Boolean get() = stream.isOnPreview
 
     override val glInterface: GlInterface get() = stream.getGlInterface()
+
+    override fun getCameraIds(): List<String> {
+        val camera2Source = stream.videoSource as Camera2Source
+        return camera2Source.camerasAvailable().toList()
+    }
 
     override fun prepareAudio(
         audioSource: Int,
@@ -246,6 +256,11 @@ class SrtStreamImpl(
 
     override val glInterface: GlInterface get() = stream.getGlInterface()
 
+    override fun getCameraIds(): List<String> {
+        val camera2Source = stream.videoSource as Camera2Source
+        return camera2Source.camerasAvailable().toList()
+    }
+
     override fun prepareAudio(
         audioSource: Int,
         bitrate: Int,
@@ -354,6 +369,11 @@ class UdpStreamImpl(
     override val isOnPreview: Boolean get() = stream.isOnPreview
 
     override val glInterface: GlInterface get() = stream.getGlInterface()
+
+    override fun getCameraIds(): List<String> {
+        val camera2Source = stream.videoSource as Camera2Source
+        return camera2Source.camerasAvailable().toList()
+    }
 
     override fun prepareAudio(
         audioSource: Int,
