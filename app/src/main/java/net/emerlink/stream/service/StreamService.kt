@@ -35,6 +35,7 @@ import net.emerlink.stream.data.repository.ConnectionProfileRepository
 import net.emerlink.stream.data.repository.SettingsRepository
 import net.emerlink.stream.service.camera.CameraInterface
 import net.emerlink.stream.service.media.MediaManager
+import net.emerlink.stream.service.media.RecordingListener
 import net.emerlink.stream.service.microphone.MicrophoneMonitor
 import org.koin.java.KoinJavaComponent.inject
 import kotlin.math.log10
@@ -393,51 +394,21 @@ class StreamService :
         try {
             refreshSettings()
             openGlView = view
-
-            Log.d(
-                TAG,
-                "Запуск превью. Статус: стриминг=${isStreaming()}, запись=${isRecording()}"
-            )
-
-            // Если превью уже активно, останавливаем его, но не трогаем стрим
-            if (isOnPreview()) {
-                cameraInterface.stopPreview()
-            }
-
-            // Заменяем View
             cameraInterface.replaceView(view)
 
-            // Если стрим не активен, то можно спокойно обновлять параметры видео
             if (!isStreaming()) {
-                val videoSettings = settingsRepository.videoSettingsFlow.value
-                val bitrate = cameraInterface.bitrate.takeIf { it > 0 } ?: (videoSettings.bitrate * 1000)
-                val resolution = Resolution.parseFromSize(videoSettings.resolution)
-                prepareVideoWithParams(resolution, videoSettings.fps, videoSettings.keyframeInterval, bitrate)
+                prepareVideo()
+                prepareAudio()
+                cameraInterface.startPreview(view, true)
             }
 
-            startPreviewInternal(view)
             isPreviewActive = true
+
             startAudioLevelUpdates()
             microphoneMonitor.startMonitoring()
         } catch (e: Exception) {
             Log.e(TAG, "Error starting preview", e)
         }
-    }
-
-    /**
-     * Internal helper method to start preview
-     */
-    private fun startPreviewInternal(view: OpenGlView) {
-        val rotation = CameraHelper.getCameraOrientation(this)
-        cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
-        openGlView = view
-
-        val videoSettings = settingsRepository.videoSettingsFlow.value
-        val resolution = Resolution.parseFromSize(videoSettings.resolution)
-        Log.d(
-            TAG,
-            "Превью успешно запущено ${resolution.width}x${resolution.height}, rotation=$rotation, streaming=${isStreaming()}"
-        )
     }
 
     fun stopPreview() {
@@ -446,9 +417,7 @@ class StreamService :
         }
 
         try {
-            // Don't stop preview if streaming is active
             if (isOnPreview() && !isStreaming()) {
-                Log.d(TAG, "Stopping Preview")
                 cameraInterface.stopPreview()
             } else if (isStreaming()) {
                 Log.d(TAG, "Not stopping preview because streaming is active")
@@ -486,34 +455,27 @@ class StreamService :
      * @return true if successful, false otherwise
      */
     fun prepareVideo() {
-        val videoSettings = settingsRepository.videoSettingsFlow.value
-        val resolution = Resolution.parseFromSize(videoSettings.resolution)
-        prepareVideoWithParams(
-            resolution,
-            videoSettings.fps,
-            videoSettings.keyframeInterval,
-            videoSettings.bitrate * 1000
-        )
-    }
+        Log.d(TAG, "Подготовка видео")
 
-    /**
-     * Helper method to prepare video with specific parameters
-     */
-    private fun prepareVideoWithParams(
-        resolution: Resolution,
-        fps: Int,
-        iFrameInterval: Int,
-        bitrate: Int,
-    ) {
+        val videoSettings = settingsRepository.videoSettingsFlow.value
+        Log.d(TAG, "Подготовка видео1")
+
+        val resolution = Resolution.parseFromSize(videoSettings.resolution)
+
+        Log.d(TAG, "Подготовка видео2")
         val rotation = CameraHelper.getCameraOrientation(this)
-        cameraInterface.prepareVideo(
-            width = resolution.width,
-            height = resolution.height,
-            fps = fps,
-            bitrate = bitrate,
-            iFrameInterval = iFrameInterval,
-            rotation = rotation
-        )
+        Log.d(TAG, "Подготовка видео3")
+
+        val result =
+            cameraInterface.prepareVideo(
+                width = resolution.width,
+                height = resolution.height,
+                fps = videoSettings.fps,
+                bitrate = videoSettings.bitrate * 1000,
+                iFrameInterval = videoSettings.keyframeInterval,
+                rotation = rotation
+            )
+        Log.d(TAG, "Подготовка видео result $result")
     }
 
     /**
@@ -521,31 +483,16 @@ class StreamService :
      */
     private fun switchStreamResolution() {
         try {
-            val videoSettings = settingsRepository.videoSettingsFlow.value
-            val resolution = Resolution.parseFromSize(videoSettings.resolution)
-
             if (isOnPreview()) {
-                val rotation = CameraHelper.getCameraOrientation(this)
-
                 cameraInterface.stopPreview()
 
-                prepareVideoWithParams(
-                    resolution,
-                    videoSettings.fps,
-                    videoSettings.keyframeInterval,
-                    videoSettings.bitrate * 1000
-                )
+                prepareVideo()
 
                 openGlView?.let { view ->
                     cameraInterface.replaceView(view)
-                    cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
+                    cameraInterface.startPreview(view, true)
                 }
             }
-
-            Log.d(
-                TAG,
-                "Установлено новое разрешение стрима: ${resolution.width}x${resolution.height}"
-            )
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при изменении разрешения стрима: ${e.message}")
         }
@@ -653,16 +600,6 @@ class StreamService :
     }
 
     /**
-     * Set video bitrate on the fly
-     */
-    fun setVideoBitrateOnFly(bitrate: Int) = cameraInterface.setVideoBitrateOnFly(bitrate)
-
-    /**
-     * Check if stream has congestion
-     */
-    fun hasCongestion(): Boolean = cameraInterface.hasCongestion()
-
-    /**
      * Handles zoom gestures
      */
     fun setZoom(motionEvent: MotionEvent) {
@@ -671,7 +608,7 @@ class StreamService :
         }, Unit)
     }
 
-    /**
+    /**h
      * Handles tap-to-focus gestures
      */
     fun tapToFocus(motionEvent: MotionEvent) {
@@ -682,7 +619,7 @@ class StreamService :
 
     fun startRecord(filePath: String) {
         try {
-            cameraInterface.startRecord(filePath)
+            cameraInterface.startRecord(filePath, RecordingListener())
         } catch (e: Exception) {
             errorHandler.handleStreamError(e)
         }
@@ -695,47 +632,6 @@ class StreamService :
             }
         } catch (e: Exception) {
             errorHandler.handleStreamError(e)
-        }
-    }
-
-    fun restartPreview(view: OpenGlView) {
-        try {
-            refreshSettings()
-
-            val isCurrentlyStreaming = isStreaming()
-            Log.d(TAG, "Restarting preview, stream active: $isCurrentlyStreaming")
-
-            // If we already have a valid preview with the same view, don't restart
-            if (isOnPreview() && openGlView == view) {
-                Log.d(TAG, "Preview already active with the same view, skipping restart")
-                isPreviewActive = true
-                return
-            }
-
-            if (isOnPreview()) {
-                cameraInterface.stopPreview()
-            }
-
-            openGlView = view
-
-            if (!isCurrentlyStreaming) {
-                prepareVideo()
-            }
-
-            cameraInterface.replaceView(view)
-            startPreviewInternal(view)
-            isPreviewActive = true
-        } catch (e: Exception) {
-            Log.e(TAG, "Error restarting preview", e)
-            try {
-                cameraInterface.stopPreview()
-                if (!isStreaming()) {
-                    releaseCamera()
-                }
-                isPreviewActive = false
-            } catch (e2: Exception) {
-                Log.e(TAG, "Error cleaning up after failure", e2)
-            }
         }
     }
 
@@ -781,7 +677,7 @@ class StreamService :
             Log.d(TAG, "Перезапуск превью с новым разрешением")
             try {
                 switchStreamResolution()
-                restartPreview(view)
+                startPreview(view)
             } catch (e: Exception) {
                 Log.e(TAG, "Ошибка при обновлении разрешения: ${e.message}", e)
             }
@@ -794,9 +690,6 @@ class StreamService :
         if (isStreaming() || isRecording()) {
             return
         }
-
-        prepareAudio()
-        prepareVideo()
 
         val videoSettings = settingsRepository.videoSettingsFlow.value
         if (videoSettings.streamVideo) {
@@ -887,23 +780,6 @@ class StreamService :
             if (muted) cameraInterface.disableAudio() else cameraInterface.enableAudio()
         } catch (e: Exception) {
             Log.e(TAG, "Error toggling mute state", e)
-        }
-    }
-
-    fun releaseCamera() {
-        try {
-            Log.d(TAG, "Освобождение ресурсов камеры")
-
-            if (isOnPreview()) stopPreview()
-            if (isStreaming()) stopStream()
-            if (isRecording()) stopRecord()
-
-            cameraInterface = CameraInterface.create(this, this, streamType)
-            openGlView = null
-
-            Log.d(TAG, "Ресурсы камеры освобождены")
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка освобождения камеры: ${e.message}", e)
         }
     }
 

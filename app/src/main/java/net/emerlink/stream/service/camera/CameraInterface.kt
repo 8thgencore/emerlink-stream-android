@@ -4,9 +4,9 @@ import android.content.Context
 import android.media.MediaRecorder
 import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
-import com.pedro.encoder.input.video.CameraHelper
 import com.pedro.library.base.Camera2Base
 import com.pedro.library.base.StreamBase
+import com.pedro.library.base.recording.RecordController
 import com.pedro.library.view.GlInterface
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.data.model.StreamType
@@ -44,15 +44,18 @@ interface CameraInterface {
 
     fun startStream(url: String)
 
-    fun stopStream()
+    fun stopStream(): Boolean
 
-    fun startRecord(filePath: String)
+    fun startRecord(
+        filePath: String,
+        listener: RecordController.Listener,
+    )
 
-    fun stopRecord()
+    fun stopRecord(): Boolean
 
     fun startPreview(
-        facing: CameraHelper.Facing,
-        rotation: Int,
+        view: OpenGlView,
+        autoHandle: Boolean,
     )
 
     fun stopPreview()

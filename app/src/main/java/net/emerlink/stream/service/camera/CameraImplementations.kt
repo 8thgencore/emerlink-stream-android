@@ -3,7 +3,7 @@ package net.emerlink.stream.service.camera
 import android.content.Context
 import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
-import com.pedro.encoder.input.video.CameraHelper
+import com.pedro.library.base.recording.RecordController
 import com.pedro.library.rtmp.RtmpCamera2
 import com.pedro.library.rtmp.RtmpStream
 import com.pedro.library.rtsp.RtspCamera2
@@ -23,9 +23,9 @@ class RtmpCameraImpl(
     override val camera = RtmpCamera2(context, connectChecker)
     override val stream = RtmpStream(context, connectChecker)
 
-    override val isStreaming: Boolean get() = camera.isStreaming
-    override val isRecording: Boolean get() = camera.isRecording
-    override val isOnPreview: Boolean get() = camera.isOnPreview
+    override val isStreaming: Boolean get() = stream.isStreaming
+    override val isRecording: Boolean get() = stream.isRecording
+    override val isOnPreview: Boolean get() = stream.isOnPreview
     override val bitrate: Int get() = camera.bitrate
     override val glInterface: GlInterface get() = camera.glInterface
 
@@ -37,11 +37,10 @@ class RtmpCameraImpl(
         echoCanceler: Boolean,
         noiseSuppressor: Boolean,
     ): Boolean =
-        camera.prepareAudio(
-            audioSource,
-            bitrate,
+        stream.prepareAudio(
             sampleRate,
             isStereo,
+            bitrate,
             echoCanceler,
             noiseSuppressor
         )
@@ -53,29 +52,32 @@ class RtmpCameraImpl(
         bitrate: Int,
         iFrameInterval: Int,
         rotation: Int,
-    ) = camera.prepareVideo(
-        width,
-        height,
-        fps,
-        bitrate,
-        iFrameInterval,
-        rotation
+    ) = stream.prepareVideo(
+        width = width,
+        height = height,
+        fps = fps,
+        bitrate = bitrate,
+        iFrameInterval = iFrameInterval,
+        rotation = rotation
     )
 
-    override fun startStream(url: String) = camera.startStream(url)
+    override fun startStream(url: String) = stream.startStream(url)
 
-    override fun stopStream() = camera.stopStream()
+    override fun stopStream() = stream.stopStream()
 
-    override fun startRecord(filePath: String) = camera.startRecord(filePath)
+    override fun startRecord(
+        filePath: String,
+        listener: RecordController.Listener,
+    ) = stream.startRecord(filePath, listener)
 
-    override fun stopRecord() = camera.stopRecord()
+    override fun stopRecord() = stream.stopRecord()
 
     override fun startPreview(
-        facing: CameraHelper.Facing,
-        rotation: Int,
-    ) = camera.startPreview(facing, rotation)
+        view: OpenGlView,
+        autoHandle: Boolean,
+    ) = stream.startPreview(view, autoHandle)
 
-    override fun stopPreview() = camera.stopPreview()
+    override fun stopPreview() = stream.stopPreview()
 
     override fun replaceView(view: OpenGlView) = camera.replaceView(view)
 
@@ -113,9 +115,9 @@ class RtspCameraImpl(
 ) : CameraInterface {
     override val camera = RtspCamera2(context, connectChecker)
     override val stream = RtspStream(context, connectChecker)
-    override val isStreaming: Boolean get() = camera.isStreaming
-    override val isRecording: Boolean get() = camera.isRecording
-    override val isOnPreview: Boolean get() = camera.isOnPreview
+    override val isStreaming: Boolean get() = stream.isStreaming
+    override val isRecording: Boolean get() = stream.isRecording
+    override val isOnPreview: Boolean get() = stream.isOnPreview
     override val bitrate: Int get() = camera.bitrate
     override val glInterface: GlInterface get() = camera.glInterface
 
@@ -143,29 +145,32 @@ class RtspCameraImpl(
         bitrate: Int,
         iFrameInterval: Int,
         rotation: Int,
-    ) = camera.prepareVideo(
-        width,
-        height,
-        fps,
-        bitrate,
-        iFrameInterval,
-        rotation
+    ) = stream.prepareVideo(
+        width = width,
+        height = height,
+        fps = fps,
+        bitrate = bitrate,
+        iFrameInterval = iFrameInterval,
+        rotation = rotation
     )
 
-    override fun startStream(url: String) = camera.startStream(url)
+    override fun startStream(url: String) = stream.startStream(url)
 
-    override fun stopStream() = camera.stopStream()
+    override fun stopStream() = stream.stopStream()
 
-    override fun startRecord(filePath: String) = camera.startRecord(filePath)
+    override fun startRecord(
+        filePath: String,
+        listener: RecordController.Listener,
+    ) = stream.startRecord(filePath, listener)
 
-    override fun stopRecord() = camera.stopRecord()
+    override fun stopRecord() = stream.stopRecord()
 
     override fun startPreview(
-        facing: CameraHelper.Facing,
-        rotation: Int,
-    ) = camera.startPreview(facing, rotation)
+        view: OpenGlView,
+        autoHandle: Boolean,
+    ) = stream.startPreview(view, autoHandle)
 
-    override fun stopPreview() = camera.stopPreview()
+    override fun stopPreview() = stream.stopPreview()
 
     override fun replaceView(view: OpenGlView) = camera.replaceView(view)
 
@@ -204,9 +209,9 @@ class SrtCameraImpl(
     override val camera = SrtCamera2(context, connectChecker)
     override val stream = SrtStream(context, connectChecker)
 
-    override val isStreaming: Boolean get() = camera.isStreaming
-    override val isRecording: Boolean get() = camera.isRecording
-    override val isOnPreview: Boolean get() = camera.isOnPreview
+    override val isStreaming: Boolean get() = stream.isStreaming
+    override val isRecording: Boolean get() = stream.isRecording
+    override val isOnPreview: Boolean get() = stream.isOnPreview
     override val bitrate: Int get() = camera.bitrate
     override val glInterface: GlInterface get() = camera.glInterface
 
@@ -234,29 +239,32 @@ class SrtCameraImpl(
         bitrate: Int,
         iFrameInterval: Int,
         rotation: Int,
-    ) = camera.prepareVideo(
-        width,
-        height,
-        fps,
-        bitrate,
-        iFrameInterval,
-        rotation
+    ) = stream.prepareVideo(
+        width = width,
+        height = height,
+        fps = fps,
+        bitrate = bitrate,
+        iFrameInterval = iFrameInterval,
+        rotation = rotation
     )
 
-    override fun startStream(url: String) = camera.startStream(url)
+    override fun startStream(url: String) = stream.startStream(url)
 
-    override fun stopStream() = camera.stopStream()
+    override fun stopStream() = stream.stopStream()
 
-    override fun startRecord(filePath: String) = camera.startRecord(filePath)
+    override fun startRecord(
+        filePath: String,
+        listener: RecordController.Listener,
+    ) = stream.startRecord(filePath, listener)
 
-    override fun stopRecord() = camera.stopRecord()
+    override fun stopRecord() = stream.stopRecord()
 
     override fun startPreview(
-        facing: CameraHelper.Facing,
-        rotation: Int,
-    ) = camera.startPreview(facing, rotation)
+        view: OpenGlView,
+        autoHandle: Boolean,
+    ) = stream.startPreview(view, autoHandle)
 
-    override fun stopPreview() = camera.stopPreview()
+    override fun stopPreview() = stream.stopPreview()
 
     override fun replaceView(view: OpenGlView) = camera.replaceView(view)
 
@@ -295,9 +303,9 @@ class UdpCameraImpl(
     override val camera = UdpCamera2(context, connectChecker)
     override val stream = UdpStream(context, connectChecker)
 
-    override val isStreaming: Boolean get() = camera.isStreaming
-    override val isRecording: Boolean get() = camera.isRecording
-    override val isOnPreview: Boolean get() = camera.isOnPreview
+    override val isStreaming: Boolean get() = stream.isStreaming
+    override val isRecording: Boolean get() = stream.isRecording
+    override val isOnPreview: Boolean get() = stream.isOnPreview
     override val bitrate: Int get() = camera.bitrate
     override val glInterface: GlInterface get() = camera.glInterface
 
@@ -325,29 +333,32 @@ class UdpCameraImpl(
         bitrate: Int,
         iFrameInterval: Int,
         rotation: Int,
-    ) = camera.prepareVideo(
-        width,
-        height,
-        fps,
-        bitrate,
-        iFrameInterval,
-        rotation
+    ) = stream.prepareVideo(
+        width = width,
+        height = height,
+        fps = fps,
+        bitrate = bitrate,
+        iFrameInterval = iFrameInterval,
+        rotation = rotation
     )
 
-    override fun startStream(url: String) = camera.startStream(url)
+    override fun startStream(url: String) = stream.startStream(url)
 
-    override fun stopStream() = camera.stopStream()
+    override fun stopStream() = stream.stopStream()
 
-    override fun startRecord(filePath: String) = camera.startRecord(filePath)
+    override fun startRecord(
+        filePath: String,
+        listener: RecordController.Listener,
+    ) = stream.startRecord(filePath, listener)
 
-    override fun stopRecord() = camera.stopRecord()
+    override fun stopRecord() = stream.stopRecord()
 
     override fun startPreview(
-        facing: CameraHelper.Facing,
-        rotation: Int,
-    ) = camera.startPreview(facing, rotation)
+        view: OpenGlView,
+        autoHandle: Boolean,
+    ) = stream.startPreview(view, autoHandle)
 
-    override fun stopPreview() = camera.stopPreview()
+    override fun stopPreview() = stream.stopPreview()
 
     override fun replaceView(view: OpenGlView) = camera.replaceView(view)
 
