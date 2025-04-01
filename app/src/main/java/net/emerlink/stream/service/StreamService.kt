@@ -740,15 +740,9 @@ class StreamService :
     }
 
     private fun refreshSettings() {
-        try {
-            connectionSettings = connectionRepository.activeProfileFlow.value?.settings ?: ConnectionSettings()
-            setStreamType(connectionSettings.protocol)
-
-            if (isPreviewActive && openGlView != null) {
-                handleResolutionChange()
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error refreshing settings", e)
+        updateStreamType()
+        if (isPreviewActive && openGlView != null) {
+            handleResolutionChange()
         }
     }
 
@@ -925,11 +919,11 @@ class StreamService :
 
     /**
      * Set stream protocol type
-     * @param type The stream protocol type
      */
-    private fun setStreamType(type: StreamType) {
-        if (type != streamType) {
-            streamType = type
+    private fun updateStreamType() {
+        connectionSettings = connectionRepository.activeProfileFlow.value?.settings ?: ConnectionSettings()
+        if (connectionSettings.protocol != streamType) {
+            streamType = connectionSettings.protocol
             cameraInterface = CameraInterface.create(this, this, streamType)
             getCameraIds() // Refresh camera IDs when changing interface
         }
