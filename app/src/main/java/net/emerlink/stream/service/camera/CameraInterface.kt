@@ -4,7 +4,6 @@ import android.content.Context
 import android.media.MediaRecorder
 import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
-import com.pedro.library.base.Camera2Base
 import com.pedro.library.base.StreamBase
 import com.pedro.library.base.recording.RecordController
 import com.pedro.library.view.GlInterface
@@ -15,13 +14,12 @@ import net.emerlink.stream.data.model.StreamType
  * Interface for camera implementation
  */
 interface CameraInterface {
-    val camera: Camera2Base
     val stream: StreamBase
 
     val isStreaming: Boolean
     val isRecording: Boolean
     val isOnPreview: Boolean
-    val bitrate: Int
+
     val glInterface: GlInterface
 
     fun prepareAudio(
@@ -59,8 +57,6 @@ interface CameraInterface {
     )
 
     fun stopPreview()
-
-    fun replaceView(view: OpenGlView)
 
     fun switchCamera()
 

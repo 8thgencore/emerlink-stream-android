@@ -3,14 +3,13 @@ package net.emerlink.stream.service.camera
 import android.content.Context
 import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
+import com.pedro.encoder.input.sources.audio.MicrophoneSource
+import com.pedro.encoder.input.sources.audio.NoAudioSource
+import com.pedro.encoder.input.sources.video.Camera2Source
 import com.pedro.library.base.recording.RecordController
-import com.pedro.library.rtmp.RtmpCamera2
 import com.pedro.library.rtmp.RtmpStream
-import com.pedro.library.rtsp.RtspCamera2
 import com.pedro.library.rtsp.RtspStream
-import com.pedro.library.srt.SrtCamera2
 import com.pedro.library.srt.SrtStream
-import com.pedro.library.udp.UdpCamera2
 import com.pedro.library.udp.UdpStream
 import com.pedro.library.view.GlInterface
 import com.pedro.library.view.OpenGlView
@@ -20,14 +19,13 @@ class RtmpCameraImpl(
     context: Context,
     connectChecker: ConnectChecker,
 ) : CameraInterface {
-    override val camera = RtmpCamera2(context, connectChecker)
     override val stream = RtmpStream(context, connectChecker)
 
     override val isStreaming: Boolean get() = stream.isStreaming
     override val isRecording: Boolean get() = stream.isRecording
     override val isOnPreview: Boolean get() = stream.isOnPreview
-    override val bitrate: Int get() = camera.bitrate
-    override val glInterface: GlInterface get() = camera.glInterface
+
+    override val glInterface: GlInterface get() = stream.getGlInterface()
 
     override fun prepareAudio(
         audioSource: Int,
@@ -79,47 +77,54 @@ class RtmpCameraImpl(
 
     override fun stopPreview() = stream.stopPreview()
 
-    override fun replaceView(view: OpenGlView) = camera.replaceView(view)
+    override fun switchCamera() {
+        val camera2Source = stream.videoSource as Camera2Source
+        camera2Source.switchCamera()
+    }
 
-    override fun switchCamera() = camera.switchCamera()
+    override fun setVideoBitrateOnFly(bitrate: Int) = stream.setVideoBitrateOnFly(bitrate)
 
-    override fun setVideoBitrateOnFly(bitrate: Int) = camera.setVideoBitrateOnFly(bitrate)
+    override fun enableAudio() = stream.changeAudioSource(MicrophoneSource())
 
-    override fun enableAudio() = camera.enableAudio()
+    override fun disableAudio() = stream.changeAudioSource(NoAudioSource())
 
-    override fun disableAudio() = camera.disableAudio()
+    override fun hasCongestion(): Boolean = stream.getStreamClient().hasCongestion()
 
-    override fun hasCongestion(): Boolean = camera.getStreamClient().hasCongestion()
+    override fun enableLantern() {
+        val camera2Source = stream.videoSource as Camera2Source
+        camera2Source.enableLantern()
+    }
 
-    override fun enableLantern() = camera.enableLantern()
-
-    override fun disableLantern() = camera.disableLantern()
+    override fun disableLantern() {
+        val camera2Source = stream.videoSource as Camera2Source
+        camera2Source.disableLantern()
+    }
 
     override fun setAuthorization(
         username: String,
         password: String,
     ) {
-        camera.getStreamClient().setAuthorization(username, password)
+        stream.getStreamClient().setAuthorization(username, password)
     }
 
     override fun setProtocol(tcp: Boolean) {
         // Not applicable for RTMP
     }
 
-    override fun setAudioCodec(codec: AudioCodec) = camera.setAudioCodec(codec)
+    override fun setAudioCodec(codec: AudioCodec) = stream.setAudioCodec(codec)
 }
 
 class RtspCameraImpl(
     context: Context,
     connectChecker: ConnectChecker,
 ) : CameraInterface {
-    override val camera = RtspCamera2(context, connectChecker)
     override val stream = RtspStream(context, connectChecker)
+
     override val isStreaming: Boolean get() = stream.isStreaming
     override val isRecording: Boolean get() = stream.isRecording
     override val isOnPreview: Boolean get() = stream.isOnPreview
-    override val bitrate: Int get() = camera.bitrate
-    override val glInterface: GlInterface get() = camera.glInterface
+
+    override val glInterface: GlInterface get() = stream.getGlInterface()
 
     override fun prepareAudio(
         audioSource: Int,
@@ -129,11 +134,10 @@ class RtspCameraImpl(
         echoCanceler: Boolean,
         noiseSuppressor: Boolean,
     ): Boolean =
-        camera.prepareAudio(
-            audioSource,
-            bitrate,
+        stream.prepareAudio(
             sampleRate,
             isStereo,
+            bitrate,
             echoCanceler,
             noiseSuppressor
         )
@@ -172,48 +176,54 @@ class RtspCameraImpl(
 
     override fun stopPreview() = stream.stopPreview()
 
-    override fun replaceView(view: OpenGlView) = camera.replaceView(view)
+    override fun switchCamera() {
+        val camera2Source = stream.videoSource as Camera2Source
+        camera2Source.switchCamera()
+    }
 
-    override fun switchCamera() = camera.switchCamera()
+    override fun setVideoBitrateOnFly(bitrate: Int) = stream.setVideoBitrateOnFly(bitrate)
 
-    override fun setVideoBitrateOnFly(bitrate: Int) = camera.setVideoBitrateOnFly(bitrate)
+    override fun enableAudio() = stream.changeAudioSource(MicrophoneSource())
 
-    override fun enableAudio() = camera.enableAudio()
+    override fun disableAudio() = stream.changeAudioSource(NoAudioSource())
 
-    override fun disableAudio() = camera.disableAudio()
+    override fun hasCongestion(): Boolean = stream.getStreamClient().hasCongestion()
 
-    override fun hasCongestion(): Boolean = camera.getStreamClient().hasCongestion()
+    override fun enableLantern() {
+        val camera2Source = stream.videoSource as Camera2Source
+        camera2Source.enableLantern()
+    }
 
-    override fun enableLantern() = camera.enableLantern()
-
-    override fun disableLantern() = camera.disableLantern()
+    override fun disableLantern() {
+        val camera2Source = stream.videoSource as Camera2Source
+        camera2Source.disableLantern()
+    }
 
     override fun setAuthorization(
         username: String,
         password: String,
     ) {
-        camera.getStreamClient().setAuthorization(username, password)
+        stream.getStreamClient().setAuthorization(username, password)
     }
 
     override fun setProtocol(tcp: Boolean) {
-        camera.getStreamClient().setProtocol(if (tcp) Protocol.TCP else Protocol.UDP)
+        stream.getStreamClient().setProtocol(if (tcp) Protocol.TCP else Protocol.UDP)
     }
 
-    override fun setAudioCodec(codec: AudioCodec) = camera.setAudioCodec(codec)
+    override fun setAudioCodec(codec: AudioCodec) = stream.setAudioCodec(codec)
 }
 
 class SrtCameraImpl(
     context: Context,
     connectChecker: ConnectChecker,
 ) : CameraInterface {
-    override val camera = SrtCamera2(context, connectChecker)
     override val stream = SrtStream(context, connectChecker)
 
     override val isStreaming: Boolean get() = stream.isStreaming
     override val isRecording: Boolean get() = stream.isRecording
     override val isOnPreview: Boolean get() = stream.isOnPreview
-    override val bitrate: Int get() = camera.bitrate
-    override val glInterface: GlInterface get() = camera.glInterface
+
+    override val glInterface: GlInterface get() = stream.getGlInterface()
 
     override fun prepareAudio(
         audioSource: Int,
@@ -223,11 +233,10 @@ class SrtCameraImpl(
         echoCanceler: Boolean,
         noiseSuppressor: Boolean,
     ): Boolean =
-        camera.prepareAudio(
-            audioSource,
-            bitrate,
+        stream.prepareAudio(
             sampleRate,
             isStereo,
+            bitrate,
             echoCanceler,
             noiseSuppressor
         )
@@ -266,21 +275,28 @@ class SrtCameraImpl(
 
     override fun stopPreview() = stream.stopPreview()
 
-    override fun replaceView(view: OpenGlView) = camera.replaceView(view)
+    override fun switchCamera() {
+        val camera2Source = stream.videoSource as Camera2Source
+        camera2Source.switchCamera()
+    }
 
-    override fun switchCamera() = camera.switchCamera()
+    override fun setVideoBitrateOnFly(bitrate: Int) = stream.setVideoBitrateOnFly(bitrate)
 
-    override fun setVideoBitrateOnFly(bitrate: Int) = camera.setVideoBitrateOnFly(bitrate)
+    override fun enableAudio() = stream.changeAudioSource(MicrophoneSource())
 
-    override fun enableAudio() = camera.enableAudio()
+    override fun disableAudio() = stream.changeAudioSource(NoAudioSource())
 
-    override fun disableAudio() = camera.disableAudio()
+    override fun hasCongestion(): Boolean = stream.getStreamClient().hasCongestion()
 
-    override fun hasCongestion(): Boolean = camera.getStreamClient().hasCongestion()
+    override fun enableLantern() {
+        val camera2Source = stream.videoSource as Camera2Source
+        camera2Source.enableLantern()
+    }
 
-    override fun enableLantern() = camera.enableLantern()
-
-    override fun disableLantern() = camera.disableLantern()
+    override fun disableLantern() {
+        val camera2Source = stream.videoSource as Camera2Source
+        camera2Source.disableLantern()
+    }
 
     override fun setAuthorization(
         username: String,
@@ -293,21 +309,20 @@ class SrtCameraImpl(
         // Not applicable for SRT
     }
 
-    override fun setAudioCodec(codec: AudioCodec) = camera.setAudioCodec(codec)
+    override fun setAudioCodec(codec: AudioCodec) = stream.setAudioCodec(codec)
 }
 
 class UdpCameraImpl(
     context: Context,
     connectChecker: ConnectChecker,
 ) : CameraInterface {
-    override val camera = UdpCamera2(context, connectChecker)
     override val stream = UdpStream(context, connectChecker)
 
     override val isStreaming: Boolean get() = stream.isStreaming
     override val isRecording: Boolean get() = stream.isRecording
     override val isOnPreview: Boolean get() = stream.isOnPreview
-    override val bitrate: Int get() = camera.bitrate
-    override val glInterface: GlInterface get() = camera.glInterface
+
+    override val glInterface: GlInterface get() = stream.getGlInterface()
 
     override fun prepareAudio(
         audioSource: Int,
@@ -317,11 +332,10 @@ class UdpCameraImpl(
         echoCanceler: Boolean,
         noiseSuppressor: Boolean,
     ): Boolean =
-        camera.prepareAudio(
-            audioSource,
-            bitrate,
+        stream.prepareAudio(
             sampleRate,
             isStereo,
+            bitrate,
             echoCanceler,
             noiseSuppressor
         )
@@ -360,21 +374,28 @@ class UdpCameraImpl(
 
     override fun stopPreview() = stream.stopPreview()
 
-    override fun replaceView(view: OpenGlView) = camera.replaceView(view)
+    override fun switchCamera() {
+        val camera2Source = stream.videoSource as Camera2Source
+        camera2Source.switchCamera()
+    }
 
-    override fun switchCamera() = camera.switchCamera()
+    override fun setVideoBitrateOnFly(bitrate: Int) = stream.setVideoBitrateOnFly(bitrate)
 
-    override fun setVideoBitrateOnFly(bitrate: Int) = camera.setVideoBitrateOnFly(bitrate)
+    override fun enableAudio() = stream.changeAudioSource(MicrophoneSource())
 
-    override fun enableAudio() = camera.enableAudio()
+    override fun disableAudio() = stream.changeAudioSource(NoAudioSource())
 
-    override fun disableAudio() = camera.disableAudio()
+    override fun hasCongestion(): Boolean = stream.getStreamClient().hasCongestion()
 
-    override fun hasCongestion(): Boolean = camera.getStreamClient().hasCongestion()
+    override fun enableLantern() {
+        val camera2Source = stream.videoSource as Camera2Source
+        camera2Source.enableLantern()
+    }
 
-    override fun enableLantern() = camera.enableLantern()
-
-    override fun disableLantern() = camera.disableLantern()
+    override fun disableLantern() {
+        val camera2Source = stream.videoSource as Camera2Source
+        camera2Source.disableLantern()
+    }
 
     override fun setAuthorization(
         username: String,
@@ -387,5 +408,5 @@ class UdpCameraImpl(
         // Not applicable for UDP
     }
 
-    override fun setAudioCodec(codec: AudioCodec) = camera.setAudioCodec(codec)
+    override fun setAudioCodec(codec: AudioCodec) = stream.setAudioCodec(codec)
 }

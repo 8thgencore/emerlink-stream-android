@@ -394,7 +394,6 @@ class StreamService :
         try {
             refreshSettings()
             openGlView = view
-            cameraInterface.replaceView(view)
 
             if (!isStreaming()) {
                 prepareVideo()
@@ -440,8 +439,6 @@ class StreamService :
         Log.d(TAG, "Подготовка аудио")
 
         val audioSettings = settingsRepository.audioSettingsFlow.value
-
-        // Try with current settings first
         cameraInterface.prepareAudio(
             bitrate = audioSettings.bitrate * 1024,
             sampleRate = audioSettings.sampleRate,
@@ -458,24 +455,17 @@ class StreamService :
         Log.d(TAG, "Подготовка видео")
 
         val videoSettings = settingsRepository.videoSettingsFlow.value
-        Log.d(TAG, "Подготовка видео1")
-
         val resolution = Resolution.parseFromSize(videoSettings.resolution)
-
-        Log.d(TAG, "Подготовка видео2")
         val rotation = CameraHelper.getCameraOrientation(this)
-        Log.d(TAG, "Подготовка видео3")
 
-        val result =
-            cameraInterface.prepareVideo(
-                width = resolution.width,
-                height = resolution.height,
-                fps = videoSettings.fps,
-                bitrate = videoSettings.bitrate * 1000,
-                iFrameInterval = videoSettings.keyframeInterval,
-                rotation = rotation
-            )
-        Log.d(TAG, "Подготовка видео result $result")
+        cameraInterface.prepareVideo(
+            width = resolution.width,
+            height = resolution.height,
+            fps = videoSettings.fps,
+            bitrate = videoSettings.bitrate * 1000,
+            iFrameInterval = videoSettings.keyframeInterval,
+            rotation = rotation
+        )
     }
 
     /**
@@ -485,13 +475,8 @@ class StreamService :
         try {
             if (isOnPreview()) {
                 cameraInterface.stopPreview()
-
                 prepareVideo()
-
-                openGlView?.let { view ->
-                    cameraInterface.replaceView(view)
-                    cameraInterface.startPreview(view, true)
-                }
+                openGlView?.let { view -> cameraInterface.startPreview(view, true) }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при изменении разрешения стрима: ${e.message}")
@@ -521,7 +506,7 @@ class StreamService :
         try {
             // First try using the Camera2Source approach
             val camera2Result =
-                withCamera2Source({ camera2Source ->
+                withCamera2Source { camera2Source ->
                     Log.d(TAG, "Switching camera using Camera2Source")
 
                     if (cameraIds.isEmpty()) getCameraIds()
@@ -533,7 +518,7 @@ class StreamService :
                     Log.d(TAG, "Switching to camera ${cameraIds[currentCameraId]}")
                     camera2Source.openCameraId(cameraIds[currentCameraId])
                     true
-                }, false)
+                }
 
             // If Camera2Source approach failed, try using the CameraInterface directly
             if (!camera2Result) {
@@ -556,43 +541,15 @@ class StreamService :
      */
     fun toggleLantern(): Boolean {
         try {
-            // First try using the Camera2Source approach
-            val camera2Result =
-                withCamera2Source({ camera2Source ->
-                    try {
-                        Log.d(TAG, "Toggling lantern using Camera2Source")
-                        val wasEnabled = camera2Source.isLanternEnabled()
-                        if (wasEnabled) {
-                            camera2Source.disableLantern()
-                            Log.d(TAG, "Lantern disabled")
-                        } else {
-                            camera2Source.enableLantern()
-                            Log.d(TAG, "Lantern enabled")
-                        }
-                        camera2Source.isLanternEnabled()
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to toggle lantern with Camera2Source: ${e.localizedMessage}", e)
-                        false
-                    }
-                }, false)
+            lanternEnabled = !lanternEnabled
 
-            // If Camera2Source approach failed, try using the CameraInterface directly
-            if (!camera2Result) {
-                Log.d(TAG, "Toggling lantern using CameraInterface")
-                lanternEnabled = !lanternEnabled
-
-                if (lanternEnabled) {
-                    cameraInterface.enableLantern()
-                    Log.d(TAG, "Lantern enabled via CameraInterface")
-                } else {
-                    cameraInterface.disableLantern()
-                    Log.d(TAG, "Lantern disabled via CameraInterface")
-                }
-
-                return lanternEnabled
+            if (lanternEnabled) {
+                cameraInterface.enableLantern()
+            } else {
+                cameraInterface.disableLantern()
             }
 
-            return true
+            return lanternEnabled
         } catch (e: Exception) {
             Log.e(TAG, "Error toggling lantern, trying fallback: ${e.message}", e)
             return false
@@ -603,18 +560,18 @@ class StreamService :
      * Handles zoom gestures
      */
     fun setZoom(motionEvent: MotionEvent) {
-        withCamera2Source({ camera2Source ->
+        withCamera2Source { camera2Source ->
             camera2Source.setZoom(motionEvent)
-        }, Unit)
+        }
     }
 
     /**h
      * Handles tap-to-focus gestures
      */
     fun tapToFocus(motionEvent: MotionEvent) {
-        withCamera2Source({ camera2Source ->
+        withCamera2Source { camera2Source ->
             camera2Source.tapToFocus(motionEvent)
-        }, Unit)
+        }
     }
 
     fun startRecord(filePath: String) {
@@ -626,12 +583,8 @@ class StreamService :
     }
 
     fun stopRecord() {
-        try {
-            if (isRecording()) {
-                cameraInterface.stopRecord()
-            }
-        } catch (e: Exception) {
-            errorHandler.handleStreamError(e)
+        if (isRecording()) {
+            cameraInterface.stopRecord()
         }
     }
 
@@ -646,28 +599,20 @@ class StreamService :
      * Gets available camera IDs from the Camera2Source
      */
     private fun getCameraIds() {
-        withCamera2Source({ camera2Source ->
+        withCamera2Source { camera2Source ->
             cameraIds.clear()
             cameraIds.addAll(camera2Source.camerasAvailable().toList())
             Log.d(TAG, "Got cameraIds $cameraIds")
-        }, Unit)
+        }
     }
 
     /**
      * Executes an action with Camera2Source if it's available
      */
-    private fun <T> withCamera2Source(
-        action: (Camera2Source) -> T,
-        defaultValue: T,
-    ): T {
-        val videoSource = getVideoSource()
-        if (videoSource is Camera2Source) {
-            return action(videoSource)
-        }
-        return defaultValue
+    private fun <T> withCamera2Source(action: (Camera2Source) -> T): T {
+        val camera2Source = cameraInterface.stream.videoSource as Camera2Source
+        return action(camera2Source)
     }
-
-    private fun getVideoSource(): Any = cameraInterface
 
     /**
      * Handles resolution change by restarting preview with new settings
