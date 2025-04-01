@@ -33,10 +33,10 @@ import net.emerlink.stream.data.model.StreamInfo
 import net.emerlink.stream.data.model.StreamType
 import net.emerlink.stream.data.repository.ConnectionProfileRepository
 import net.emerlink.stream.data.repository.SettingsRepository
-import net.emerlink.stream.service.camera.CameraInterface
 import net.emerlink.stream.service.media.MediaManager
 import net.emerlink.stream.service.media.RecordingListener
 import net.emerlink.stream.service.microphone.MicrophoneMonitor
+import net.emerlink.stream.service.stream.StreamInterface
 import org.koin.java.KoinJavaComponent.inject
 import kotlin.math.log10
 
@@ -62,7 +62,7 @@ class StreamService :
     private lateinit var magnetometer: android.hardware.Sensor
     private lateinit var accelerometer: android.hardware.Sensor
     private lateinit var microphoneMonitor: MicrophoneMonitor
-    private lateinit var cameraInterface: CameraInterface
+    private lateinit var streamInterface: StreamInterface
 
     private var bitrateAdapter: BitrateAdapter? = null
     private var exiting = false
@@ -175,7 +175,7 @@ class StreamService :
         errorHandler = ErrorHandler(this)
         connectionSettings = connectionRepository.activeProfileFlow.value?.settings ?: ConnectionSettings()
         streamType = connectionSettings.protocol
-        cameraInterface = CameraInterface.create(this, this, streamType)
+        streamInterface = StreamInterface.create(this, this, streamType)
         mediaManager = MediaManager(this, this, notificationManager)
         microphoneMonitor = MicrophoneMonitor()
         getCameraIds()
@@ -324,7 +324,7 @@ class StreamService :
         if (videoSettings.adaptiveBitrate) {
             bitrateAdapter =
                 BitrateAdapter { bitrate ->
-                    cameraInterface.setVideoBitrateOnFly(bitrate)
+                    streamInterface.setVideoBitrateOnFly(bitrate)
                 }
             bitrateAdapter?.setMaxBitrate(videoSettings.bitrate * 1024)
         }
@@ -333,7 +333,7 @@ class StreamService :
     override fun onDisconnect() {}
 
     override fun onNewBitrate(bitrate: Long) {
-        bitrateAdapter?.adaptBitrate(bitrate, cameraInterface.hasCongestion())
+        bitrateAdapter?.adaptBitrate(bitrate, streamInterface.hasCongestion())
         val intent = Intent(AppIntentActions.NEW_BITRATE)
         intent.putExtra(AppIntentActions.EXTRA_NEW_BITRATE, bitrate)
         applicationContext.sendBroadcast(intent)
@@ -398,7 +398,7 @@ class StreamService :
             if (!isStreaming()) {
                 prepareVideo()
                 prepareAudio()
-                cameraInterface.startPreview(view, true)
+                streamInterface.startPreview(view, true)
             }
 
             isPreviewActive = true
@@ -417,7 +417,7 @@ class StreamService :
 
         try {
             if (isOnPreview() && !isStreaming()) {
-                cameraInterface.stopPreview()
+                streamInterface.stopPreview()
             } else if (isStreaming()) {
                 Log.d(TAG, "Not stopping preview because streaming is active")
             }
@@ -439,12 +439,12 @@ class StreamService :
         Log.d(TAG, "Подготовка аудио")
 
         val audioSettings = settingsRepository.audioSettingsFlow.value
-        cameraInterface.prepareAudio(
+        streamInterface.prepareAudio(
             bitrate = audioSettings.bitrate * 1024,
             sampleRate = audioSettings.sampleRate,
             isStereo = audioSettings.stereo
         )
-        cameraInterface.setAudioCodec(AudioCodec.AAC)
+        streamInterface.setAudioCodec(AudioCodec.AAC)
     }
 
     /**
@@ -458,7 +458,7 @@ class StreamService :
         val resolution = Resolution.parseFromSize(videoSettings.resolution)
         val rotation = CameraHelper.getCameraOrientation(this)
 
-        cameraInterface.prepareVideo(
+        streamInterface.prepareVideo(
             width = resolution.width,
             height = resolution.height,
             fps = videoSettings.fps,
@@ -474,9 +474,9 @@ class StreamService :
     private fun switchStreamResolution() {
         try {
             if (isOnPreview()) {
-                cameraInterface.stopPreview()
+                streamInterface.stopPreview()
                 prepareVideo()
-                openGlView?.let { view -> cameraInterface.startPreview(view, true) }
+                openGlView?.let { view -> streamInterface.startPreview(view, true) }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при изменении разрешения стрима: ${e.message}")
@@ -486,17 +486,17 @@ class StreamService :
     /**
      * Check if streaming is active
      */
-    fun isStreaming(): Boolean = cameraInterface.isStreaming
+    fun isStreaming(): Boolean = streamInterface.isStreaming
 
     /**
      * Check if recording is active
      */
-    fun isRecording(): Boolean = cameraInterface.isRecording
+    fun isRecording(): Boolean = streamInterface.isRecording
 
     /**
      * Check if preview is active
      */
-    fun isOnPreview(): Boolean = cameraInterface.isOnPreview
+    fun isOnPreview(): Boolean = streamInterface.isOnPreview
 
     /**
      * Switches between available cameras
@@ -523,7 +523,7 @@ class StreamService :
             // If Camera2Source approach failed, try using the CameraInterface directly
             if (!camera2Result) {
                 Log.d(TAG, "Switching camera using CameraInterface")
-                cameraInterface.switchCamera()
+                streamInterface.switchCamera()
                 currentCameraId = if (currentCameraId == 0) 1 else 0
                 return true
             }
@@ -544,9 +544,9 @@ class StreamService :
             lanternEnabled = !lanternEnabled
 
             if (lanternEnabled) {
-                cameraInterface.enableLantern()
+                streamInterface.enableLantern()
             } else {
-                cameraInterface.disableLantern()
+                streamInterface.disableLantern()
             }
 
             return lanternEnabled
@@ -559,24 +559,16 @@ class StreamService :
     /**
      * Handles zoom gestures
      */
-    fun setZoom(motionEvent: MotionEvent) {
-        withCamera2Source { camera2Source ->
-            camera2Source.setZoom(motionEvent)
-        }
-    }
+    fun setZoom(motionEvent: MotionEvent) = streamInterface.setZoom(motionEvent)
 
     /**h
      * Handles tap-to-focus gestures
      */
-    fun tapToFocus(motionEvent: MotionEvent) {
-        withCamera2Source { camera2Source ->
-            camera2Source.tapToFocus(motionEvent)
-        }
-    }
+    fun tapToFocus(motionEvent: MotionEvent) = streamInterface.tapToFocus(motionEvent)
 
     fun startRecord(filePath: String) {
         try {
-            cameraInterface.startRecord(filePath, RecordingListener())
+            streamInterface.startRecord(filePath, RecordingListener())
         } catch (e: Exception) {
             errorHandler.handleStreamError(e)
         }
@@ -584,7 +576,7 @@ class StreamService :
 
     fun stopRecord() {
         if (isRecording()) {
-            cameraInterface.stopRecord()
+            streamInterface.stopRecord()
         }
     }
 
@@ -610,7 +602,7 @@ class StreamService :
      * Executes an action with Camera2Source if it's available
      */
     private fun <T> withCamera2Source(action: (Camera2Source) -> T): T {
-        val camera2Source = cameraInterface.stream.videoSource as Camera2Source
+        val camera2Source = streamInterface.stream.videoSource as Camera2Source
         return action(camera2Source)
     }
 
@@ -657,7 +649,7 @@ class StreamService :
             Log.d(TAG, "Stream URL: ${streamUrl.replace(Regex(":[^:/]*:[^:/]*"), ":****:****")}")
 
             if (connectionSettings.protocol.toString().startsWith("rtsp")) {
-                cameraInterface.setProtocol(connectionSettings.tcp)
+                streamInterface.setProtocol(connectionSettings.tcp)
             }
 
             if (connectionSettings.username.isNotEmpty() &&
@@ -667,10 +659,10 @@ class StreamService :
                         connectionSettings.protocol.toString().startsWith("rtsp")
                 )
             ) {
-                cameraInterface.setAuthorization(connectionSettings.username, connectionSettings.password)
+                streamInterface.setAuthorization(connectionSettings.username, connectionSettings.password)
             }
 
-            cameraInterface.startStream(streamUrl)
+            streamInterface.startStream(streamUrl)
         } catch (e: Exception) {
             Log.e(TAG, "Error starting streaming", e)
             errorHandler.handleStreamError(e)
@@ -685,7 +677,7 @@ class StreamService :
 
         try {
             if (isStreaming()) {
-                cameraInterface.stopStream()
+                streamInterface.stopStream()
                 notifyStreamStopped()
             }
 
@@ -722,7 +714,7 @@ class StreamService :
 
     fun toggleMute(muted: Boolean) {
         try {
-            if (muted) cameraInterface.disableAudio() else cameraInterface.enableAudio()
+            if (muted) streamInterface.disableAudio() else streamInterface.enableAudio()
         } catch (e: Exception) {
             Log.e(TAG, "Error toggling mute state", e)
         }
@@ -745,7 +737,7 @@ class StreamService :
         connectionSettings = connectionRepository.activeProfileFlow.value?.settings ?: ConnectionSettings()
         if (connectionSettings.protocol != streamType) {
             streamType = connectionSettings.protocol
-            cameraInterface = CameraInterface.create(this, this, streamType)
+            streamInterface = StreamInterface.create(this, this, streamType)
             getCameraIds() // Refresh camera IDs when changing interface
         }
     }
@@ -753,7 +745,7 @@ class StreamService :
     /**
      * Get the GL interface for rendering
      */
-    fun getGlInterface() = cameraInterface.glInterface
+    fun getGlInterface() = streamInterface.glInterface
 
     fun takePhoto() = mediaManager.takePhoto()
 

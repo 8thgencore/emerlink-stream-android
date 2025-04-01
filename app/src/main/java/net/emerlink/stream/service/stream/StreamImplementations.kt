@@ -1,6 +1,7 @@
-package net.emerlink.stream.service.camera
+package net.emerlink.stream.service.stream
 
 import android.content.Context
+import android.view.MotionEvent
 import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.sources.audio.MicrophoneSource
@@ -15,10 +16,10 @@ import com.pedro.library.view.GlInterface
 import com.pedro.library.view.OpenGlView
 import com.pedro.rtsp.rtsp.Protocol
 
-class RtmpCameraImpl(
+class RtmpStreamImpl(
     context: Context,
     connectChecker: ConnectChecker,
-) : CameraInterface {
+) : StreamInterface {
     override val stream = RtmpStream(context, connectChecker)
 
     override val isStreaming: Boolean get() = stream.isStreaming
@@ -112,12 +113,22 @@ class RtmpCameraImpl(
     }
 
     override fun setAudioCodec(codec: AudioCodec) = stream.setAudioCodec(codec)
+
+    override fun setZoom(motionEvent: MotionEvent) {
+        val camera2Source = stream.videoSource as Camera2Source
+        camera2Source.setZoom(motionEvent)
+    }
+
+    override fun tapToFocus(motionEvent: MotionEvent) {
+        val camera2Source = stream.videoSource as Camera2Source
+        camera2Source.tapToFocus(motionEvent)
+    }
 }
 
-class RtspCameraImpl(
+class RtspStreamImpl(
     context: Context,
     connectChecker: ConnectChecker,
-) : CameraInterface {
+) : StreamInterface {
     override val stream = RtspStream(context, connectChecker)
 
     override val isStreaming: Boolean get() = stream.isStreaming
@@ -211,12 +222,22 @@ class RtspCameraImpl(
     }
 
     override fun setAudioCodec(codec: AudioCodec) = stream.setAudioCodec(codec)
+
+    override fun setZoom(motionEvent: MotionEvent) {
+        val camera2Source = stream.videoSource as Camera2Source
+        camera2Source.setZoom(motionEvent)
+    }
+
+    override fun tapToFocus(motionEvent: MotionEvent) {
+        val camera2Source = stream.videoSource as Camera2Source
+        camera2Source.tapToFocus(motionEvent)
+    }
 }
 
-class SrtCameraImpl(
+class SrtStreamImpl(
     context: Context,
     connectChecker: ConnectChecker,
-) : CameraInterface {
+) : StreamInterface {
     override val stream = SrtStream(context, connectChecker)
 
     override val isStreaming: Boolean get() = stream.isStreaming
@@ -310,12 +331,22 @@ class SrtCameraImpl(
     }
 
     override fun setAudioCodec(codec: AudioCodec) = stream.setAudioCodec(codec)
+
+    override fun setZoom(motionEvent: MotionEvent) {
+        val camera2Source = stream.videoSource as Camera2Source
+        camera2Source.setZoom(motionEvent)
+    }
+
+    override fun tapToFocus(motionEvent: MotionEvent) {
+        val camera2Source = stream.videoSource as Camera2Source
+        camera2Source.tapToFocus(motionEvent)
+    }
 }
 
-class UdpCameraImpl(
+class UdpStreamImpl(
     context: Context,
     connectChecker: ConnectChecker,
-) : CameraInterface {
+) : StreamInterface {
     override val stream = UdpStream(context, connectChecker)
 
     override val isStreaming: Boolean get() = stream.isStreaming
@@ -409,4 +440,14 @@ class UdpCameraImpl(
     }
 
     override fun setAudioCodec(codec: AudioCodec) = stream.setAudioCodec(codec)
+
+    override fun setZoom(motionEvent: MotionEvent) {
+        val camera2Source = stream.videoSource as Camera2Source
+        camera2Source.setZoom(motionEvent)
+    }
+
+    override fun tapToFocus(motionEvent: MotionEvent) {
+        val camera2Source = stream.videoSource as Camera2Source
+        camera2Source.tapToFocus(motionEvent)
+    }
 }

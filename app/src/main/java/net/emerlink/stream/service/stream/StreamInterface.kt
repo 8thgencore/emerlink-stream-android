@@ -1,7 +1,8 @@
-package net.emerlink.stream.service.camera
+package net.emerlink.stream.service.stream
 
 import android.content.Context
 import android.media.MediaRecorder
+import android.view.MotionEvent
 import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
 import com.pedro.library.base.StreamBase
@@ -13,7 +14,7 @@ import net.emerlink.stream.data.model.StreamType
 /**
  * Interface for camera implementation
  */
-interface CameraInterface {
+interface StreamInterface {
     val stream: StreamBase
 
     val isStreaming: Boolean
@@ -81,19 +82,23 @@ interface CameraInterface {
 
     fun setAudioCodec(codec: AudioCodec)
 
+    fun setZoom(motionEvent: MotionEvent)
+
+    fun tapToFocus(motionEvent: MotionEvent)
+
     companion object {
         fun create(
             context: Context,
             connectChecker: ConnectChecker,
             streamType: StreamType,
-        ): CameraInterface =
+        ): StreamInterface =
             when (streamType) {
-                StreamType.RTMP -> RtmpCameraImpl(context, connectChecker)
-                StreamType.RTMPs -> RtmpCameraImpl(context, connectChecker)
-                StreamType.RTSP -> RtspCameraImpl(context, connectChecker)
-                StreamType.RTSPs -> RtspCameraImpl(context, connectChecker)
-                StreamType.SRT -> SrtCameraImpl(context, connectChecker)
-                StreamType.UDP -> UdpCameraImpl(context, connectChecker)
+                StreamType.RTMP -> RtmpStreamImpl(context, connectChecker)
+                StreamType.RTMPs -> RtmpStreamImpl(context, connectChecker)
+                StreamType.RTSP -> RtspStreamImpl(context, connectChecker)
+                StreamType.RTSPs -> RtspStreamImpl(context, connectChecker)
+                StreamType.SRT -> SrtStreamImpl(context, connectChecker)
+                StreamType.UDP -> UdpStreamImpl(context, connectChecker)
             }
     }
 }
