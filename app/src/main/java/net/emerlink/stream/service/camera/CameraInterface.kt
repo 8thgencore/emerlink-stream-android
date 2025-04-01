@@ -6,6 +6,7 @@ import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.video.CameraHelper
 import com.pedro.library.base.Camera2Base
+import com.pedro.library.base.StreamBase
 import com.pedro.library.view.GlInterface
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.data.model.StreamType
@@ -15,6 +16,7 @@ import net.emerlink.stream.data.model.StreamType
  */
 interface CameraInterface {
     val camera: Camera2Base
+    val stream: StreamBase
 
     val isStreaming: Boolean
     val isRecording: Boolean

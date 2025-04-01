@@ -5,9 +5,13 @@ import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.video.CameraHelper
 import com.pedro.library.rtmp.RtmpCamera2
+import com.pedro.library.rtmp.RtmpStream
 import com.pedro.library.rtsp.RtspCamera2
+import com.pedro.library.rtsp.RtspStream
 import com.pedro.library.srt.SrtCamera2
+import com.pedro.library.srt.SrtStream
 import com.pedro.library.udp.UdpCamera2
+import com.pedro.library.udp.UdpStream
 import com.pedro.library.view.GlInterface
 import com.pedro.library.view.OpenGlView
 import com.pedro.rtsp.rtsp.Protocol
@@ -17,6 +21,7 @@ class RtmpCameraImpl(
     connectChecker: ConnectChecker,
 ) : CameraInterface {
     override val camera = RtmpCamera2(context, connectChecker)
+    override val stream = RtmpStream(context, connectChecker)
 
     override val isStreaming: Boolean get() = camera.isStreaming
     override val isRecording: Boolean get() = camera.isRecording
@@ -107,7 +112,7 @@ class RtspCameraImpl(
     connectChecker: ConnectChecker,
 ) : CameraInterface {
     override val camera = RtspCamera2(context, connectChecker)
-
+    override val stream = RtspStream(context, connectChecker)
     override val isStreaming: Boolean get() = camera.isStreaming
     override val isRecording: Boolean get() = camera.isRecording
     override val isOnPreview: Boolean get() = camera.isOnPreview
@@ -197,6 +202,7 @@ class SrtCameraImpl(
     connectChecker: ConnectChecker,
 ) : CameraInterface {
     override val camera = SrtCamera2(context, connectChecker)
+    override val stream = SrtStream(context, connectChecker)
 
     override val isStreaming: Boolean get() = camera.isStreaming
     override val isRecording: Boolean get() = camera.isRecording
@@ -287,6 +293,7 @@ class UdpCameraImpl(
     connectChecker: ConnectChecker,
 ) : CameraInterface {
     override val camera = UdpCamera2(context, connectChecker)
+    override val stream = UdpStream(context, connectChecker)
 
     override val isStreaming: Boolean get() = camera.isStreaming
     override val isRecording: Boolean get() = camera.isRecording

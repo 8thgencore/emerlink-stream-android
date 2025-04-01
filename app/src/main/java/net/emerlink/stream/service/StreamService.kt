@@ -71,7 +71,6 @@ class StreamService :
     private var audioLevelUpdateHandler: Handler? = null
     private var audioLevelRunnable: Runnable? = null
     private var isRunningAudioLevelUpdates = false
-    private var currentView: OpenGlView? = null
     private var streamType: StreamType = StreamType.RTMP
     private val cameraIds = ArrayList<String>()
     private var lanternEnabled = false
@@ -394,15 +393,11 @@ class StreamService :
         try {
             refreshSettings()
             openGlView = view
-            currentView = view
 
             Log.d(
                 TAG,
-                "Запуск превью. Статус: стриминг=${isStreaming()}, запись=${isRecording()}, наПревью=${isOnPreview()}"
+                "Запуск превью. Статус: стриминг=${isStreaming()}, запись=${isRecording()}"
             )
-
-            // Сохраняем текущий статус стрима
-            val wasStreaming = isStreaming()
 
             // Если превью уже активно, останавливаем его, но не трогаем стрим
             if (isOnPreview()) {
@@ -413,7 +408,7 @@ class StreamService :
             cameraInterface.replaceView(view)
 
             // Если стрим не активен, то можно спокойно обновлять параметры видео
-            if (!wasStreaming) {
+            if (!isStreaming()) {
                 val videoSettings = settingsRepository.videoSettingsFlow.value
                 val bitrate = cameraInterface.bitrate.takeIf { it > 0 } ?: (videoSettings.bitrate * 1000)
                 val resolution = Resolution.parseFromSize(videoSettings.resolution)
@@ -435,7 +430,7 @@ class StreamService :
     private fun startPreviewInternal(view: OpenGlView) {
         val rotation = CameraHelper.getCameraOrientation(this)
         cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
-        currentView = view
+        openGlView = view
 
         val videoSettings = settingsRepository.videoSettingsFlow.value
         val resolution = Resolution.parseFromSize(videoSettings.resolution)
@@ -541,7 +536,7 @@ class StreamService :
                     videoSettings.bitrate * 1000
                 )
 
-                currentView?.let { view ->
+                openGlView?.let { view ->
                     cameraInterface.replaceView(view)
                     cameraInterface.startPreview(CameraHelper.Facing.BACK, rotation)
                 }
@@ -721,10 +716,7 @@ class StreamService :
                 cameraInterface.stopPreview()
             }
 
-            Thread.sleep(50)
-
             openGlView = view
-            currentView = view
 
             if (!isCurrentlyStreaming) {
                 prepareVideo()
@@ -791,7 +783,7 @@ class StreamService :
      * Handles resolution change by restarting preview with new settings
      */
     fun handleResolutionChange() {
-        currentView?.let { view ->
+        openGlView?.let { view ->
             Log.d(TAG, "Перезапуск превью с новым разрешением")
             try {
                 switchStreamResolution()
@@ -913,7 +905,6 @@ class StreamService :
             if (isRecording()) stopRecord()
 
             cameraInterface = CameraInterface.create(this, this, streamType)
-            currentView = null
             openGlView = null
 
             Log.d(TAG, "Ресурсы камеры освобождены")
