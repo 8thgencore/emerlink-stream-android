@@ -12,8 +12,8 @@ android {
         applicationId = "net.emerlink.stream"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.2.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -45,6 +45,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.preference.ktx)
+    implementation("androidx.appcompat:appcompat:1.7.0")
 
     // Compose dependencies
     implementation(platform(libs.androidx.compose.bom))

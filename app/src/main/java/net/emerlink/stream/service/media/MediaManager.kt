@@ -12,8 +12,8 @@ import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import net.emerlink.stream.R
 import net.emerlink.stream.core.AppIntentActions
-import net.emerlink.stream.core.notification.NotificationManager
-import net.emerlink.stream.service.stream.StreamManager
+import net.emerlink.stream.core.notification.AppNotificationManager
+import net.emerlink.stream.service.StreamService
 import net.emerlink.stream.util.PathUtils
 import java.io.File
 import java.io.FileOutputStream
@@ -25,8 +25,8 @@ import java.util.*
  */
 class MediaManager(
     private val context: Context,
-    private val streamManager: StreamManager,
-    private val notificationManager: NotificationManager,
+    private val streamService: StreamService,
+    private val notificationManager: AppNotificationManager,
 ) {
     companion object {
         private const val TAG = "MediaManager"
@@ -44,9 +44,9 @@ class MediaManager(
         try {
             Log.d(TAG, "Taking photo")
 
-            val glInterface = streamManager.getGlInterface()
+            val glInterface = streamService.getGlInterface()
 
-            glInterface.takePhoto { bitmap ->
+            glInterface.takePhoto { bitmap: Bitmap ->
                 val handlerThread = HandlerThread("PhotoSaveThread")
                 handlerThread.start()
                 Handler(handlerThread.looper).post { saveBitmapToGallery(bitmap) }
@@ -115,7 +115,7 @@ class MediaManager(
             resolver.openOutputStream(it)?.use { outputStream ->
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
                 Log.d(TAG, "Sending broadcast ACTION_TOOK_PICTURE")
-                context.sendBroadcast(Intent(AppIntentActions.ACTION_TOOK_PICTURE))
+                context.sendBroadcast(Intent(AppIntentActions.TOOK_PICTURE))
                 notificationManager.showPhotoNotification(context.getString(R.string.saved_photo))
             } ?: run {
                 val errorMessage = context.getString(R.string.saved_photo_failed)
@@ -149,7 +149,7 @@ class MediaManager(
 
         Log.d(TAG, "Saved photo to: $filePath")
         Log.d(TAG, "Sending broadcast ACTION_TOOK_PICTURE")
-        context.sendBroadcast(Intent(AppIntentActions.ACTION_TOOK_PICTURE))
+        context.sendBroadcast(Intent(AppIntentActions.TOOK_PICTURE))
         notificationManager.showPhotoNotification(context.getString(R.string.saved_photo))
     }
 
@@ -194,14 +194,7 @@ class MediaManager(
             Log.d(TAG, "Recording to: $filePath")
 
             // Start recording
-            streamManager.startRecord(filePath)
-
-            // Show notification
-            notificationManager.showStreamingNotification(
-                context.getString(R.string.recording),
-                true,
-                NotificationManager.ACTION_STOP_ONLY
-            )
+            streamService.startRecord(filePath)
 
             return true
         } catch (e: Exception) {
@@ -217,9 +210,9 @@ class MediaManager(
      */
     fun stopRecording() {
         try {
-            if (streamManager.isRecording()) {
+            if (streamService.isRecording()) {
                 Log.d(TAG, "Stopping recording")
-                streamManager.stopRecord()
+                streamService.stopRecord()
 
                 // Get the recorded file path
                 val filename = "EmerlinkStream_$currentDateAndTime.mp4"

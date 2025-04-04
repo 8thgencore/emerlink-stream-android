@@ -1,10 +1,9 @@
+@file:Suppress("ktlint:standard:filename", "ktlint:standard:no-wildcard-imports")
+
 package net.emerlink.stream.core.notification
 
 import android.annotation.SuppressLint
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.PendingIntent
-import android.app.Service
+import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -15,40 +14,35 @@ import net.emerlink.stream.app.MainActivity
 import net.emerlink.stream.core.AppIntentActions
 
 /**
- * Класс для управления уведомлениями приложения. Реализует паттерн Singleton для обеспечения единой
- * точки доступа к уведомлениям.
+ * Manages notifications for the application. Implements the Singleton pattern
+ * to provide a single point of access to notifications.
  */
-class NotificationManager
+class AppNotificationManager
     private constructor(
         private val context: Context,
     ) {
         companion object {
-            private const val TAG = "NotificationManager"
+            private const val TAG = "AppNotificationManager"
 
-            // Идентификаторы каналов уведомлений
-            const val NOTIFICATION_CHANNEL_ID = "StreamServiceChannel"
-            const val ERROR_CHANNEL_ID = "StreamErrorChannel"
-            const val PHOTO_CHANNEL_ID = "StreamPhotoChannel"
+            // Channel IDs
+            const val NOTIFICATION_CHANNEL_ID = "CameraServiceChannel"
+            const val ERROR_CHANNEL_ID = "ErrorChannel"
+            const val PHOTO_CHANNEL_ID = "PhotoChannel"
 
-            // Идентификаторы уведомлений
+            // Notification IDs
             const val START_STREAM_NOTIFICATION_ID = 3425
             const val ERROR_STREAM_NOTIFICATION_ID = 3426
             const val TAKE_PHOTO_NOTIFICATION_ID = 3427
 
-            // Типы действий для уведомлений
-            const val ACTION_NONE = 0
-            const val ACTION_STOP_ONLY = 1
-            const val ACTION_ALL = 2
-
             @SuppressLint("StaticFieldLeak")
             @Volatile
-            private var instance: NotificationManager? = null
+            private var instance: AppNotificationManager? = null
 
-            fun getInstance(context: Context): NotificationManager =
+            fun getInstance(context: Context): AppNotificationManager =
                 instance
                     ?: synchronized(this) {
                         instance
-                            ?: NotificationManager(context.applicationContext).also {
+                            ?: AppNotificationManager(context.applicationContext).also {
                                 instance = it
                             }
                     }
@@ -56,343 +50,289 @@ class NotificationManager
 
         private val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as
-                android.app.NotificationManager
+                NotificationManager
 
         init {
             createNotificationChannels()
         }
 
-        /** Создает каналы уведомлений для Android 8.0 (API 26) и выше */
+        /**
+         * Creates notification channels for Android 8.0 (API 26) and above
+         */
         private fun createNotificationChannels() {
-            // Канал для сервиса стриминга
+            // Service channel
             val serviceChannel =
                 NotificationChannel(
                     NOTIFICATION_CHANNEL_ID,
-                    context.getString(R.string.notification_channel_stream_service),
-                    android.app.NotificationManager.IMPORTANCE_HIGH
-                ).apply {
-                    description =
-                        context.getString(
-                            R.string.notification_channel_stream_service_description
-                        )
-                    setShowBadge(true)
-                }
+                    TAG,
+                    NotificationManager.IMPORTANCE_HIGH
+                )
 
-            // Канал для ошибок
+            // Error channel
             val errorChannel =
                 NotificationChannel(
                     ERROR_CHANNEL_ID,
-                    context.getString(R.string.notification_channel_errors),
-                    android.app.NotificationManager.IMPORTANCE_HIGH
+                    "Error Channel",
+                    NotificationManager.IMPORTANCE_HIGH
                 ).apply {
-                    description =
-                        context.getString(
-                            R.string.notification_channel_errors_description
-                        )
                     enableLights(true)
                     enableVibration(true)
-                    setShowBadge(true)
-                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                 }
 
-            // Канал для уведомлений о фото
+            // Photo channel
             val photoChannel =
                 NotificationChannel(
                     PHOTO_CHANNEL_ID,
-                    context.getString(R.string.notification_channel_photos),
-                    android.app.NotificationManager.IMPORTANCE_DEFAULT
-                ).apply {
-                    description =
-                        context.getString(
-                            R.string.notification_channel_photos_description
-                        )
-                    setShowBadge(true)
-                }
+                    "Photo Channel",
+                    NotificationManager.IMPORTANCE_DEFAULT
+                )
 
-            // Регистрируем все каналы
+            // Register all channels
             notificationManager.createNotificationChannels(
                 listOf(serviceChannel, errorChannel, photoChannel)
             )
         }
 
-        /** Создает объект уведомления с заданными параметрами */
+        /**
+         * Shows a notification with the specified text
+         * Similar to showNotification in OpenTAK_ICU
+         */
+        fun showNotification(
+            text: String,
+            ongoing: Boolean,
+            hasActions: Boolean = true,
+        ) {
+            val notification = createNotification(text, ongoing, hasActions)
+            notificationManager.notify(START_STREAM_NOTIFICATION_ID, notification)
+        }
+
+        /**
+         * Creates a notification with the specified text
+         * @param text Text to display in the notification
+         * @param ongoing Whether the notification is ongoing
+         * @param hasActions Whether to include action buttons
+         * @return The created notification
+         */
         fun createNotification(
             text: String,
             ongoing: Boolean,
-            actionType: Int = ACTION_ALL,
-            isError: Boolean = false,
-            isPhoto: Boolean = false,
+            hasActions: Boolean = true,
         ): Notification {
-            // Создаем Intent для открытия приложения при нажатии на уведомление
+            // Create a pending intent to launch the main activity when notification is tapped
             val notificationIntent =
                 Intent(context, MainActivity::class.java).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
 
-            // Настраиваем флаги для PendingIntent
-            val flags =
+            val pendingIntentFlags =
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 } else {
                     PendingIntent.FLAG_UPDATE_CURRENT
                 }
 
-            val pendingIntent = PendingIntent.getActivity(context, 0, notificationIntent, flags)
+            val pendingIntent =
+                PendingIntent.getActivity(
+                    context,
+                    0,
+                    notificationIntent,
+                    pendingIntentFlags
+                )
 
-            // Выбираем канал в зависимости от типа уведомления
-            val channelId =
-                when {
-                    isError -> ERROR_CHANNEL_ID
-                    isPhoto -> PHOTO_CHANNEL_ID
-                    else -> NOTIFICATION_CHANNEL_ID
-                }
-
-            // Строим базовое уведомление
+            // Build the notification
             val builder =
                 NotificationCompat
-                    .Builder(context, channelId)
+                    .Builder(context, NOTIFICATION_CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_notification)
                     .setContentTitle(context.getString(R.string.app_name))
                     .setContentText(text)
                     .setContentIntent(pendingIntent)
                     .setOngoing(ongoing)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
-                    .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
 
-            // Настраиваем специфические параметры для ошибок
-            if (isError) {
-                builder
-                    .setCategory(NotificationCompat.CATEGORY_ERROR)
-                    .setAutoCancel(false)
-                    .setDefaults(NotificationCompat.DEFAULT_ALL)
-            }
+            // Add actions based on whether we're streaming or ready to stream
+            if (hasActions) {
+                // Check if the notification text is "Ready to Stream"
+                val isReadyToStream = text == context.getString(R.string.ready_to_stream)
 
-            // Добавляем действия в зависимости от типа
-            when (actionType) {
-                ACTION_ALL -> {
-                    // Действие "Стоп"
-                    val stopIntent =
-                        Intent(AppIntentActions.ACTION_STOP_STREAM).apply {
-                            // Явно указываем компонент для Intent
-                            setPackage(context.packageName)
-                        }
-                    val stopPendingIntent =
-                        PendingIntent.getBroadcast(
-                            context,
-                            0,
-                            stopIntent,
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                PendingIntent.FLAG_UPDATE_CURRENT or
-                                    PendingIntent.FLAG_IMMUTABLE
-                            } else {
-                                PendingIntent.FLAG_UPDATE_CURRENT
-                            }
-                        )
-
-                    // Действие "Выход"
-                    val exitIntent =
-                        Intent(AppIntentActions.ACTION_EXIT_APP).apply {
-                            // Явно указываем компонент для Intent
-                            setPackage(context.packageName)
-                        }
-                    val exitPendingIntent =
-                        PendingIntent.getBroadcast(
-                            context,
-                            1,
-                            exitIntent,
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                PendingIntent.FLAG_UPDATE_CURRENT or
-                                    PendingIntent.FLAG_IMMUTABLE
-                            } else {
-                                PendingIntent.FLAG_UPDATE_CURRENT
-                            }
-                        )
-
-                    // Добавляем обе кнопки
-                    builder.addAction(
-                        R.drawable.ic_stop,
-                        context.getString(R.string.stop),
-                        stopPendingIntent
-                    )
-                    builder.addAction(
-                        R.drawable.ic_exit,
-                        context.getString(R.string.exit),
-                        exitPendingIntent
-                    )
+                if (isReadyToStream) {
+                    // Add START button for "Ready to Stream" notification
+                    addStartAction(builder)
+                } else {
+                    // Add STOP button for streaming notification
+                    addStopAction(builder)
                 }
 
-                ACTION_STOP_ONLY -> {
-                    // Только действие "Стоп"
-                    val stopIntent =
-                        Intent(AppIntentActions.ACTION_STOP_STREAM).apply {
-                            // Явно указываем компонент для Intent
-                            setPackage(context.packageName)
-                        }
-                    val stopPendingIntent =
-                        PendingIntent.getBroadcast(
-                            context,
-                            0,
-                            stopIntent,
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                PendingIntent.FLAG_UPDATE_CURRENT or
-                                    PendingIntent.FLAG_IMMUTABLE
-                            } else {
-                                PendingIntent.FLAG_UPDATE_CURRENT
-                            }
-                        )
-                    builder.addAction(
-                        R.drawable.ic_stop,
-                        context.getString(R.string.stop),
-                        stopPendingIntent
-                    )
-                }
-
-                ACTION_NONE -> {
-                    // Для ошибок добавляем кнопку "ОК" для скрытия уведомления
-                    if (isError) {
-                        val dismissIntent =
-                            Intent(AppIntentActions.ACTION_DISMISS_ERROR).apply {
-                                // Явно указываем компонент для Intent
-                                setPackage(context.packageName)
-                            }
-                        val dismissPendingIntent =
-                            PendingIntent.getBroadcast(
-                                context,
-                                2,
-                                dismissIntent,
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                    PendingIntent.FLAG_UPDATE_CURRENT or
-                                        PendingIntent.FLAG_IMMUTABLE
-                                } else {
-                                    PendingIntent.FLAG_UPDATE_CURRENT
-                                }
-                            )
-                        builder.addAction(
-                            android.R.drawable.ic_menu_close_clear_cancel,
-                            context.getString(android.R.string.ok),
-                            dismissPendingIntent
-                        )
-                    }
-                }
+                // Always add EXIT action
+                addExitAction(builder)
             }
 
             return builder.build()
         }
 
         /**
-         * Безопасно очищает уведомления о стриминге, учитывая состояние foreground сервиса.
-         * @param service Сервис, который может быть в foreground состоянии
+         * Adds a start streaming action to the notification
          */
-        fun clearStreamingNotificationsSafely(service: Service?) {
-            if (service != null) {
-                service.stopForeground(Service.STOP_FOREGROUND_REMOVE)
-                Log.d(TAG, "Foreground service stopped, notification removed")
-            } else {
-                notificationManager.cancel(START_STREAM_NOTIFICATION_ID)
-            }
-        }
+        private fun addStartAction(builder: NotificationCompat.Builder) {
+            val startIntent =
+                Intent(AppIntentActions.START_STREAM).apply {
+                    setPackage(context.packageName)
+                }
 
-        /** Очищает уведомления об ошибках */
-        fun clearErrorNotifications() {
-            try {
-                notificationManager.cancel(ERROR_STREAM_NOTIFICATION_ID)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error clearing error notifications: ${e.message}", e)
-            }
-        }
+            val startPendingIntent =
+                PendingIntent.getBroadcast(
+                    context,
+                    0,
+                    startIntent,
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    } else {
+                        PendingIntent.FLAG_UPDATE_CURRENT
+                    }
+                )
 
-        /** Очищает все уведомления */
-        fun clearAllNotifications() {
-            try {
-                notificationManager.cancel(START_STREAM_NOTIFICATION_ID)
-                notificationManager.cancel(ERROR_STREAM_NOTIFICATION_ID)
-                notificationManager.cancel(TAKE_PHOTO_NOTIFICATION_ID)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error clearing all notifications: ${e.message}", e)
-            }
-        }
-
-        /** Показывает уведомление о стриминге */
-        fun showStreamingNotification(
-            text: String,
-            ongoing: Boolean,
-            actionType: Int = ACTION_ALL,
-        ) {
-            Log.d(TAG, "Showing streaming notification: $text")
-
-            try {
-                val notification = createNotification(text, ongoing, actionType)
-                notificationManager.notify(START_STREAM_NOTIFICATION_ID, notification)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error showing streaming notification: ${e.message}", e)
-            }
-        }
-
-        /** Показывает уведомление об ошибке */
-        private fun showErrorNotification(
-            text: String,
-            actionType: Int = ACTION_NONE,
-        ) {
-            val notification = createNotification(text, false, actionType, true)
-            notificationManager.notify(ERROR_STREAM_NOTIFICATION_ID, notification)
+            builder.addAction(
+                R.drawable.ic_start,
+                context.getString(R.string.start),
+                startPendingIntent
+            )
         }
 
         /**
-         * Безопасно показывает уведомление об ошибке, учитывая состояние foreground сервиса.
-         * @param service Сервис, который может быть в foreground состоянии
-         * @param text Текст уведомления
-         * @param actionType Тип действия для уведомления
+         * Adds a stop streaming action to the notification
+         */
+        private fun addStopAction(builder: NotificationCompat.Builder) {
+            val stopIntent =
+                Intent(AppIntentActions.STOP_STREAM).apply {
+                    setPackage(context.packageName)
+                }
+
+            val stopPendingIntent =
+                PendingIntent.getBroadcast(
+                    context,
+                    0,
+                    stopIntent,
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    } else {
+                        PendingIntent.FLAG_UPDATE_CURRENT
+                    }
+                )
+
+            builder.addAction(
+                R.drawable.ic_stop,
+                context.getString(R.string.stop),
+                stopPendingIntent
+            )
+        }
+
+        /**
+         * Adds an exit action to the notification
+         */
+        private fun addExitAction(builder: NotificationCompat.Builder) {
+            val exitIntent =
+                Intent(AppIntentActions.EXIT_APP).apply {
+                    setPackage(context.packageName)
+                }
+
+            val exitPendingIntent =
+                PendingIntent.getBroadcast(
+                    context,
+                    1,
+                    exitIntent,
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    } else {
+                        PendingIntent.FLAG_UPDATE_CURRENT
+                    }
+                )
+
+            builder.addAction(
+                R.drawable.ic_exit,
+                context.getString(R.string.exit),
+                exitPendingIntent
+            )
+        }
+
+        /**
+         * Shows error notification
+         */
+        fun showErrorNotification(text: String) {
+            // For error notifications, create a special notification
+            val notificationIntent =
+                Intent(context, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
+
+            val pendingIntentFlags =
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                } else {
+                    PendingIntent.FLAG_UPDATE_CURRENT
+                }
+
+            val pendingIntent =
+                PendingIntent.getActivity(
+                    context,
+                    0,
+                    notificationIntent,
+                    pendingIntentFlags
+                )
+
+            val builder =
+                NotificationCompat
+                    .Builder(context, ERROR_CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_notification)
+                    .setContentTitle(context.getString(R.string.app_name))
+                    .setContentText(text)
+                    .setContentIntent(pendingIntent)
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    .setAutoCancel(true)
+
+            notificationManager.notify(ERROR_STREAM_NOTIFICATION_ID, builder.build())
+        }
+
+        /**
+         * Safely shows an error notification
          */
         fun showErrorSafely(
             service: Service?,
             text: String,
-            actionType: Int = ACTION_NONE,
         ) {
-            Log.d(TAG, "Safely showing error notification with service: $text")
-
             try {
                 service?.stopForeground(Service.STOP_FOREGROUND_REMOVE)
-                showErrorNotification(text, actionType)
+                showErrorNotification(text)
             } catch (e: Exception) {
-                Log.e(TAG, "Error in showErrorSafely with service: ${e.message}", e)
-                showErrorNotification(text, actionType)
+                Log.e(TAG, "Error showing error notification: ${e.message}", e)
+                showErrorNotification(text)
             }
         }
 
         /**
-         * Безопасно показывает уведомление об ошибке без ссылки на сервис.
-         * Используется в случаях, когда нет доступа к сервису или контекст не является сервисом.
-         * @param text Текст уведомления
-         * @param actionType Тип действия для уведомления
+         * Safely shows an error notification without a service reference
          */
-        fun showErrorSafely(
-            text: String,
-            actionType: Int = ACTION_NONE,
-        ) {
-            Log.d(TAG, "Safely showing error notification without service: $text")
-
+        fun showErrorSafely(text: String) {
             try {
-                // Попытка отменить существующее уведомление стриминга перед показом ошибки
-                notificationManager.cancel(START_STREAM_NOTIFICATION_ID)
-
-                // Показ уведомления об ошибке
-                showErrorNotification(text, actionType)
+                showErrorNotification(text)
             } catch (e: Exception) {
-                Log.e(TAG, "Error in showErrorSafely without service: ${e.message}", e)
-                showErrorNotification(text, actionType)
+                Log.e(TAG, "Error showing error notification: ${e.message}", e)
             }
         }
 
-        /** Показывает уведомление о фото */
+        /**
+         * Shows a photo notification
+         */
         fun showPhotoNotification(text: String) {
-            Log.d(TAG, "Showing photo notification: $text")
+            val notification =
+                NotificationCompat
+                    .Builder(context, PHOTO_CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_notification)
+                    .setContentTitle(context.getString(R.string.app_name))
+                    .setContentText(text)
+                    .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                    .setAutoCancel(true)
+                    .build()
 
-            try {
-                val notification =
-                    createNotification(text, false, ACTION_NONE, isError = false, isPhoto = true)
-                notificationManager.notify(TAKE_PHOTO_NOTIFICATION_ID, notification)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error showing photo notification: ${e.message}", e)
-            }
+            notificationManager.notify(TAKE_PHOTO_NOTIFICATION_ID, notification)
         }
     }

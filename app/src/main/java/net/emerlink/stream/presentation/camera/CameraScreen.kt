@@ -3,11 +3,11 @@
 package net.emerlink.stream.presentation.camera
 
 import android.Manifest
+import android.app.Activity
 import android.content.res.Configuration
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
+import android.view.WindowManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -22,13 +22,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import net.emerlink.stream.presentation.camera.components.*
 import net.emerlink.stream.presentation.camera.viewmodel.CameraViewModel
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-@androidx.annotation.RequiresPermission(Manifest.permission.RECORD_AUDIO)
 @Composable
 fun CameraScreen(
     onSettingsClick: () -> Unit,
@@ -48,10 +49,11 @@ fun CameraScreen(
     val showStreamInfo by viewModel.showStreamInfo.collectAsStateWithLifecycle()
     val streamInfo by viewModel.streamInfo.collectAsStateWithLifecycle()
     val audioLevel by viewModel.audioLevel.collectAsStateWithLifecycle()
+    val flashOverlayVisible by viewModel.flashOverlayVisible.collectAsStateWithLifecycle()
 
+    // Permission launchers
     lateinit var requestCameraPermissionLauncher: ActivityResultLauncher<String>
     lateinit var requestMicrophonePermissionLauncher: ActivityResultLauncher<String>
-    lateinit var requestLocationPermissionLauncher: ActivityResultLauncher<String>
     lateinit var requestNotificationPermissionLauncher: ActivityResultLauncher<String>
 
     @Composable
@@ -81,13 +83,6 @@ fun CameraScreen(
         createPermissionLauncher(
             permission = Manifest.permission.RECORD_AUDIO,
             onGranted = {
-                requestLocationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-            }
-        )
-    requestLocationPermissionLauncher =
-        createPermissionLauncher(
-            permission = Manifest.permission.ACCESS_FINE_LOCATION,
-            onGranted = {
                 requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         )
@@ -95,111 +90,51 @@ fun CameraScreen(
         createPermissionLauncher(
             permission = Manifest.permission.POST_NOTIFICATIONS,
             onGranted = {
-                openGlView?.let { view -> initializeCamera(viewModel, view) }
+                openGlView?.let { view -> viewModel.startPreview(view) }
             }
         )
 
-    // Permission check on mount
-    DisposableEffect(Unit) {
-        requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-        onDispose { /* No-op */ }
-    }
-
-    // Service connection
+    // Service lifecycle handling
     DisposableEffect(Unit) {
         viewModel.bindService(context)
+
+        // Keep screen on
+        val activity = context as? Activity
+        activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
         onDispose {
-            viewModel.unbindService(context)
+            if (!viewModel.isStreaming.value) {
+                viewModel.unbindService(context)
+            }
+            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
 
-    // Screen state receiver handling
-    DisposableEffect(Unit) {
-        val screenStateReceiver =
-            createScreenStateReceiver(
-                onScreenOff = {
-                    viewModel.setScreenWasOff(true)
-                    viewModel.stopPreview()
-                    if (!isStreaming) {
-                        viewModel.releaseCamera()
-                    }
-                },
-                onUserPresent = {
-                    if (viewModel.screenWasOff.value) {
-                        openGlView?.let { view ->
-                            if (!viewModel.isPreviewActive.value) {
-                                Handler(Looper.getMainLooper()).postDelayed({
-                                    viewModel.restartPreview(view)
-                                    viewModel.setScreenWasOff(false)
-                                    Log.d("CameraScreen", "Restored preview after screen unlock")
-                                }, 300)
-                            }
-                        }
-                    }
-                }
-            )
-
-        val disposeScreenReceiver =
-            registerScreenStateReceiver(
-                context = context,
-                receiver = screenStateReceiver,
-                onDispose = {}
-            )
-
-        onDispose(disposeScreenReceiver)
-    }
-
-    // Lifecycle observer
     DisposableEffect(lifecycleOwner) {
         val observer =
-            createLifecycleObserver(
-                onPause = {
-                    viewModel.stopPreview()
-                },
-                onStop = {
-                    if (!isStreaming) {
-                        viewModel.releaseCamera()
+            LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_PAUSE -> {
+                        Log.d("CameraScreen", "onPause")
                     }
-                },
-                onResume = {
-                    openGlView?.let { view ->
-                        if (view.holder.surface?.isValid == true &&
-                            !viewModel.isPreviewActive.value
-                        ) {
-                            Handler(Looper.getMainLooper()).postDelayed({
-                                try {
-                                    viewModel.restartPreview(view)
-                                    Log.d("CameraScreen", "Restored preview after app resumed")
-                                } catch (e: Exception) {
-                                    Log.e("CameraScreen", "Error restarting preview", e)
-                                }
-                            }, 300)
-                        }
+
+                    Lifecycle.Event.ON_STOP -> {
+                        Log.d("CameraScreen", "onStop")
+                        viewModel.stopPreview()
                     }
+
+                    Lifecycle.Event.ON_RESUME -> {
+                        Log.d("CameraScreen", "onResume")
+                    }
+
+                    else -> {}
                 }
-            )
+            }
 
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
-    }
-
-    // Stream status receiver
-    DisposableEffect(isStreaming) {
-        val streamStatusReceiver =
-            createStreamStatusReceiver {
-                viewModel.updateStreamingState(false)
-            }
-
-        val disposeStreamReceiver =
-            registerStreamStatusReceiver(
-                context = context,
-                receiver = streamStatusReceiver,
-                onDispose = {}
-            )
-
-        onDispose(disposeStreamReceiver)
     }
 
     // UI components
@@ -241,11 +176,16 @@ fun CameraScreen(
             isMuted = isMuted,
             viewModel = viewModel,
             onSettingsClick = {
-                handleSettingsClick(
-                    isStreaming = isStreaming,
-                    viewModel = viewModel,
-                    navigateToSettings = onSettingsClick
-                )
+                if (isStreaming) {
+                    viewModel.setShowSettingsConfirmDialog(true)
+                } else {
+                    try {
+                        viewModel.setOpenGlView(null)
+                        onSettingsClick()
+                    } catch (e: Exception) {
+                        Log.e("CameraScreen", "Error stopping preview before settings", e)
+                    }
+                }
             }
         )
 
@@ -263,23 +203,35 @@ fun CameraScreen(
                 isLandscape = isLandscape
             )
         }
-    }
 
-    // Dialogs
-    if (showSettingsConfirmDialog) {
-        SettingsConfirmationDialog(
-            onDismiss = { viewModel.setShowSettingsConfirmDialog(false) },
-            onConfirm = {
-                viewModel.setShowSettingsConfirmDialog(false)
-                try {
-                    viewModel.stopStreaming()
-                    viewModel.stopPreview()
-                    viewModel.setOpenGlView(null)
-                    onSettingsClick()
-                } catch (e: Exception) {
-                    Log.e("CameraScreen", "Error transitioning to settings", e)
+        // Screen flash overlay for photo capture
+        if (flashOverlayVisible) {
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(Color.White.copy(alpha = 0.5f))
+            )
+
+            // Auto-hide the flash overlay after a short delay
+            viewModel.hideFlashOverlayAfterDelay()
+        }
+
+        // Dialogs
+        if (showSettingsConfirmDialog) {
+            SettingsConfirmationDialog(
+                onDismiss = { viewModel.setShowSettingsConfirmDialog(false) },
+                onConfirm = {
+                    viewModel.setShowSettingsConfirmDialog(false)
+                    try {
+                        viewModel.stopStreaming()
+                        viewModel.setOpenGlView(null)
+                        onSettingsClick()
+                    } catch (e: Exception) {
+                        Log.e("CameraScreen", "Error transitioning to settings", e)
+                    }
                 }
-            }
-        )
+            )
+        }
     }
 }

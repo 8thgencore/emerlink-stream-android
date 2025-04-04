@@ -3,13 +3,13 @@ package net.emerlink.stream.core
 import android.content.Context
 import android.util.Log
 import net.emerlink.stream.R
-import net.emerlink.stream.core.notification.NotificationManager
+import net.emerlink.stream.core.notification.AppNotificationManager
 
 class ErrorHandler(
     private val context: Context,
 ) {
     @Suppress("ktlint:standard:backing-property-naming")
-    private val notificationManager = NotificationManager.getInstance(context)
+    private val notificationManager = AppNotificationManager.getInstance(context)
 
     fun handleStreamError(e: Exception) {
         Log.e("ErrorHandler", "Handling stream error", e)

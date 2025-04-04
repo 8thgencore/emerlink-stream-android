@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import net.emerlink.stream.data.model.ConnectionProfile
-import net.emerlink.stream.data.model.ConnectionSettings
 import net.emerlink.stream.data.repository.ConnectionProfileRepository
 import org.koin.java.KoinJavaComponent.inject
 
@@ -57,14 +56,6 @@ class ConnectionProfilesViewModel(
     fun deleteProfile(profileId: String) {
         repository.deleteProfile(profileId)
     }
-
-    /**
-     * Create a new profile
-     */
-    fun createProfile(
-        name: String,
-        settings: ConnectionSettings,
-    ): ConnectionProfile = repository.createProfile(name, settings)
 
     /**
      * Save a profile

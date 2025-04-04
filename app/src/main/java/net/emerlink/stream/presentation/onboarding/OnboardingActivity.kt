@@ -45,16 +45,6 @@ class OnboardingActivity : AppIntro() {
             )
         )
 
-        // Location permission slide (слайд 2)
-        addSlide(
-            AppIntroFragment.createInstance(
-                title = getString(R.string.location_permission),
-                description = getString(R.string.location_permission_description),
-                imageDrawable = R.drawable.ic_location,
-                backgroundColorRes = R.color.light_primary
-            )
-        )
-
         // Storage permission slide (слайд 3, только для Android < 10)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             addSlide(
@@ -101,25 +91,18 @@ class OnboardingActivity : AppIntro() {
             required = false
         )
 
-        // Запрос разрешения для местоположения (на слайде 2)
-        askForPermissions(
-            permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-            slideNumber = 3,
-            required = false
-        )
-
         // Запрос разрешения для хранилища (на слайде 3, только для Android < 10)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             askForPermissions(
                 permissions = arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
-                slideNumber = 4,
+                slideNumber = 3,
                 required = false
             )
         }
 
         // Запрос разрешения для уведомлений (на слайде 4 или 3, в зависимости от версии Android)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val notificationSlideNumber = 4
+            val notificationSlideNumber = 3
             askForPermissions(
                 permissions = arrayOf(Manifest.permission.POST_NOTIFICATIONS),
                 slideNumber = notificationSlideNumber,

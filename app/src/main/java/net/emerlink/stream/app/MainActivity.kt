@@ -2,7 +2,6 @@ package net.emerlink.stream.app
 
 import android.Manifest
 import android.content.Intent
-import android.content.pm.ActivityInfo
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -29,16 +28,18 @@ class MainActivity : ComponentActivity() {
         mutableListOf(
             Manifest.permission.CAMERA,
             Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.ACCESS_FINE_LOCATION
         ).apply {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+                add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
                 add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                add(Manifest.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION)
             }
         }.toTypedArray()
 
@@ -53,21 +54,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Set default orientation based on preferences
         val preferences = PreferenceManager.getDefaultSharedPreferences(this)
-        val orientation =
-            preferences.getString(
-                PreferenceKeys.SCREEN_ORIENTATION,
-                PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
-            ) ?: PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
-
-        // Apply orientation
-        requestedOrientation =
-            when (orientation) {
-                "landscape" -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-                "portrait" -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                else -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-            }
 
         val isFirstRun = preferences.getBoolean(PreferenceKeys.FIRST_RUN, true)
         if (isFirstRun) {
@@ -87,7 +74,7 @@ class MainActivity : ComponentActivity() {
     private fun startMainUI() {
         // Установить тему с черным фоном для экрана камеры
         setTheme(R.style.Theme_EmerlinkStream_Camera)
-        
+
         setContent {
             EmerlinkStreamTheme {
                 Surface(
