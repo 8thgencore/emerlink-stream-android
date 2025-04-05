@@ -307,16 +307,26 @@ class StreamService :
         }
     }
 
+    private fun notifyStreamStarted() {
+        Log.d(TAG, "Broadcasting stream started")
+        LocalBroadcastManager
+            .getInstance(this)
+            .sendBroadcast(Intent(AppIntentActions.BROADCAST_STREAM_STARTED).setPackage(packageName))
+    }
+
     private fun notifyStreamStopped() {
+        Log.d(TAG, "Broadcasting stream stopped")
         LocalBroadcastManager
             .getInstance(this)
             .sendBroadcast(Intent(AppIntentActions.BROADCAST_STREAM_STOPPED).setPackage(packageName))
-        applicationContext.sendBroadcast(Intent(AppIntentActions.STOP_STREAM).setPackage(packageName))
     }
 
     override fun onConnectionStarted(url: String) {}
 
     override fun onConnectionSuccess() {
+        Log.d(TAG, "Connection success - notifying stream started")
+        notifyStreamStarted()
+
         val videoSettings = settingsRepository.videoSettingsFlow.value
         if (videoSettings.adaptiveBitrate) {
             bitrateAdapter =
@@ -589,22 +599,34 @@ class StreamService :
 
     fun startStream() {
         if (isStreaming() || isRecording()) {
+            Log.w(TAG, "Start stream called but already streaming or recording.")
             return
         }
 
+        Log.d(TAG, "startStream called")
         val videoSettings = settingsRepository.videoSettingsFlow.value
+        var streamAttempted = false
+        var recordAttempted = false
+
         if (videoSettings.streamVideo) {
+            Log.d(TAG, "Attempting to start streaming...")
             startStreaming()
+            streamAttempted = true
         }
         if (videoSettings.recordVideo) {
+            Log.d(TAG, "Attempting to start recording...")
             mediaManager.startRecording()
+            recordAttempted = true
         }
 
-        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
-        sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_NORMAL)
+        if (streamAttempted || recordAttempted) {
+            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
+            sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_NORMAL)
 
-        // Show streaming notification
-        notificationManager.showNotification(getString(R.string.streaming), true)
+            notificationManager.showNotification(getString(R.string.streaming), true)
+        } else {
+            Log.w(TAG, "Start stream called, but neither streamVideo nor recordVideo is enabled.")
+        }
     }
 
     private fun startStreaming() {
@@ -634,18 +656,20 @@ class StreamService :
     }
 
     fun stopStream(error: String? = null) {
-        Log.d(TAG, "stopStream called with error: $error") // Updated log
+        Log.d(TAG, "stopStream called with error: $error")
 
         var streamWasStopped = false
         var recordingWasStopped = false
 
         try {
             if (isStreaming()) {
+                Log.d(TAG, "Stopping stream interface...")
                 streamInterface.stopStream()
                 streamWasStopped = true
             }
 
             if (isRecording()) {
+                Log.d(TAG, "Stopping media manager recording...")
                 mediaManager.stopRecording()
                 recordingWasStopped = true
             }

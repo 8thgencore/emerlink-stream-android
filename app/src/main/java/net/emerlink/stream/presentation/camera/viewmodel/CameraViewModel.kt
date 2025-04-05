@@ -3,6 +3,7 @@
 package net.emerlink.stream.presentation.camera.viewmodel
 
 import android.content.*
+import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import android.view.MotionEvent
@@ -65,6 +66,20 @@ class CameraViewModel : ViewModel() {
     private val _flashOverlayVisible = MutableStateFlow(false)
     val flashOverlayVisible: StateFlow<Boolean> = _flashOverlayVisible.asStateFlow()
 
+    private val streamStatusReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context,
+                intent: Intent,
+            ) {
+                when (intent.action) {
+                    AppIntentActions.START_STREAM -> updateStreamingState(true)
+                    AppIntentActions.STOP_STREAM,
+                        -> updateStreamingState(false)
+                }
+            }
+        }
+
     init {
         StreamService.observer.observeForever { service ->
             streamServiceRef = service?.let { WeakReference(it) }
@@ -120,6 +135,22 @@ class CameraViewModel : ViewModel() {
         }
 
     fun bindService(context: Context) {
+        val filter =
+            IntentFilter().apply {
+                addAction(AppIntentActions.START_STREAM)
+                addAction(AppIntentActions.STOP_STREAM)
+            }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(
+                streamStatusReceiver,
+                filter,
+                Context.RECEIVER_NOT_EXPORTED
+            )
+        } else {
+            ContextCompat.registerReceiver(context, streamStatusReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        }
+
         // Bind to service
         Intent(context, StreamService::class.java).also { intent ->
             ContextCompat.startForegroundService(context, intent)
@@ -150,8 +181,11 @@ class CameraViewModel : ViewModel() {
                         }
 
                         AppIntentActions.BROADCAST_STREAM_STOPPED -> {
-                            Log.d(TAG, "Received BROADCAST_STREAM_STOPPED")
                             updateStreamingState(false)
+                        }
+
+                        AppIntentActions.BROADCAST_STREAM_STARTED -> {
+                            updateStreamingState(true)
                         }
                     }
                 }
@@ -162,6 +196,7 @@ class CameraViewModel : ViewModel() {
                 addAction(AppIntentActions.BROADCAST_AUDIO_LEVEL)
                 addAction(AppIntentActions.BROADCAST_PREVIEW_STATUS)
                 addAction(AppIntentActions.BROADCAST_STREAM_STOPPED)
+                addAction(AppIntentActions.BROADCAST_STREAM_STARTED)
             }
 
         LocalBroadcastManager
@@ -174,7 +209,7 @@ class CameraViewModel : ViewModel() {
             try {
                 val shouldUnbind = streamServiceRef?.get()?.let { !it.isStreaming() && !it.isRecording() } != false
                 if (shouldUnbind) {
-                    Log.d(TAG, "Unbinding service connection")
+                    context.unregisterReceiver(streamStatusReceiver)
                     context.unbindService(connection)
                     bound = false
                     streamServiceRef = null
@@ -343,6 +378,14 @@ class CameraViewModel : ViewModel() {
             } catch (e: Exception) {
                 Log.e(TAG, "Error stopping stream", e)
             }
+        }
+    }
+
+    fun stopStreamingWithConfirmation() {
+        if (isStreaming.value) {
+            setShowSettingsConfirmDialog(true)
+        } else {
+            stopStreaming()
         }
     }
 

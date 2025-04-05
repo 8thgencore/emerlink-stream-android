@@ -106,7 +106,7 @@ fun LandscapeCameraControls(
                 isStreaming = isStreaming,
                 onClick = {
                     if (isStreaming) {
-                        viewModel.stopStreaming()
+                        viewModel.stopStreamingWithConfirmation()
                     } else {
                         viewModel.startStreaming()
                     }
@@ -153,7 +153,7 @@ fun PortraitCameraControls(
         isStreaming = isStreaming,
         onClick = {
             if (isStreaming) {
-                viewModel.stopStreaming()
+                viewModel.stopStreamingWithConfirmation()
             } else {
                 viewModel.startStreaming()
             }
