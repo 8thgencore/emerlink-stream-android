@@ -50,6 +50,7 @@ fun CameraScreen(
     val streamInfo by viewModel.streamInfo.collectAsStateWithLifecycle()
     val audioLevel by viewModel.audioLevel.collectAsStateWithLifecycle()
     val flashOverlayVisible by viewModel.flashOverlayVisible.collectAsStateWithLifecycle()
+    val isSettingsDialogFromSettings by viewModel.isSettingsDialogFromSettings.collectAsStateWithLifecycle()
 
     // Permission launchers
     lateinit var requestCameraPermissionLauncher: ActivityResultLauncher<String>
@@ -177,7 +178,7 @@ fun CameraScreen(
             viewModel = viewModel,
             onSettingsClick = {
                 if (isStreaming) {
-                    viewModel.setShowSettingsConfirmDialog(true)
+                    viewModel.setShowSettingsConfirmDialog(true, true)
                 } else {
                     try {
                         viewModel.setOpenGlView(null)
@@ -226,7 +227,10 @@ fun CameraScreen(
                     try {
                         viewModel.stopStreaming()
                         viewModel.setOpenGlView(null)
-                        onSettingsClick()
+                        
+                        if (isSettingsDialogFromSettings) {
+                            onSettingsClick()
+                        }
                     } catch (e: Exception) {
                         Log.e("CameraScreen", "Error transitioning to settings", e)
                     }

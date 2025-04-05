@@ -12,7 +12,7 @@ import net.emerlink.stream.presentation.camera.viewmodel.CameraViewModel
 
 /**
  * AdaptiveSpacerComponent that adjusts size based on screen size and orientation
- * 
+ *
  * @param smallSize spacing size for small screens
  * @param largeSize spacing size for large screens
  * @param isVertical whether the spacer is vertical (height) or horizontal (width)
@@ -21,7 +21,7 @@ import net.emerlink.stream.presentation.camera.viewmodel.CameraViewModel
 fun AdaptiveSpacer(
     smallSize: Int = 8,
     largeSize: Int = 16,
-    isVertical: Boolean = true
+    isVertical: Boolean = true,
 ) {
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp
@@ -29,7 +29,7 @@ fun AdaptiveSpacer(
     val isLargeScreen = screenWidth >= 600 || screenHeight >= 600
 
     val size = if (isLargeScreen) largeSize.dp else smallSize.dp
-    
+
     if (isVertical) {
         Spacer(modifier = Modifier.height(size))
     } else {

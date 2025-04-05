@@ -66,6 +66,9 @@ class CameraViewModel : ViewModel() {
     private val _flashOverlayVisible = MutableStateFlow(false)
     val flashOverlayVisible: StateFlow<Boolean> = _flashOverlayVisible.asStateFlow()
 
+    private val _isSettingsDialogFromSettings = MutableStateFlow(false)
+    val isSettingsDialogFromSettings: StateFlow<Boolean> = _isSettingsDialogFromSettings.asStateFlow()
+
     private val streamStatusReceiver =
         object : BroadcastReceiver() {
             override fun onReceive(
@@ -175,11 +178,6 @@ class CameraViewModel : ViewModel() {
                             _audioLevel.value = level
                         }
 
-                        AppIntentActions.BROADCAST_PREVIEW_STATUS -> {
-                            val isActive = intent.getBooleanExtra(AppIntentActions.EXTRA_PREVIEW_ACTIVE, false)
-                            setPreviewActive(isActive)
-                        }
-
                         AppIntentActions.BROADCAST_STREAM_STOPPED -> {
                             updateStreamingState(false)
                         }
@@ -194,7 +192,6 @@ class CameraViewModel : ViewModel() {
         val filter =
             IntentFilter().apply {
                 addAction(AppIntentActions.BROADCAST_AUDIO_LEVEL)
-                addAction(AppIntentActions.BROADCAST_PREVIEW_STATUS)
                 addAction(AppIntentActions.BROADCAST_STREAM_STOPPED)
                 addAction(AppIntentActions.BROADCAST_STREAM_STARTED)
             }
@@ -338,8 +335,9 @@ class CameraViewModel : ViewModel() {
         }
     }
 
-    fun setShowSettingsConfirmDialog(show: Boolean) {
+    fun setShowSettingsConfirmDialog(show: Boolean, fromSettings: Boolean = false) {
         _showSettingsConfirmDialog.value = show
+        _isSettingsDialogFromSettings.value = fromSettings
     }
 
     fun toggleStreamInfo() {
@@ -383,7 +381,7 @@ class CameraViewModel : ViewModel() {
 
     fun stopStreamingWithConfirmation() {
         if (isStreaming.value) {
-            setShowSettingsConfirmDialog(true)
+            setShowSettingsConfirmDialog(true, false) // Указываем, что диалог вызван НЕ из настроек
         } else {
             stopStreaming()
         }

@@ -206,9 +206,6 @@ class StreamService :
             }
     }
 
-    /**
-     * Get the current audio level (0.0f - 1.0f)
-     */
     private fun getAudioLevel(): Float {
         try {
             val maxAmplitude = microphoneMonitor.getAudioLevel()
@@ -229,18 +226,12 @@ class StreamService :
         }
     }
 
-    /**
-     * Broadcast audio level to the UI
-     */
     private fun broadcastAudioLevel(audioLevel: Float) {
         val intent = Intent(AppIntentActions.BROADCAST_AUDIO_LEVEL)
         intent.putExtra(AppIntentActions.EXTRA_AUDIO_LEVEL, audioLevel)
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
     }
 
-    /**
-     * Start audio level updates
-     */
     private fun startAudioLevelUpdates() {
         if (!isRunningAudioLevelUpdates) {
             isRunningAudioLevelUpdates = true
@@ -250,9 +241,6 @@ class StreamService :
         }
     }
 
-    /**
-     * Stop audio level updates
-     */
     private fun stopAudioLevelUpdates() {
         isRunningAudioLevelUpdates = false
         audioLevelRunnable?.let {
@@ -315,7 +303,7 @@ class StreamService :
     }
 
     private fun notifyStreamStopped() {
-        Log.d(TAG, "Broadcasting stream stopped")
+        Log.d(TAG, "Broadcasting stream stopped (Local)")
         LocalBroadcastManager
             .getInstance(this)
             .sendBroadcast(Intent(AppIntentActions.BROADCAST_STREAM_STOPPED).setPackage(packageName))
@@ -475,9 +463,6 @@ class StreamService :
         )
     }
 
-    /**
-     * Switch stream resolution during streaming
-     */
     private fun switchStreamResolution() {
         try {
             if (isOnPreview()) {
@@ -490,25 +475,12 @@ class StreamService :
         }
     }
 
-    /**
-     * Check if streaming is active
-     */
     fun isStreaming(): Boolean = streamInterface.isStreaming
 
-    /**
-     * Check if recording is active
-     */
     fun isRecording(): Boolean = streamInterface.isRecording
 
-    /**
-     * Check if preview is active
-     */
     fun isOnPreview(): Boolean = streamInterface.isOnPreview
 
-    /**
-     * Switches between available cameras
-     * @return true if camera switched successfully, false otherwise
-     */
     fun switchCamera(): Boolean {
         try {
             streamInterface.switchCamera()
@@ -520,10 +492,6 @@ class StreamService :
         }
     }
 
-    /**
-     * Toggles the flashlight/lantern
-     * @return true if lantern is enabled after toggle, false otherwise
-     */
     fun toggleLantern(): Boolean {
         try {
             lanternEnabled = !lanternEnabled
@@ -541,14 +509,8 @@ class StreamService :
         }
     }
 
-    /**
-     * Handles zoom gestures
-     */
     fun setZoom(motionEvent: MotionEvent) = streamInterface.setZoom(motionEvent)
 
-    /**h
-     * Handles tap-to-focus gestures
-     */
     fun tapToFocus(motionEvent: MotionEvent) = streamInterface.tapToFocus(motionEvent)
 
     fun startRecord(filePath: String) {
@@ -572,17 +534,11 @@ class StreamService :
         }
     }
 
-    /**
-     * Gets available camera IDs from the Camera2Source
-     */
     private fun getCameraIds() {
         cameraIds.clear()
         cameraIds.addAll(streamInterface.getCameraIds())
     }
 
-    /**
-     * Handles resolution change by restarting preview with new settings
-     */
     fun handleResolutionChange() {
         openGlView?.let { view ->
             Log.d(TAG, "Перезапуск превью с новым разрешением")
@@ -719,9 +675,6 @@ class StreamService :
         )
     }
 
-    /**
-     * Set stream protocol type
-     */
     private fun updateStreamType() {
         connectionSettings = connectionRepository.activeProfileFlow.value?.settings ?: ConnectionSettings()
         if (connectionSettings.protocol != streamType) {
@@ -731,9 +684,6 @@ class StreamService :
         }
     }
 
-    /**
-     * Get the GL interface for rendering
-     */
     fun getGlInterface() = streamInterface.glInterface
 
     fun takePhoto() = mediaManager.takePhoto()
