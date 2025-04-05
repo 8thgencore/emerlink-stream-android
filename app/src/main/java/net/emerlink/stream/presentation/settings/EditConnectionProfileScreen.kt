@@ -43,7 +43,7 @@ fun EditConnectionProfileScreen(
     // Load existing profile or create a new one
     val existingProfile =
         if (!isNewProfile) {
-            profileId?.let { viewModel.getProfile(it) }
+            profileId.let { viewModel.getProfile(it) }
         } else {
             null
         }
