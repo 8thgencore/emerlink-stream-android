@@ -126,6 +126,7 @@ fun CameraScreen(
 
                     Lifecycle.Event.ON_RESUME -> {
                         Log.d("CameraScreen", "onResume")
+                        viewModel.refreshStreamInfo()
                     }
 
                     else -> {}
@@ -227,7 +228,7 @@ fun CameraScreen(
                     try {
                         viewModel.stopStreaming()
                         viewModel.setOpenGlView(null)
-                        
+
                         if (isSettingsDialogFromSettings) {
                             onSettingsClick()
                         }

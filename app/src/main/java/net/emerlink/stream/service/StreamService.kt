@@ -666,9 +666,10 @@ class StreamService :
     }
 
     fun getStreamInfo(): StreamInfo {
+        connectionSettings = connectionRepository.activeProfileFlow.value?.settings ?: ConnectionSettings()
         val streamSettings = settingsRepository.videoSettingsFlow.value
         return StreamInfo(
-            protocol = connectionSettings.protocol.toString(),
+            protocol = connectionSettings.protocol.toString(), 
             resolution = streamSettings.resolution.toString(),
             bitrate = "${streamSettings.bitrate} kbps",
             fps = "${streamSettings.fps} fps"

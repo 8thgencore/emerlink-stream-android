@@ -335,7 +335,10 @@ class CameraViewModel : ViewModel() {
         }
     }
 
-    fun setShowSettingsConfirmDialog(show: Boolean, fromSettings: Boolean = false) {
+    fun setShowSettingsConfirmDialog(
+        show: Boolean,
+        fromSettings: Boolean = false,
+    ) {
         _showSettingsConfirmDialog.value = show
         _isSettingsDialogFromSettings.value = fromSettings
     }
@@ -387,13 +390,19 @@ class CameraViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Hide flash overlay after a short delay
-     */
     fun hideFlashOverlayAfterDelay() {
         viewModelScope.launch {
             delay(150)
             _flashOverlayVisible.value = false
+        }
+    }
+
+    fun refreshStreamInfo() {
+        viewModelScope.launch {
+            streamServiceRef?.get()?.let { service ->
+                val info = service.getStreamInfo()
+                updateStreamInfo(info)
+            }
         }
     }
 }

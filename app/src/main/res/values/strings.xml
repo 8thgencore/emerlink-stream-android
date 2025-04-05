@@ -31,11 +31,11 @@
     <string name="ready_to_start_description">Теперь вы можете начать использовать Emerlink Stream для трансляции видео</string>
 
     <!-- Stream Settings -->
-    <string name="stream_settings">Настройка стриминга</string>
-    <string name="enable_streaming">Включить стриминг</string>
+    <string name="stream_settings">Настройка трансляции</string>
+    <string name="enable_streaming">Включить трансляцию</string>
     <string name="enable_streaming_summary">Включить передачу видео на сервер</string>
     <string name="stream_protocol">Протокол</string>
-    <string name="stream_protocol_summary">Протокол для стриминга (RTMP, RTSP, SRT)</string>
+    <string name="stream_protocol_summary">Протокол для трансляции (RTMP, RTSP, SRT)</string>
     <string name="stream_address">Адрес сервера</string>
     <string name="stream_address_summary">IP-адрес или домен сервера</string>
     <string name="stream_port">Порт</string>
@@ -70,7 +70,7 @@
     <string name="adaptive_bitrate">Адаптивный битрейт</string>
     <string name="adaptive_bitrate_summary">Автоматически регулировать битрейт в зависимости от качества соединения</string>
     <string name="record_video">Запись видео</string>
-    <string name="record_video_summary">Сохранять видео на устройство во время стриминга</string>
+    <string name="record_video_summary">Сохранять видео на устройство во время записи</string>
     <string name="keyframe_interval">Интервал ключевых кадров</string>
     <string name="keyframe_interval_summary">Интервал между ключевыми кадрами в секундах</string>
 
@@ -101,8 +101,8 @@
     <string name="screen_orientation_summary">Установите предпочтительную ориентацию экрана</string>
 
     <!-- Camera -->
-    <string name="stop_streaming">Остановить стриминг</string>
-    <string name="stop_streaming_confirmation">Остановить стриминг и перейти в настройки?</string>
+    <string name="stop_streaming">Остановить запись</string>
+    <string name="stop_streaming_confirmation">Вы уверены, что хотите остановить запись?</string>
 
     <!-- Connection Profiles -->
     <string name="connection_profiles">Профили соединений</string>
