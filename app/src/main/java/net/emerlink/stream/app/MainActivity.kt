@@ -1,7 +1,10 @@
 package net.emerlink.stream.app
 
 import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -15,19 +18,23 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.content.ContextCompat
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.preference.PreferenceManager
 import net.emerlink.stream.R
+import net.emerlink.stream.core.AppIntentActions
 import net.emerlink.stream.core.navigation.AppNavigation
 import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.presentation.onboarding.OnboardingActivity
 import net.emerlink.stream.presentation.theme.EmerlinkStreamTheme
+import net.emerlink.stream.service.StreamService
 import net.emerlink.stream.util.PermissionUtil
 
 class MainActivity : ComponentActivity() {
     private val requiredPermissions =
         mutableListOf(
             Manifest.permission.CAMERA,
-            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.RECORD_AUDIO
         ).apply {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
                 add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
@@ -49,13 +56,31 @@ class MainActivity : ComponentActivity() {
             ActivityResultContracts.RequestMultiplePermissions()
         ) { _ -> startMainUI() }
 
+    private val finishActivityReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context?,
+                intent: Intent?,
+            ) {
+                if (intent?.action == AppIntentActions.FINISH_ACTIVITY) {
+                    finishAndRemoveTask()
+                }
+            }
+        }
+
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val preferences = PreferenceManager.getDefaultSharedPreferences(this)
+        val filter = IntentFilter(AppIntentActions.FINISH_ACTIVITY)
+        LocalBroadcastManager.getInstance(this).registerReceiver(finishActivityReceiver, filter)
 
+        Intent(this, StreamService::class.java).also { intent ->
+            ContextCompat.startForegroundService(this, intent)
+        }
+
+        val preferences = PreferenceManager.getDefaultSharedPreferences(this)
         val isFirstRun = preferences.getBoolean(PreferenceKeys.FIRST_RUN, true)
         if (isFirstRun) {
             startOnboarding()
@@ -64,15 +89,18 @@ class MainActivity : ComponentActivity() {
 
         if (!PermissionUtil.hasPermissions(this, requiredPermissions)) {
             requestPermissionsLauncher.launch(requiredPermissions)
-            return
+        } else {
+            startMainUI()
         }
+    }
 
-        startMainUI()
+    override fun onDestroy() {
+        super.onDestroy()
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(finishActivityReceiver)
     }
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun startMainUI() {
-        // Установить тему с черным фоном для экрана камеры
         setTheme(R.style.Theme_EmerlinkStream_Camera)
 
         setContent {

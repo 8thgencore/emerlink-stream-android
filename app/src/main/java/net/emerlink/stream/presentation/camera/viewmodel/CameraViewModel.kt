@@ -3,7 +3,6 @@
 package net.emerlink.stream.presentation.camera.viewmodel
 
 import android.content.*
-import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import android.view.MotionEvent
@@ -26,9 +25,13 @@ import java.lang.ref.WeakReference
  * ViewModel for managing CameraScreen state
  */
 class CameraViewModel : ViewModel() {
+    companion object {
+        private const val TAG = "CameraViewModel"
+    }
+
     private var streamServiceRef: WeakReference<StreamService>? = null
     private var bound = false
-    private var audioLevelReceiver: BroadcastReceiver? = null
+    private var broadcastReceiver: BroadcastReceiver? = null
 
     private val _isStreaming = MutableStateFlow(false)
     val isStreaming: StateFlow<Boolean> = _isStreaming.asStateFlow()
@@ -62,39 +65,24 @@ class CameraViewModel : ViewModel() {
     private val _flashOverlayVisible = MutableStateFlow(false)
     val flashOverlayVisible: StateFlow<Boolean> = _flashOverlayVisible.asStateFlow()
 
-    private val streamStatusReceiver =
-        object : BroadcastReceiver() {
-            override fun onReceive(
-                context: Context,
-                intent: Intent,
-            ) {
-                when (intent.action) {
-                    AppIntentActions.START_STREAM -> updateStreamingState(true)
-                    AppIntentActions.STOP_STREAM,
-                    AppIntentActions.AUTH_ERROR,
-                    AppIntentActions.CONNECTION_FAILED,
-                        -> updateStreamingState(false)
-                }
-            }
-        }
-
     init {
-        // Observe service instance
         StreamService.observer.observeForever { service ->
             streamServiceRef = service?.let { WeakReference(it) }
 
             if (service != null) {
-                // Initialize states
-                updateStreamingState(service.isStreaming())
+                updateStreamingState(service.isStreaming() || service.isRecording())
                 setPreviewActive(service.isPreviewRunning())
                 updateStreamInfo(service.getStreamInfo())
 
-                // Initialize camera if we have OpenGlView
                 _openGlView.value?.let { view ->
                     if (!_isPreviewActive.value) {
                         startPreview(view)
                     }
                 }
+            } else {
+                updateStreamingState(false)
+                setPreviewActive(false)
+                _audioLevel.value = 0.0f
             }
         }
     }
@@ -110,54 +98,41 @@ class CameraViewModel : ViewModel() {
                 streamServiceRef = WeakReference(streamService)
                 bound = true
 
-                // Initialize states
-                updateStreamingState(streamService.isStreaming())
+                updateStreamingState(streamService.isStreaming() || streamService.isRecording())
                 setPreviewActive(streamService.isPreviewRunning())
                 updateStreamInfo(streamService.getStreamInfo())
 
-                // Initialize camera if we already have OpenGlView and no preview is active
                 _openGlView.value?.let { view ->
-                    if (!_isPreviewActive.value) {
+                    if (!streamService.isPreviewRunning()) {
                         startPreview(view)
                     }
                 }
             }
 
             override fun onServiceDisconnected(arg0: ComponentName) {
+                Log.d(TAG, "Service disconnected")
                 streamServiceRef = null
                 bound = false
+                updateStreamingState(false)
+                setPreviewActive(false)
+                _audioLevel.value = 0.0f
             }
         }
 
     fun bindService(context: Context) {
-        val filter =
-            IntentFilter().apply {
-                addAction(AppIntentActions.START_STREAM)
-                addAction(AppIntentActions.STOP_STREAM)
-                addAction(AppIntentActions.AUTH_ERROR)
-                addAction(AppIntentActions.CONNECTION_FAILED)
-            }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.registerReceiver(
-                streamStatusReceiver,
-                filter,
-                Context.RECEIVER_NOT_EXPORTED
-            )
-        } else {
-            ContextCompat.registerReceiver(context, streamStatusReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
-        }
-
         // Bind to service
         Intent(context, StreamService::class.java).also { intent ->
+            ContextCompat.startForegroundService(context, intent)
             context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
         }
 
-        registerAudioLevelReceiver(context)
+        registerBroadcastReceivers(context)
     }
 
-    private fun registerAudioLevelReceiver(context: Context) {
-        audioLevelReceiver =
+    private fun registerBroadcastReceivers(context: Context) {
+        if (broadcastReceiver != null) return
+
+        broadcastReceiver =
             object : BroadcastReceiver() {
                 override fun onReceive(
                     context: Context,
@@ -173,6 +148,11 @@ class CameraViewModel : ViewModel() {
                             val isActive = intent.getBooleanExtra(AppIntentActions.EXTRA_PREVIEW_ACTIVE, false)
                             setPreviewActive(isActive)
                         }
+
+                        AppIntentActions.BROADCAST_STREAM_STOPPED -> {
+                            Log.d(TAG, "Received BROADCAST_STREAM_STOPPED")
+                            updateStreamingState(false)
+                        }
                     }
                 }
             }
@@ -181,36 +161,40 @@ class CameraViewModel : ViewModel() {
             IntentFilter().apply {
                 addAction(AppIntentActions.BROADCAST_AUDIO_LEVEL)
                 addAction(AppIntentActions.BROADCAST_PREVIEW_STATUS)
+                addAction(AppIntentActions.BROADCAST_STREAM_STOPPED)
             }
 
-        // LocalBroadcastManager doesn't need the exported flag since it's local to the app
         LocalBroadcastManager
             .getInstance(context)
-            .registerReceiver(audioLevelReceiver!!, filter)
+            .registerReceiver(broadcastReceiver!!, filter)
     }
 
     fun unbindService(context: Context) {
         if (bound) {
             try {
-                // Отвязываемся от сервиса только если нет активного стрима
-                if (!_isStreaming.value) {
+                val shouldUnbind = streamServiceRef?.get()?.let { !it.isStreaming() && !it.isRecording() } != false
+                if (shouldUnbind) {
+                    Log.d(TAG, "Unbinding service connection")
                     context.unbindService(connection)
-                    context.unregisterReceiver(streamStatusReceiver)
                     bound = false
                     streamServiceRef = null
+                } else {
+                    Log.d(TAG, "Skipping unbind because stream/recording is active")
                 }
+            } catch (e: IllegalArgumentException) {
+                Log.w(TAG, "Service not registered? ${e.message}")
             } catch (e: Exception) {
-                Log.e("CameraViewModel", "Error unbinding service", e)
+                Log.e(TAG, "Error unbinding service", e)
             }
         }
 
-        // Отписываемся от broadcast receiver в любом случае
-        audioLevelReceiver?.let {
+        broadcastReceiver?.let {
             try {
                 LocalBroadcastManager.getInstance(context).unregisterReceiver(it)
-                audioLevelReceiver = null
+                broadcastReceiver = null
+                Log.d(TAG, "Unregistered broadcast receiver")
             } catch (e: Exception) {
-                Log.e("CameraViewModel", "Error unregistering audio level receiver", e)
+                Log.e(TAG, "Error unregistering broadcast receiver", e)
             }
         }
     }
@@ -226,7 +210,7 @@ class CameraViewModel : ViewModel() {
                 streamServiceRef?.get()?.startPreview(view)
                 _isPreviewActive.value = true
             } catch (e: Exception) {
-                Log.e("CameraViewModel", "Error starting preview", e)
+                Log.e(TAG, "Error starting preview", e)
                 _isPreviewActive.value = false
             }
         }
@@ -238,8 +222,7 @@ class CameraViewModel : ViewModel() {
                 streamServiceRef?.get()?.stopPreview()
                 _isPreviewActive.value = false
             } catch (e: Exception) {
-                Log.e("CameraViewModel", "Error stopping preview", e)
-                // Still mark preview as inactive
+                Log.e(TAG, "Error stopping preview", e)
                 _isPreviewActive.value = false
             }
         }
@@ -250,7 +233,7 @@ class CameraViewModel : ViewModel() {
             try {
                 streamServiceRef?.get()?.tapToFocus(event)
             } catch (e: Exception) {
-                Log.e("CameraViewModel", "Error focusing", e)
+                Log.e(TAG, "Error focusing", e)
             }
         }
     }
@@ -260,7 +243,7 @@ class CameraViewModel : ViewModel() {
             try {
                 streamServiceRef?.get()?.setZoom(event)
             } catch (e: Exception) {
-                Log.e("CameraViewModel", "Error setting zoom", e)
+                Log.e(TAG, "Error setting zoom", e)
             }
         }
     }
@@ -271,7 +254,7 @@ class CameraViewModel : ViewModel() {
                 _flashOverlayVisible.value = true
                 streamServiceRef?.get()?.takePhoto()
             } catch (e: Exception) {
-                Log.e("CameraViewModel", "Error taking photo", e)
+                Log.e(TAG, "Error taking photo", e)
                 // Hide flash overlay in case of error
                 _flashOverlayVisible.value = false
             }
@@ -283,14 +266,18 @@ class CameraViewModel : ViewModel() {
             try {
                 streamServiceRef?.get()?.switchCamera()
             } catch (e: Exception) {
-                Log.e("CameraViewModel", "Error switching camera", e)
+                Log.e(TAG, "Error switching camera", e)
             }
         }
     }
 
     // State update methods
     fun updateStreamingState(isStreaming: Boolean) {
+        Log.d(TAG, "Updating streaming state to: $isStreaming")
         _isStreaming.value = isStreaming
+        if (isStreaming) {
+            streamServiceRef?.get()?.getStreamInfo()?.let { updateStreamInfo(it) }
+        }
     }
 
     fun toggleFlash() {
@@ -299,7 +286,7 @@ class CameraViewModel : ViewModel() {
                 val result = streamServiceRef?.get()?.toggleLantern() == true
                 _isFlashOn.value = result
             } catch (e: Exception) {
-                Log.e("CameraViewModel", "Error toggling flash", e)
+                Log.e(TAG, "Error toggling flash", e)
             }
         }
     }
@@ -311,7 +298,7 @@ class CameraViewModel : ViewModel() {
                 streamServiceRef?.get()?.toggleMute(newMuteState)
                 _isMuted.value = newMuteState
             } catch (e: Exception) {
-                Log.e("CameraViewModel", "Error toggling mute", e)
+                Log.e(TAG, "Error toggling mute", e)
             }
         }
     }
@@ -339,10 +326,11 @@ class CameraViewModel : ViewModel() {
     fun startStreaming() {
         viewModelScope.launch {
             try {
+                Log.d(TAG, "Attempting to start stream via service")
                 streamServiceRef?.get()?.startStream()
-                updateStreamingState(true)
             } catch (e: Exception) {
-                Log.e("CameraViewModel", "Error starting stream", e)
+                Log.e(TAG, "Error starting stream", e)
+                updateStreamingState(false)
             }
         }
     }
@@ -350,10 +338,10 @@ class CameraViewModel : ViewModel() {
     fun stopStreaming() {
         viewModelScope.launch {
             try {
+                Log.d(TAG, "Attempting to stop stream via service")
                 streamServiceRef?.get()?.stopStream()
-                updateStreamingState(false)
             } catch (e: Exception) {
-                Log.e("CameraViewModel", "Error stopping stream", e)
+                Log.e(TAG, "Error stopping stream", e)
             }
         }
     }
@@ -363,7 +351,7 @@ class CameraViewModel : ViewModel() {
      */
     fun hideFlashOverlayAfterDelay() {
         viewModelScope.launch {
-            delay(150) // Show flash for 150ms
+            delay(150)
             _flashOverlayVisible.value = false
         }
     }

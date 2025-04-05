@@ -93,11 +93,14 @@ class StreamService :
                 if (action != null) {
                     when (action) {
                         AppIntentActions.START_STREAM -> startStream()
-                        AppIntentActions.STOP_STREAM -> stopStream(null, null)
+                        AppIntentActions.STOP_STREAM -> stopStream(null)
 
                         AppIntentActions.EXIT_APP -> {
                             exiting = true
-                            stopStream(null, null)
+                            stopStream(null)
+                            LocalBroadcastManager
+                                .getInstance(context)
+                                .sendBroadcast(Intent(AppIntentActions.FINISH_ACTIVITY))
                             stopSelf()
                         }
                     }
@@ -266,24 +269,21 @@ class StreamService :
     override fun onBind(intent: Intent): IBinder = binder
 
     override fun onDestroy() {
+        Log.d(TAG, "onDestroy")
         observer.postValue(null)
-        if (isStreaming()) {
-            stopStream()
-        }
         stopPreview()
 
-        try {
-            unregisterReceiver(receiver)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error unregistering receiver", e)
-        }
+        microphoneMonitor.stopMonitoring()
+        stopAudioLevelUpdates()
+
+        unregisterReceiver(receiver)
 
         super.onDestroy()
     }
 
     // ConnectChecker implementation
     override fun onAuthError() {
-        stopStream(getString(R.string.auth_error), AppIntentActions.AUTH_ERROR)
+        stopStream(getString(R.string.auth_error))
     }
 
     override fun onAuthSuccess() {
@@ -293,27 +293,25 @@ class StreamService :
     override fun onConnectionFailed(reason: String) {
         Log.e(TAG, "Connection failed: $reason")
         try {
-            if (isStreaming()) {
-                stopStream(getString(R.string.connection_failed), AppIntentActions.CONNECTION_FAILED)
-            }
+            stopStream(getString(R.string.connection_failed))
         } catch (e: Exception) {
             Log.e(TAG, "Error handling connection failure", e)
             try {
                 stopStream()
-                notifyStreamStopped()
                 notificationManager.showErrorSafely(this, "Critical error: ${e.message}")
             } catch (e2: Exception) {
                 Log.e(TAG, "Double error", e2)
+                notificationManager.showErrorSafely(this, "Critical error occurred")
+                notifyStreamStopped()
             }
         }
     }
 
     private fun notifyStreamStopped() {
-        LocalBroadcastManager.getInstance(this).sendBroadcast(
-            Intent(AppIntentActions.BROADCAST_STREAM_STOPPED).setPackage(
-                packageName
-            )
-        )
+        LocalBroadcastManager
+            .getInstance(this)
+            .sendBroadcast(Intent(AppIntentActions.BROADCAST_STREAM_STOPPED).setPackage(packageName))
+        applicationContext.sendBroadcast(Intent(AppIntentActions.STOP_STREAM).setPackage(packageName))
     }
 
     override fun onConnectionStarted(url: String) {}
@@ -635,20 +633,25 @@ class StreamService :
         }
     }
 
-    fun stopStream(
-        error: String? = null,
-        broadcastIntent: String? = null,
-    ) {
-        Log.d(TAG, "stopStream $error")
+    fun stopStream(error: String? = null) {
+        Log.d(TAG, "stopStream called with error: $error") // Updated log
+
+        var streamWasStopped = false
+        var recordingWasStopped = false
 
         try {
             if (isStreaming()) {
                 streamInterface.stopStream()
-                notifyStreamStopped()
+                streamWasStopped = true
             }
 
             if (isRecording()) {
                 mediaManager.stopRecording()
+                recordingWasStopped = true
+            }
+
+            if (streamWasStopped || recordingWasStopped) {
+                notifyStreamStopped()
             }
 
             try {
@@ -657,22 +660,19 @@ class StreamService :
                 Log.e(TAG, "Error unregistering sensor listener", e)
             }
 
-            if (error != null && broadcastIntent != null) {
+            if (error != null) {
                 notificationManager.showErrorNotification(error)
-                applicationContext.sendBroadcast(Intent(broadcastIntent))
+                notificationManager.showNotification(getString(R.string.ready_to_stream), true)
             } else {
                 notificationManager.showNotification(getString(R.string.ready_to_stream), true)
-            }
-
-            if (exiting) {
-                stopSelf()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error in stopStream", e)
             notifyStreamStopped()
 
-            val errorMsg = error?.let { "$it (${e.message})" } ?: e.message ?: "Unknown error"
-            notificationManager.showErrorSafely(errorMsg)
+            val errorMsg = error?.let { "$it (${e.message})" } ?: e.message ?: "Unknown error during stop"
+            notificationManager.showErrorSafely(this, errorMsg)
+            notificationManager.showNotification(getString(R.string.ready_to_stream), true)
             errorHandler.handleStreamError(e)
         }
     }
