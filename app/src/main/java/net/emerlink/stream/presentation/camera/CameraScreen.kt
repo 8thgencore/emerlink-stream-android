@@ -16,6 +16,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +43,7 @@ fun CameraScreen(
 
     // State collection
     val openGlView by viewModel.openGlView.collectAsStateWithLifecycle()
+    val isServiceBound by viewModel.isServiceBound.collectAsStateWithLifecycle()
     val isStreaming by viewModel.isStreaming.collectAsStateWithLifecycle()
     val isRecording by viewModel.isRecording.collectAsStateWithLifecycle()
     val isFlashOn by viewModel.isFlashOn.collectAsStateWithLifecycle()
@@ -92,7 +94,7 @@ fun CameraScreen(
         createPermissionLauncher(
             permissionName = "Notifications",
             onGranted = {
-                openGlView?.let { view -> viewModel.startPreview(view) }
+                Log.d("CameraScreen", "All permissions granted after Notification granted.")
             }
         )
 
@@ -138,6 +140,12 @@ fun CameraScreen(
         }
     }
 
+    LaunchedEffect(openGlView, isServiceBound) {
+        if (openGlView != null && isServiceBound) {
+            viewModel.startPreview(openGlView!!)
+        }
+    }
+
     // UI components
     Box(
         modifier =
@@ -149,10 +157,7 @@ fun CameraScreen(
         CameraPreview(
             viewModel = viewModel,
             onOpenGlViewCreated = { view ->
-                if (!viewModel.isPreviewActive.value) {
-                    viewModel.setOpenGlView(view)
-                    requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                }
+                viewModel.setOpenGlView(view)
             }
         )
 
@@ -178,9 +183,20 @@ fun CameraScreen(
             viewModel = viewModel,
             onSettingsClick = {
                 if (isStreaming || isRecording) {
-                    viewModel.setShowSettingsConfirmDialog(show = true)
+                    viewModel.requestConfirmation(true) {
+                        try {
+                            viewModel.stopStreaming()
+                            viewModel.stopPreview()
+                            viewModel.setOpenGlView(null)
+                            onSettingsClick()
+                        } catch (e: Exception) {
+                            Log.e("CameraScreen", "Error executing settings confirmation action", e)
+                        }
+                    }
                 } else {
                     try {
+                        viewModel.stopStreaming()
+                        viewModel.stopPreview()
                         viewModel.setOpenGlView(null)
                         onSettingsClick()
                     } catch (e: Exception) {
@@ -219,21 +235,8 @@ fun CameraScreen(
         // Dialogs
         if (showSettingsConfirmDialog) {
             SettingsConfirmationDialog(
-                onDismiss = {
-                    viewModel.setShowSettingsConfirmDialog(show = false)
-                },
-                onConfirm = {
-                    viewModel.setShowSettingsConfirmDialog(show = false)
-                    try {
-                        if (viewModel.isStreaming.value || viewModel.isRecording.value) {
-                            viewModel.stopStreaming()
-                        }
-                        viewModel.setOpenGlView(null)
-                        onSettingsClick()
-                    } catch (e: Exception) {
-                        Log.e("CameraScreen", "Error transitioning after dialog confirmation", e)
-                    }
-                }
+                onDismiss = { viewModel.requestConfirmation(false) },
+                onConfirm = { viewModel.confirmRequestedAction() }
             )
         }
     }

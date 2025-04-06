@@ -68,9 +68,9 @@ fun StreamStatusIndicator(
                 Text(
                     text =
                         when {
-                            isStreaming && isRecording -> "LIVE & RECORDING"
+                            isStreaming && isRecording -> "LIVE & RECORD"
                             isStreaming -> "LIVE"
-                            isRecording -> "RECORDING"
+                            isRecording -> "RECORD"
                             else -> "OFF"
                         },
                     style = MaterialTheme.typography.labelMedium,

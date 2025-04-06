@@ -383,6 +383,7 @@ class StreamService :
 
     fun startPreview(view: OpenGlView) {
         if (isPreviewActive) {
+            Log.w(TAG, "Service.startPreview called but preview already active.")
             return
         }
 
@@ -402,27 +403,31 @@ class StreamService :
             microphoneMonitor.startMonitoring()
         } catch (e: Exception) {
             Log.e(TAG, "Error starting preview", e)
+            isPreviewActive = false
         }
     }
 
     fun stopPreview() {
         if (!isPreviewActive) {
+            Log.d(TAG, "Service.stopPreview called but preview already inactive.")
             return
         }
 
+        isPreviewActive = false
+        Log.d(TAG, "Service.isPreviewActive set to false")
+
         try {
-            if (isOnPreview() && !isStreaming()) {
+            if (streamInterface.isOnPreview && !isStreaming()) {
+                Log.d(TAG, "Calling streamInterface.stopPreview()")
                 streamInterface.stopPreview()
-            } else if (isStreaming()) {
-                Log.d(TAG, "Not stopping preview because streaming is active")
+            } else {
+                Log.d(TAG, "Skipping streamInterface.stopPreview() call (isOnPreview=${streamInterface.isOnPreview}, isStreaming=${isStreaming()})")
             }
-            isPreviewActive = false
-            if (!isStreaming()) {
-                stopAudioLevelUpdates()
-            }
+            stopAudioLevelUpdates()
             microphoneMonitor.stopMonitoring()
+            Log.d(TAG, "Service stopPreview components stopped.")
         } catch (e: Exception) {
-            Log.e(TAG, "Error stopping preview", e)
+            Log.e(TAG, "Error stopping preview components", e)
         }
     }
 
@@ -477,15 +482,7 @@ class StreamService :
 
     fun isStreaming(): Boolean = streamInterface.isStreaming
 
-    fun isRecording(): Boolean  {
-        try {
-            Log.d(TAG, "isRecording: ${streamInterface.isRecording}")
-            return streamInterface.isRecording
-        } catch (e: Exception) {
-            Log.e(TAG, "Error checking recording status", e)
-            return false
-        }
-    }
+    fun isRecording(): Boolean = streamInterface.isRecording
 
     fun isOnPreview(): Boolean = streamInterface.isOnPreview
 
@@ -524,7 +521,10 @@ class StreamService :
     fun startRecord(filePath: String) {
         try {
             streamInterface.startRecord(filePath, RecordingListener())
-            LocalBroadcastManager.getInstance(this).sendBroadcast(Intent(AppIntentActions.BROADCAST_RECORD_STARTED).setPackage(packageName))
+            LocalBroadcastManager
+                .getInstance(
+                    this
+                ).sendBroadcast(Intent(AppIntentActions.BROADCAST_RECORD_STARTED).setPackage(packageName))
         } catch (e: Exception) {
             errorHandler.handleStreamError(e)
         }
@@ -533,7 +533,10 @@ class StreamService :
     fun stopRecord() {
         if (isRecording()) {
             streamInterface.stopRecord()
-            LocalBroadcastManager.getInstance(this).sendBroadcast(Intent(AppIntentActions.BROADCAST_RECORD_STOPPED).setPackage(packageName))
+            LocalBroadcastManager
+                .getInstance(
+                    this
+                ).sendBroadcast(Intent(AppIntentActions.BROADCAST_RECORD_STOPPED).setPackage(packageName))
         }
     }
 
@@ -561,7 +564,7 @@ class StreamService :
         }
     }
 
-    fun isPreviewRunning(): Boolean = openGlView != null
+    fun isPreviewRunning(): Boolean = isPreviewActive
 
     fun startStream() {
         if (isStreaming() || isRecording()) {
@@ -679,7 +682,7 @@ class StreamService :
         connectionSettings = connectionRepository.activeProfileFlow.value?.settings ?: ConnectionSettings()
         val streamSettings = settingsRepository.videoSettingsFlow.value
         return StreamInfo(
-            protocol = connectionSettings.protocol.toString(), 
+            protocol = connectionSettings.protocol.toString(),
             resolution = streamSettings.resolution.toString(),
             bitrate = "${streamSettings.bitrate} kbps",
             fps = "${streamSettings.fps} fps"

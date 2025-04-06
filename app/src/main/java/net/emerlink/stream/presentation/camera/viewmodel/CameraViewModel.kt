@@ -30,8 +30,10 @@ class CameraViewModel : ViewModel() {
     }
 
     private var streamServiceRef: WeakReference<StreamService>? = null
-    private var bound = false
     private var broadcastReceiver: BroadcastReceiver? = null
+
+    private val _isServiceBound = MutableStateFlow(false)
+    val isServiceBound: StateFlow<Boolean> = _isServiceBound.asStateFlow()
 
     private val _isStreaming = MutableStateFlow(false)
     val isStreaming: StateFlow<Boolean> = _isStreaming.asStateFlow()
@@ -54,9 +56,6 @@ class CameraViewModel : ViewModel() {
     private val _streamInfo = MutableStateFlow(StreamInfo())
     val streamInfo: StateFlow<StreamInfo> = _streamInfo.asStateFlow()
 
-    private val _isPreviewActive = MutableStateFlow(false)
-    val isPreviewActive: StateFlow<Boolean> = _isPreviewActive.asStateFlow()
-
     private val _openGlView = MutableStateFlow<OpenGlView?>(null)
     val openGlView: StateFlow<OpenGlView?> = _openGlView.asStateFlow()
 
@@ -67,6 +66,10 @@ class CameraViewModel : ViewModel() {
     // Flash overlay state
     private val _flashOverlayVisible = MutableStateFlow(false)
     val flashOverlayVisible: StateFlow<Boolean> = _flashOverlayVisible.asStateFlow()
+
+    private val isPreviewActive = MutableStateFlow(false)
+
+    private val confirmAction = MutableStateFlow<() -> Unit> {}
 
     init {
         StreamService.observer.observeForever { service ->
@@ -88,12 +91,10 @@ class CameraViewModel : ViewModel() {
         service?.let { srv ->
             updateStreamingState(srv.isStreaming())
             updateRecordingState(srv.isRecording())
-            setPreviewActive(srv.isPreviewRunning())
             updateStreamInfo(srv.getStreamInfo())
         } ?: run {
             updateStreamingState(false)
             updateRecordingState(false)
-            setPreviewActive(false)
             updateStreamInfo(StreamInfo())
         }
     }
@@ -107,21 +108,15 @@ class CameraViewModel : ViewModel() {
                 val binder = service as StreamService.LocalBinder
                 val streamService = binder.getService()
                 streamServiceRef = WeakReference(streamService)
-                bound = true
+                _isServiceBound.value = true
 
                 updateAllStatesFromService(streamService)
-
-                _openGlView.value?.let { view ->
-                    if (!streamService.isPreviewRunning()) {
-                        startPreview(view)
-                    }
-                }
             }
 
             override fun onServiceDisconnected(arg0: ComponentName) {
                 Log.d(TAG, "Service disconnected")
                 streamServiceRef = null
-                bound = false
+                _isServiceBound.value = false
                 updateAllStatesFromService(null)
                 _audioLevel.value = 0.0f
             }
@@ -179,28 +174,28 @@ class CameraViewModel : ViewModel() {
     }
 
     fun unbindService(context: Context) {
-        if (bound) {
+        if (isServiceBound.value) {
             try {
-                val shouldUnbind = streamServiceRef?.get()?.let { !it.isStreaming() && !it.isRecording() } != false
-                if (shouldUnbind) {
-                    context.unbindService(connection)
-                    bound = false
-                    streamServiceRef = null
-                } else {
-                    Log.d(TAG, "Skipping unbind because stream/recording is active")
-                }
+                context.unbindService(connection)
+                _isServiceBound.value = false
+                streamServiceRef = null
             } catch (e: IllegalArgumentException) {
-                Log.w(TAG, "Service not registered? ${e.message}")
+                Log.w(TAG, "Service not registered or already unbound? ${e.message}")
+                _isServiceBound.value = false
+                streamServiceRef = null
             } catch (e: Exception) {
                 Log.e(TAG, "Error unbinding service", e)
+                _isServiceBound.value = false
+                streamServiceRef = null
             }
+        } else {
+            Log.d(TAG, "Unbind requested but already unbound.")
         }
 
         broadcastReceiver?.let {
             try {
                 LocalBroadcastManager.getInstance(context).unregisterReceiver(it)
                 broadcastReceiver = null
-                Log.d(TAG, "Unregistered broadcast receiver")
             } catch (e: Exception) {
                 Log.e(TAG, "Error unregistering broadcast receiver", e)
             }
@@ -213,25 +208,31 @@ class CameraViewModel : ViewModel() {
     }
 
     fun startPreview(view: OpenGlView) {
+        if (isPreviewActive.value || streamServiceRef?.get()?.isOnPreview() == true) {
+            if (!isPreviewActive.value) isPreviewActive.value = true
+            return
+        }
+
         viewModelScope.launch {
             try {
                 streamServiceRef?.get()?.startPreview(view)
-                _isPreviewActive.value = true
+                isPreviewActive.value = true
             } catch (e: Exception) {
                 Log.e(TAG, "Error starting preview", e)
-                _isPreviewActive.value = false
+                isPreviewActive.value = false
             }
         }
     }
 
     fun stopPreview() {
+        if (!isPreviewActive.value) return
+        isPreviewActive.value = false
+
         viewModelScope.launch {
             try {
                 streamServiceRef?.get()?.stopPreview()
-                _isPreviewActive.value = false
             } catch (e: Exception) {
-                Log.e(TAG, "Error stopping preview", e)
-                _isPreviewActive.value = false
+                Log.e(TAG, "Error stopping preview in service", e)
             }
         }
     }
@@ -263,7 +264,6 @@ class CameraViewModel : ViewModel() {
                 streamServiceRef?.get()?.takePhoto()
             } catch (e: Exception) {
                 Log.e(TAG, "Error taking photo", e)
-                // Hide flash overlay in case of error
                 _flashOverlayVisible.value = false
             }
         }
@@ -312,20 +312,12 @@ class CameraViewModel : ViewModel() {
         }
     }
 
-    fun setShowSettingsConfirmDialog(show: Boolean) {
-        _showSettingsConfirmDialog.value = show
-    }
-
     fun toggleStreamInfo() {
         _showStreamInfo.value = !_showStreamInfo.value
     }
 
     fun updateStreamInfo(info: StreamInfo) {
         _streamInfo.value = info
-    }
-
-    fun setPreviewActive(isActive: Boolean) {
-        _isPreviewActive.value = isActive
     }
 
     fun setOpenGlView(view: OpenGlView?) {
@@ -356,10 +348,8 @@ class CameraViewModel : ViewModel() {
     }
 
     fun stopStreamingWithConfirmation() {
-        if (isStreaming.value) {
-            setShowSettingsConfirmDialog(show = true)
-        } else {
-            stopStreaming()
+        if (isStreaming.value || isRecording.value) {
+            requestConfirmation(true) { stopStreaming() }
         }
     }
 
@@ -375,6 +365,31 @@ class CameraViewModel : ViewModel() {
             streamServiceRef?.get()?.let { service ->
                 val info = service.getStreamInfo()
                 updateStreamInfo(info)
+            }
+        }
+    }
+
+    fun requestConfirmation(
+        show: Boolean,
+        actionOnConfirm: (() -> Unit)? = null,
+    ) {
+        if (show) {
+            confirmAction.value = actionOnConfirm ?: {}
+        }
+        _showSettingsConfirmDialog.value = show
+        if (!show) {
+            confirmAction.value = {}
+        }
+    }
+
+    fun confirmRequestedAction() {
+        viewModelScope.launch {
+            try {
+                confirmAction.value()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error executing confirmed action", e)
+            } finally {
+                requestConfirmation(false)
             }
         }
     }
