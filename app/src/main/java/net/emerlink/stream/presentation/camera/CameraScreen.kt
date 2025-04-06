@@ -43,6 +43,7 @@ fun CameraScreen(
     // State collection
     val openGlView by viewModel.openGlView.collectAsStateWithLifecycle()
     val isStreaming by viewModel.isStreaming.collectAsStateWithLifecycle()
+    val isRecording by viewModel.isRecording.collectAsStateWithLifecycle()
     val isFlashOn by viewModel.isFlashOn.collectAsStateWithLifecycle()
     val isMuted by viewModel.isMuted.collectAsStateWithLifecycle()
     val showSettingsConfirmDialog by viewModel.showSettingsConfirmDialog.collectAsStateWithLifecycle()
@@ -160,6 +161,7 @@ fun CameraScreen(
 
         StreamStatusIndicator(
             isStreaming = isStreaming,
+            isRecording = isRecording,
             isLandscape = isLandscape,
             onInfoClick = { viewModel.toggleStreamInfo() }
         )
@@ -173,13 +175,13 @@ fun CameraScreen(
 
         CameraControls(
             isLandscape = isLandscape,
-            isStreaming = isStreaming,
+            isStreaming = isStreaming || isRecording,
             isFlashOn = isFlashOn,
             isMuted = isMuted,
             viewModel = viewModel,
             onSettingsClick = {
-                if (isStreaming) {
-                    viewModel.setShowSettingsConfirmDialog(true, true)
+                if (isStreaming || isRecording) {
+                    viewModel.setShowSettingsConfirmDialog(show = true, fromSettings = true)
                 } else {
                     try {
                         viewModel.setOpenGlView(null)
@@ -214,17 +216,20 @@ fun CameraScreen(
                         .fillMaxSize()
                         .background(Color.White.copy(alpha = 0.5f))
             )
-
-            // Auto-hide the flash overlay after a short delay
             viewModel.hideFlashOverlayAfterDelay()
         }
 
         // Dialogs
         if (showSettingsConfirmDialog) {
             SettingsConfirmationDialog(
-                onDismiss = { viewModel.setShowSettingsConfirmDialog(false) },
+                onDismiss = {
+                    viewModel.setShowSettingsConfirmDialog(
+                        show = false,
+                        fromSettings = isSettingsDialogFromSettings
+                    )
+                },
                 onConfirm = {
-                    viewModel.setShowSettingsConfirmDialog(false)
+                    viewModel.setShowSettingsConfirmDialog(show = false, fromSettings = isSettingsDialogFromSettings)
                     try {
                         viewModel.stopStreaming()
                         viewModel.setOpenGlView(null)

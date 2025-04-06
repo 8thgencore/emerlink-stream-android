@@ -37,6 +37,9 @@ class CameraViewModel : ViewModel() {
     private val _isStreaming = MutableStateFlow(false)
     val isStreaming: StateFlow<Boolean> = _isStreaming.asStateFlow()
 
+    private val _isRecording = MutableStateFlow(false)
+    val isRecording: StateFlow<Boolean> = _isRecording.asStateFlow()
+
     private val _isFlashOn = MutableStateFlow(false)
     val isFlashOn: StateFlow<Boolean> = _isFlashOn.asStateFlow()
 
@@ -76,9 +79,13 @@ class CameraViewModel : ViewModel() {
                 intent: Intent,
             ) {
                 when (intent.action) {
-                    AppIntentActions.START_STREAM -> updateStreamingState(true)
-                    AppIntentActions.STOP_STREAM,
-                        -> updateStreamingState(false)
+                    AppIntentActions.START_STREAM -> {
+                        updateStreamingState(true)
+                    }
+
+                    AppIntentActions.STOP_STREAM -> {
+                        updateStreamingState(false)
+                    }
                 }
             }
         }
@@ -88,7 +95,8 @@ class CameraViewModel : ViewModel() {
             streamServiceRef = service?.let { WeakReference(it) }
 
             if (service != null) {
-                updateStreamingState(service.isStreaming() || service.isRecording())
+                updateStreamingState(service.isStreaming())
+                updateRecordingState(service.isRecording())
                 setPreviewActive(service.isPreviewRunning())
                 updateStreamInfo(service.getStreamInfo())
 
@@ -99,6 +107,7 @@ class CameraViewModel : ViewModel() {
                 }
             } else {
                 updateStreamingState(false)
+                updateRecordingState(false)
                 setPreviewActive(false)
                 _audioLevel.value = 0.0f
             }
@@ -116,7 +125,8 @@ class CameraViewModel : ViewModel() {
                 streamServiceRef = WeakReference(streamService)
                 bound = true
 
-                updateStreamingState(streamService.isStreaming() || streamService.isRecording())
+                updateStreamingState(streamService.isStreaming())
+                updateRecordingState(streamService.isRecording())
                 setPreviewActive(streamService.isPreviewRunning())
                 updateStreamInfo(streamService.getStreamInfo())
 
@@ -132,6 +142,7 @@ class CameraViewModel : ViewModel() {
                 streamServiceRef = null
                 bound = false
                 updateStreamingState(false)
+                updateRecordingState(false)
                 setPreviewActive(false)
                 _audioLevel.value = 0.0f
             }
@@ -185,6 +196,14 @@ class CameraViewModel : ViewModel() {
                         AppIntentActions.BROADCAST_STREAM_STARTED -> {
                             updateStreamingState(true)
                         }
+
+                        AppIntentActions.BROADCAST_RECORD_STARTED -> {
+                            updateRecordingState(true)
+                        }
+
+                        AppIntentActions.BROADCAST_RECORD_STOPPED -> {
+                            updateRecordingState(false)
+                        }
                     }
                 }
             }
@@ -194,6 +213,8 @@ class CameraViewModel : ViewModel() {
                 addAction(AppIntentActions.BROADCAST_AUDIO_LEVEL)
                 addAction(AppIntentActions.BROADCAST_STREAM_STOPPED)
                 addAction(AppIntentActions.BROADCAST_STREAM_STARTED)
+                addAction(AppIntentActions.BROADCAST_RECORD_STARTED)
+                addAction(AppIntentActions.BROADCAST_RECORD_STOPPED)
             }
 
         LocalBroadcastManager
@@ -303,35 +324,32 @@ class CameraViewModel : ViewModel() {
         }
     }
 
-    // State update methods
     fun updateStreamingState(isStreaming: Boolean) {
-        Log.d(TAG, "Updating streaming state to: $isStreaming")
         _isStreaming.value = isStreaming
         if (isStreaming) {
             streamServiceRef?.get()?.getStreamInfo()?.let { updateStreamInfo(it) }
         }
     }
 
+    fun updateRecordingState(isRecording: Boolean) {
+        _isRecording.value = isRecording
+        if (isRecording) {
+            streamServiceRef?.get()?.getStreamInfo()?.let { updateStreamInfo(it) }
+        }
+    }
+
     fun toggleFlash() {
         viewModelScope.launch {
-            try {
-                val result = streamServiceRef?.get()?.toggleLantern() == true
-                _isFlashOn.value = result
-            } catch (e: Exception) {
-                Log.e(TAG, "Error toggling flash", e)
-            }
+            val result = streamServiceRef?.get()?.toggleLantern() == true
+            _isFlashOn.value = result
         }
     }
 
     fun toggleMute() {
         viewModelScope.launch {
-            try {
-                val newMuteState = !_isMuted.value
-                streamServiceRef?.get()?.toggleMute(newMuteState)
-                _isMuted.value = newMuteState
-            } catch (e: Exception) {
-                Log.e(TAG, "Error toggling mute", e)
-            }
+            val newMuteState = !_isMuted.value
+            streamServiceRef?.get()?.toggleMute(newMuteState)
+            _isMuted.value = newMuteState
         }
     }
 
@@ -384,7 +402,7 @@ class CameraViewModel : ViewModel() {
 
     fun stopStreamingWithConfirmation() {
         if (isStreaming.value) {
-            setShowSettingsConfirmDialog(true, false) // Указываем, что диалог вызван НЕ из настроек
+            setShowSettingsConfirmDialog(show = true, fromSettings = false)
         } else {
             stopStreaming()
         }

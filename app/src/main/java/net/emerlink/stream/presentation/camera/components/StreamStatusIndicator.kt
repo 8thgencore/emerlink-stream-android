@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun StreamStatusIndicator(
     isStreaming: Boolean,
+    isRecording: Boolean,
     isLandscape: Boolean,
     onInfoClick: () -> Unit,
 ) {
@@ -40,7 +41,10 @@ fun StreamStatusIndicator(
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-            modifier = Modifier.padding(top = 8.dp).clickable { onInfoClick() }
+            modifier =
+                Modifier
+                    .padding(top = 8.dp)
+                    .clickable { onInfoClick() }
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -48,19 +52,27 @@ fun StreamStatusIndicator(
             ) {
                 Box(
                     modifier =
-                        Modifier.size(12.dp).background(
-                            color =
-                                if (isStreaming) {
-                                    MaterialTheme.colorScheme.error
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceVariant
-                                },
-                            shape = CircleShape
-                        )
+                        Modifier
+                            .size(12.dp)
+                            .background(
+                                color =
+                                    when {
+                                        isStreaming -> MaterialTheme.colorScheme.error
+                                        isRecording -> MaterialTheme.colorScheme.primary
+                                        else -> MaterialTheme.colorScheme.surfaceVariant
+                                    },
+                                shape = CircleShape
+                            )
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (isStreaming) "LIVE" else "OFF",
+                    text =
+                        when {
+                            isStreaming && isRecording -> "LIVE & RECORDING"
+                            isStreaming -> "LIVE"
+                            isRecording -> "RECORDING"
+                            else -> "OFF"
+                        },
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )

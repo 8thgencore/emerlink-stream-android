@@ -477,7 +477,15 @@ class StreamService :
 
     fun isStreaming(): Boolean = streamInterface.isStreaming
 
-    fun isRecording(): Boolean = streamInterface.isRecording
+    fun isRecording(): Boolean  {
+        try {
+            Log.d(TAG, "isRecording: ${streamInterface.isRecording}")
+            return streamInterface.isRecording
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking recording status", e)
+            return false
+        }
+    }
 
     fun isOnPreview(): Boolean = streamInterface.isOnPreview
 
@@ -516,6 +524,7 @@ class StreamService :
     fun startRecord(filePath: String) {
         try {
             streamInterface.startRecord(filePath, RecordingListener())
+            LocalBroadcastManager.getInstance(this).sendBroadcast(Intent(AppIntentActions.BROADCAST_RECORD_STARTED).setPackage(packageName))
         } catch (e: Exception) {
             errorHandler.handleStreamError(e)
         }
@@ -524,6 +533,7 @@ class StreamService :
     fun stopRecord() {
         if (isRecording()) {
             streamInterface.stopRecord()
+            LocalBroadcastManager.getInstance(this).sendBroadcast(Intent(AppIntentActions.BROADCAST_RECORD_STOPPED).setPackage(packageName))
         }
     }
 
