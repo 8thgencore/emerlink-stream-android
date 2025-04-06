@@ -51,7 +51,6 @@ fun CameraScreen(
     val streamInfo by viewModel.streamInfo.collectAsStateWithLifecycle()
     val audioLevel by viewModel.audioLevel.collectAsStateWithLifecycle()
     val flashOverlayVisible by viewModel.flashOverlayVisible.collectAsStateWithLifecycle()
-    val isSettingsDialogFromSettings by viewModel.isSettingsDialogFromSettings.collectAsStateWithLifecycle()
 
     // Permission launchers
     lateinit var requestCameraPermissionLauncher: ActivityResultLauncher<String>
@@ -60,37 +59,38 @@ fun CameraScreen(
 
     @Composable
     fun createPermissionLauncher(
-        permission: String,
+        permissionName: String,
         onGranted: () -> Unit,
     ): ActivityResultLauncher<String> =
         rememberLauncherForActivityResult(
             ActivityResultContracts.RequestPermission()
         ) { isGranted ->
             if (isGranted) {
+                Log.d("CameraScreen", "Permission $permissionName granted")
                 onGranted()
             } else {
-                Log.e("CameraScreen", "Permission $permission denied")
+                Log.e("CameraScreen", "Permission $permissionName denied")
             }
         }
 
     // Permission handling
     requestCameraPermissionLauncher =
         createPermissionLauncher(
-            permission = Manifest.permission.CAMERA,
+            permissionName = "Camera",
             onGranted = {
                 requestMicrophonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
             }
         )
     requestMicrophonePermissionLauncher =
         createPermissionLauncher(
-            permission = Manifest.permission.RECORD_AUDIO,
+            permissionName = "Microphone",
             onGranted = {
                 requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         )
     requestNotificationPermissionLauncher =
         createPermissionLauncher(
-            permission = Manifest.permission.POST_NOTIFICATIONS,
+            permissionName = "Notifications",
             onGranted = {
                 openGlView?.let { view -> viewModel.startPreview(view) }
             }
@@ -105,9 +105,7 @@ fun CameraScreen(
         activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         onDispose {
-            if (!viewModel.isStreaming.value) {
-                viewModel.unbindService(context)
-            }
+            viewModel.unbindService(context)
             activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
@@ -151,7 +149,6 @@ fun CameraScreen(
         CameraPreview(
             viewModel = viewModel,
             onOpenGlViewCreated = { view ->
-                // Only set the view and request permissions if we don't already have an active preview
                 if (!viewModel.isPreviewActive.value) {
                     viewModel.setOpenGlView(view)
                     requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
@@ -181,7 +178,7 @@ fun CameraScreen(
             viewModel = viewModel,
             onSettingsClick = {
                 if (isStreaming || isRecording) {
-                    viewModel.setShowSettingsConfirmDialog(show = true, fromSettings = true)
+                    viewModel.setShowSettingsConfirmDialog(show = true)
                 } else {
                     try {
                         viewModel.setOpenGlView(null)
@@ -223,22 +220,18 @@ fun CameraScreen(
         if (showSettingsConfirmDialog) {
             SettingsConfirmationDialog(
                 onDismiss = {
-                    viewModel.setShowSettingsConfirmDialog(
-                        show = false,
-                        fromSettings = isSettingsDialogFromSettings
-                    )
+                    viewModel.setShowSettingsConfirmDialog(show = false)
                 },
                 onConfirm = {
-                    viewModel.setShowSettingsConfirmDialog(show = false, fromSettings = isSettingsDialogFromSettings)
+                    viewModel.setShowSettingsConfirmDialog(show = false)
                     try {
-                        viewModel.stopStreaming()
-                        viewModel.setOpenGlView(null)
-
-                        if (isSettingsDialogFromSettings) {
-                            onSettingsClick()
+                        if (viewModel.isStreaming.value || viewModel.isRecording.value) {
+                            viewModel.stopStreaming()
                         }
+                        viewModel.setOpenGlView(null)
+                        onSettingsClick()
                     } catch (e: Exception) {
-                        Log.e("CameraScreen", "Error transitioning to settings", e)
+                        Log.e("CameraScreen", "Error transitioning after dialog confirmation", e)
                     }
                 }
             )
