@@ -29,7 +29,7 @@ object PreferenceKeys {
     const val VIDEO_BITRATE_DEFAULT = "2500"
 
     const val VIDEO_CODEC = "video_codec"
-    const val VIDEO_CODEC_DEFAULT = "h264"
+    const val VIDEO_CODEC_DEFAULT = "H264"
 
     const val VIDEO_ADAPTIVE_BITRATE = "video_adaptive_bitrate"
     const val VIDEO_ADAPTIVE_BITRATE_DEFAULT = true
@@ -60,7 +60,7 @@ object PreferenceKeys {
     const val AUDIO_NOISE_REDUCTION_DEFAULT = false
 
     const val AUDIO_CODEC = "audio_codec"
-    const val AUDIO_CODEC_DEFAULT = "aac"
+    const val AUDIO_CODEC_DEFAULT = "AAC"
 
     // First run
     const val FIRST_RUN = "first_run"

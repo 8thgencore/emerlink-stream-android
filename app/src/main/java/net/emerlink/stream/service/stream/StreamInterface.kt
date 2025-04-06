@@ -5,6 +5,7 @@ import android.media.MediaRecorder
 import android.view.MotionEvent
 import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
+import com.pedro.common.VideoCodec
 import com.pedro.library.base.StreamBase
 import com.pedro.library.base.recording.RecordController
 import com.pedro.library.view.GlInterface
@@ -83,6 +84,8 @@ interface StreamInterface {
     fun setProtocol(tcp: Boolean)
 
     fun setAudioCodec(codec: AudioCodec)
+
+    fun setVideoCodec(codec: VideoCodec)
 
     fun setZoom(motionEvent: MotionEvent)
 

@@ -19,6 +19,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
+import com.pedro.common.VideoCodec
 import com.pedro.encoder.input.video.CameraHelper
 import com.pedro.library.util.BitrateAdapter
 import com.pedro.library.view.OpenGlView
@@ -37,6 +38,7 @@ import net.emerlink.stream.service.media.RecordingListener
 import net.emerlink.stream.service.microphone.MicrophoneMonitor
 import net.emerlink.stream.service.stream.StreamInterface
 import org.koin.java.KoinJavaComponent.inject
+import java.util.*
 import kotlin.math.log10
 
 class StreamService :
@@ -421,7 +423,10 @@ class StreamService :
                 Log.d(TAG, "Calling streamInterface.stopPreview()")
                 streamInterface.stopPreview()
             } else {
-                Log.d(TAG, "Skipping streamInterface.stopPreview() call (isOnPreview=${streamInterface.isOnPreview}, isStreaming=${isStreaming()})")
+                Log.d(
+                    TAG,
+                    "Skipping streamInterface.stopPreview() call (isOnPreview=${streamInterface.isOnPreview}, isStreaming=${isStreaming()})"
+                )
             }
             stopAudioLevelUpdates()
             microphoneMonitor.stopMonitoring()
@@ -444,7 +449,7 @@ class StreamService :
             sampleRate = audioSettings.sampleRate,
             isStereo = audioSettings.stereo
         )
-        streamInterface.setAudioCodec(AudioCodec.AAC)
+        streamInterface.setAudioCodec(AudioCodec.valueOf(audioSettings.codec))
     }
 
     /**
@@ -466,6 +471,22 @@ class StreamService :
             iFrameInterval = videoSettings.keyframeInterval,
             rotation = rotation
         )
+
+        if (Objects.equals(videoSettings.codec, VideoCodec.H265.name)) {
+            streamInterface.setVideoCodec(VideoCodec.H265)
+        } else if (Objects.equals(
+                videoSettings.codec,
+                VideoCodec.AV1.name
+            ) &&
+            connectionSettings.protocol != StreamType.UDP &&
+            connectionSettings.protocol != StreamType.SRT
+        ) {
+            streamInterface.setVideoCodec(VideoCodec.AV1)
+        } else {
+            streamInterface.setVideoCodec(VideoCodec.H264)
+        }
+
+        streamInterface.setVideoCodec(VideoCodec.valueOf(videoSettings.codec))
     }
 
     private fun switchStreamResolution() {

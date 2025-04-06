@@ -205,7 +205,7 @@ fun SettingsScreen(
                         title = stringResource(id = R.string.video_codec),
                         summary = stringResource(id = R.string.video_codec_summary),
                         selectedValue = videoCodec,
-                        options = listOf("h264", "h265"),
+                        options = listOf("H264", "H265", "AV1"),
                         onValueSelected = { value ->
                             videoCodec = value
                             viewModel.updateVideoCodec(value)
@@ -318,7 +318,7 @@ fun SettingsScreen(
                         title = stringResource(id = R.string.audio_codec),
                         summary = stringResource(id = R.string.audio_codec_summary),
                         selectedValue = audioCodec,
-                        options = listOf("aac", "opus"),
+                        options = listOf("AAC", "OPUS"),
                         onValueSelected = { value ->
                             audioCodec = value
                             viewModel.updateAudioCodec(value)
