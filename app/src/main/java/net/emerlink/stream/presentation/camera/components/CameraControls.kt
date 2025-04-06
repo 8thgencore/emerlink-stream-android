@@ -54,7 +54,7 @@ fun CameraControls(
                     if (!isLandscape) {
                         Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
                     } else {
-                        Modifier
+                        Modifier.windowInsetsPadding(WindowInsets.navigationBars)
                     }
                 ).padding(16.dp),
         contentAlignment = Alignment.BottomCenter
@@ -132,7 +132,7 @@ fun LandscapeCameraControls(
         modifier =
             Modifier
                 .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing),
+                .windowInsetsPadding(WindowInsets.navigationBars),
         contentAlignment = Alignment.CenterStart
     ) {
         Box(modifier = Modifier) {

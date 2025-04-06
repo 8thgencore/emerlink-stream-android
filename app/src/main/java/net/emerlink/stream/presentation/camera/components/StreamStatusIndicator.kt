@@ -41,10 +41,7 @@ fun StreamStatusIndicator(
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-            modifier =
-                Modifier
-                    .padding(top = 8.dp)
-                    .clickable { onInfoClick() }
+            modifier = Modifier.clickable { onInfoClick() }
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -68,9 +65,9 @@ fun StreamStatusIndicator(
                 Text(
                     text =
                         when {
-                            isStreaming && isRecording -> "LIVE & RECORD"
+                            isStreaming && isRecording -> "LIVE & RECORDING"
                             isStreaming -> "LIVE"
-                            isRecording -> "RECORD"
+                            isRecording -> "RECORDING"
                             else -> "OFF"
                         },
                     style = MaterialTheme.typography.labelMedium,
