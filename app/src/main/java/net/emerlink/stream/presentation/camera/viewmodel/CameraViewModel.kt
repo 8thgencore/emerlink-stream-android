@@ -67,7 +67,8 @@ class CameraViewModel : ViewModel() {
     private val _flashOverlayVisible = MutableStateFlow(false)
     val flashOverlayVisible: StateFlow<Boolean> = _flashOverlayVisible.asStateFlow()
 
-    private val isPreviewActive = MutableStateFlow(false)
+    private val _isPreviewActive = MutableStateFlow(false)
+    val isPreviewActive: StateFlow<Boolean> = _isPreviewActive.asStateFlow()
 
     private val confirmAction = MutableStateFlow<() -> Unit> {}
 
@@ -208,31 +209,47 @@ class CameraViewModel : ViewModel() {
     }
 
     fun startPreview(view: OpenGlView) {
-        if (isPreviewActive.value || streamServiceRef?.get()?.isOnPreview() == true) {
-            if (!isPreviewActive.value) isPreviewActive.value = true
+        if (_isPreviewActive.value || streamServiceRef?.get()?.isOnPreview() == true) {
+            Log.w(TAG, "startPreview called but already active or service reports preview on.")
+            if (!_isPreviewActive.value) _isPreviewActive.value = true
             return
         }
 
         viewModelScope.launch {
             try {
+                streamServiceRef?.get()?.prepareAudio()
+                streamServiceRef?.get()?.prepareVideo()
                 streamServiceRef?.get()?.startPreview(view)
-                isPreviewActive.value = true
+                _isPreviewActive.value = true
+                Log.d(TAG, "Preview started successfully.")
             } catch (e: Exception) {
                 Log.e(TAG, "Error starting preview", e)
-                isPreviewActive.value = false
+                _isPreviewActive.value = false
             }
         }
     }
 
     fun stopPreview() {
-        if (!isPreviewActive.value) return
-        isPreviewActive.value = false
+        if (!_isPreviewActive.value) {
+            Log.d(TAG, "stopPreview called but already stopped.")
+            return
+        }
+
+        _isPreviewActive.value = false
+        Log.d(TAG, "Attempting to stop preview via service.")
 
         viewModelScope.launch {
             try {
-                streamServiceRef?.get()?.stopPreview()
+                val service = streamServiceRef?.get()
+                if (service != null && service.isOnPreview() && !service.isStreaming() && !service.isRecording()) {
+                    service.stopPreview()
+                    Log.d(TAG, "Service preview stopped.")
+                } else {
+                    Log.d(TAG, "Skipping service stopPreview (streaming/recording or already stopped). Service: $service, isPreview: ${service?.isOnPreview()}, isStreaming: ${service?.isStreaming()}, isRecording: ${service?.isRecording()})")
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error stopping preview in service", e)
+                _isPreviewActive.value = streamServiceRef?.get()?.isOnPreview() ?: false
             }
         }
     }
@@ -390,6 +407,20 @@ class CameraViewModel : ViewModel() {
                 Log.e(TAG, "Error executing confirmed action", e)
             } finally {
                 requestConfirmation(false)
+            }
+        }
+    }
+
+    fun restartPreviewForOrientation() {
+        viewModelScope.launch {
+            val view = _openGlView.value
+            if (view != null && _isPreviewActive.value) {
+                Log.d(TAG, "Restarting preview due to orientation change.")
+                stopPreview()
+                delay(100)
+                startPreview(view)
+            } else {
+                Log.d(TAG, "Skipping preview restart (view null or preview not active). View: $view, Active: ${_isPreviewActive.value}")
             }
         }
     }

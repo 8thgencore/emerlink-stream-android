@@ -101,7 +101,7 @@ fun LandscapeCameraControls(
                 }
             )
 
-            AdaptiveSpacer(smallSize = 8, largeSize = 16, isVertical = true)
+            AdaptiveSpacer(smallSize = 8, largeSize = 12, isVertical = true)
             RecordButton(
                 isStreaming = isStreaming,
                 onClick = {
@@ -112,7 +112,7 @@ fun LandscapeCameraControls(
                     }
                 }
             )
-            AdaptiveSpacer(smallSize = 8, largeSize = 16, isVertical = true)
+            AdaptiveSpacer(smallSize = 8, largeSize = 12, isVertical = true)
 
             PhotoButton(
                 onClick = {

@@ -461,7 +461,8 @@ class StreamService :
 
         val videoSettings = settingsRepository.videoSettingsFlow.value
         val resolution = Resolution.parseFromSize(videoSettings.resolution)
-        val rotation = CameraHelper.getCameraOrientation(this)
+        val contextForOrientation = openGlView?.context ?: this
+        val rotation = CameraHelper.getCameraOrientation(contextForOrientation)
 
         streamInterface.prepareVideo(
             width = resolution.width,
