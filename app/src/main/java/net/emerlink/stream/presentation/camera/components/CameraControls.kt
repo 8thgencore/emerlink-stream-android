@@ -12,7 +12,7 @@ import net.emerlink.stream.presentation.camera.viewmodel.CameraViewModel
 
 /**
  * AdaptiveSpacerComponent that adjusts size based on screen size and orientation
- * 
+ *
  * @param smallSize spacing size for small screens
  * @param largeSize spacing size for large screens
  * @param isVertical whether the spacer is vertical (height) or horizontal (width)
@@ -21,7 +21,7 @@ import net.emerlink.stream.presentation.camera.viewmodel.CameraViewModel
 fun AdaptiveSpacer(
     smallSize: Int = 8,
     largeSize: Int = 16,
-    isVertical: Boolean = true
+    isVertical: Boolean = true,
 ) {
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp
@@ -29,7 +29,7 @@ fun AdaptiveSpacer(
     val isLargeScreen = screenWidth >= 600 || screenHeight >= 600
 
     val size = if (isLargeScreen) largeSize.dp else smallSize.dp
-    
+
     if (isVertical) {
         Spacer(modifier = Modifier.height(size))
     } else {
@@ -54,7 +54,7 @@ fun CameraControls(
                     if (!isLandscape) {
                         Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
                     } else {
-                        Modifier
+                        Modifier.windowInsetsPadding(WindowInsets.navigationBars)
                     }
                 ).padding(16.dp),
         contentAlignment = Alignment.BottomCenter
@@ -106,7 +106,7 @@ fun LandscapeCameraControls(
                 isStreaming = isStreaming,
                 onClick = {
                     if (isStreaming) {
-                        viewModel.stopStreaming()
+                        viewModel.stopStreamingWithConfirmation()
                     } else {
                         viewModel.startStreaming()
                     }
@@ -132,7 +132,7 @@ fun LandscapeCameraControls(
         modifier =
             Modifier
                 .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing),
+                .windowInsetsPadding(WindowInsets.navigationBars),
         contentAlignment = Alignment.CenterStart
     ) {
         Box(modifier = Modifier) {
@@ -153,7 +153,7 @@ fun PortraitCameraControls(
         isStreaming = isStreaming,
         onClick = {
             if (isStreaming) {
-                viewModel.stopStreaming()
+                viewModel.stopStreamingWithConfirmation()
             } else {
                 viewModel.startStreaming()
             }

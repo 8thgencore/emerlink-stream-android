@@ -4,6 +4,7 @@ import android.content.Context
 import android.view.MotionEvent
 import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
+import com.pedro.common.VideoCodec
 import com.pedro.encoder.input.sources.audio.MicrophoneSource
 import com.pedro.encoder.input.sources.audio.NoAudioSource
 import com.pedro.encoder.input.sources.video.Camera2Source
@@ -119,6 +120,8 @@ class RtmpStreamImpl(
 
     override fun setAudioCodec(codec: AudioCodec) = stream.setAudioCodec(codec)
 
+    override fun setVideoCodec(codec: VideoCodec) = stream.setVideoCodec(codec)
+
     override fun setZoom(motionEvent: MotionEvent) {
         val camera2Source = stream.videoSource as Camera2Source
         camera2Source.setZoom(motionEvent)
@@ -232,6 +235,8 @@ class RtspStreamImpl(
     }
 
     override fun setAudioCodec(codec: AudioCodec) = stream.setAudioCodec(codec)
+
+    override fun setVideoCodec(codec: VideoCodec) = stream.setVideoCodec(codec)
 
     override fun setZoom(motionEvent: MotionEvent) {
         val camera2Source = stream.videoSource as Camera2Source
@@ -347,6 +352,8 @@ class SrtStreamImpl(
 
     override fun setAudioCodec(codec: AudioCodec) = stream.setAudioCodec(codec)
 
+    override fun setVideoCodec(codec: VideoCodec) = stream.setVideoCodec(codec)
+
     override fun setZoom(motionEvent: MotionEvent) {
         val camera2Source = stream.videoSource as Camera2Source
         camera2Source.setZoom(motionEvent)
@@ -460,6 +467,8 @@ class UdpStreamImpl(
     }
 
     override fun setAudioCodec(codec: AudioCodec) = stream.setAudioCodec(codec)
+
+    override fun setVideoCodec(codec: VideoCodec) = stream.setVideoCodec(codec)
 
     override fun setZoom(motionEvent: MotionEvent) {
         val camera2Source = stream.videoSource as Camera2Source

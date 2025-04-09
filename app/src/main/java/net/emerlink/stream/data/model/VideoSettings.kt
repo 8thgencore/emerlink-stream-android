@@ -9,7 +9,7 @@ data class VideoSettings(
     val resolution: Size = Size(1920, 1080),
     val fps: Int = 30,
     val bitrate: Int = 2500,
-    val codec: String = "h264",
+    val codec: String = "H264",
     val adaptiveBitrate: Boolean = true,
     val recordVideo: Boolean = false,
     val streamVideo: Boolean = true,

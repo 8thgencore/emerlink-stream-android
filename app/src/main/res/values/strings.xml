@@ -12,8 +12,6 @@
     <!-- Notifications -->
     <string name="ready_to_stream">Готов к трансляции</string>
     <string name="streaming">Идет трансляция</string>
-    <string name="recording">Запись</string>
-    <string name="failed_to_prepare">Не удалось подготовить аудио или видео</string>
     <string name="failed_to_record">Не удалось начать запись</string>
     <string name="auth_error">Ошибка авторизации</string>
     <string name="connection_failed">Ошибка подключения</string>
@@ -33,11 +31,11 @@
     <string name="ready_to_start_description">Теперь вы можете начать использовать Emerlink Stream для трансляции видео</string>
 
     <!-- Stream Settings -->
-    <string name="stream_settings">Настройка стриминга</string>
-    <string name="enable_streaming">Включить стриминг</string>
+    <string name="stream_settings">Настройка трансляции</string>
+    <string name="enable_streaming">Включить трансляцию</string>
     <string name="enable_streaming_summary">Включить передачу видео на сервер</string>
     <string name="stream_protocol">Протокол</string>
-    <string name="stream_protocol_summary">Протокол для стриминга (RTMP, RTSP, SRT)</string>
+    <string name="stream_protocol_summary">Протокол для трансляции (RTMP, RTSP, SRT)</string>
     <string name="stream_address">Адрес сервера</string>
     <string name="stream_address_summary">IP-адрес или домен сервера</string>
     <string name="stream_port">Порт</string>
@@ -46,11 +44,11 @@
     <string name="stream_path_summary">Путь на сервере (например, live/stream)</string>
     <string name="use_tcp">Использовать TCP</string>
     <string name="use_tcp_summary">Использовать TCP вместо UDP для RTSP</string>
-    <string name="username">Имя пользователя (необязательно)</string>
+    <string name="username">Имя пользователя</string>
     <string name="username_summary">Имя пользователя для авторизации на сервере</string>
-    <string name="password">Пароль (необязательно)</string>
+    <string name="password">Пароль</string>
     <string name="password_summary">Пароль для авторизации на сервере</string>
-    <string name="self_signed_certificate">Самоподписанный сертификат (необязательно)</string>
+    <string name="self_signed_certificate">Самоподписанный сертификат</string>
     <string name="self_signed_certificate_summary">Использовать самоподписанный сертификат для безопасных соединений</string>
     <string name="certificate">Сертификат</string>
     <string name="certificate_summary">Путь к файлу сертификата</string>
@@ -72,7 +70,7 @@
     <string name="adaptive_bitrate">Адаптивный битрейт</string>
     <string name="adaptive_bitrate_summary">Автоматически регулировать битрейт в зависимости от качества соединения</string>
     <string name="record_video">Запись видео</string>
-    <string name="record_video_summary">Сохранять видео на устройство во время стриминга</string>
+    <string name="record_video_summary">Сохранять видео на устройство во время записи</string>
     <string name="keyframe_interval">Интервал ключевых кадров</string>
     <string name="keyframe_interval_summary">Интервал между ключевыми кадрами в секундах</string>
 
@@ -97,24 +95,14 @@
     <string name="unknown_error">Неизвестная ошибка</string>
     <string name="unknown_host">Не удалось найти сервер</string>
     <string name="permission_error">Отсутствуют необходимые разрешения</string>
-    <string name="error_unsupported_transport">Сервер не поддерживает выбранный транспортный протокол</string>
-    <string name="failed_to_prepare_audio">Не удалось подготовить аудио. Стриминг без звука.</string>
 
     <!-- Screen Orientation -->
     <string name="screen_orientation">Ориентация экрана</string>
     <string name="screen_orientation_summary">Установите предпочтительную ориентацию экрана</string>
 
     <!-- Camera -->
-    <string name="stop_streaming">Остановить стриминг</string>
-    <string name="stop_streaming_confirmation">Остановить стриминг и перейти в настройки?</string>
-
-    <!-- Notification Channels -->
-    <string name="notification_channel_stream_service">Сервис стриминга</string>
-    <string name="notification_channel_stream_service_description">Уведомления о состоянии стриминга</string>
-    <string name="notification_channel_errors">Ошибки</string>
-    <string name="notification_channel_errors_description">Уведомления об ошибках стриминга</string>
-    <string name="notification_channel_photos">Фотографии</string>
-    <string name="notification_channel_photos_description">Уведомления о сделанных фотографиях</string>
+    <string name="stop_streaming">Остановить запись</string>
+    <string name="stop_streaming_confirmation">Вы уверены, что хотите остановить запись?</string>
 
     <!-- Connection Profiles -->
     <string name="connection_profiles">Профили соединений</string>

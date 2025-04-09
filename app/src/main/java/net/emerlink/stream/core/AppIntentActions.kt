@@ -5,24 +5,20 @@ package net.emerlink.stream.core
  */
 object AppIntentActions {
     // Intent actions
-    const val START_STREAM = "start_stream"
-    const val STOP_STREAM = "stop_stream"
-    const val EXIT_APP = "exit_app"
-    const val AUTH_ERROR = "auth_error"
-    const val CONNECTION_FAILED = "connection_failed"
-    const val TOOK_PICTURE = "took_picture"
-    const val NEW_BITRATE = "new_bitrate"
-    const val LOCATION_CHANGE = "location_change"
-    const val DISMISS_ERROR = "dismiss_error"
+    const val START_STREAM = "net.emerlink.stream.action.START_STREAM"
+    const val STOP_STREAM = "net.emerlink.stream.action.STOP_STREAM"
+    const val EXIT_APP = "net.emerlink.stream.action.EXIT_APP"
+    const val FINISH_ACTIVITY = "net.emerlink.stream.action.FINISH_ACTIVITY"
+    const val NEW_BITRATE = "net.emerlink.stream.action.NEW_BITRATE"
 
     // Broadcast events
-    const val BROADCAST_STREAM_STOPPED = "stream_stopped"
-    const val BROADCAST_AUDIO_LEVEL = "audio_level"
-    const val BROADCAST_PREVIEW_STATUS = "preview_status"
-    const val BROADCAST_NEW_BITRATE = "new_bitrate"
+    const val BROADCAST_AUDIO_LEVEL = "net.emerlink.stream.broadcast.AUDIO_LEVEL"
+    const val BROADCAST_STREAM_STARTED = "net.emerlink.stream.broadcast.STREAM_STARTED"
+    const val BROADCAST_STREAM_STOPPED = "net.emerlink.stream.broadcast.STREAM_STOPPED"
+    const val BROADCAST_RECORD_STARTED = "net.emerlink.stream.broadcast.RECORD_STARTED"
+    const val BROADCAST_RECORD_STOPPED = "net.emerlink.stream.broadcast.RECORD_STOPPED"
 
     // Extras for Intent
-    const val EXTRA_AUDIO_LEVEL = "audio_level"
-    const val EXTRA_PREVIEW_ACTIVE = "preview_active"
-    const val EXTRA_NEW_BITRATE = "new_bitrate"
+    const val EXTRA_AUDIO_LEVEL = "net.emerlink.stream.EXTRA_AUDIO_LEVEL"
+    const val EXTRA_NEW_BITRATE = "net.emerlink.stream.EXTRA_NEW_BITRATE"
 }

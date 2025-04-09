@@ -4,14 +4,12 @@ package net.emerlink.stream.service.media
 
 import android.content.ContentValues
 import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import android.media.MediaScannerConnection
 import android.os.*
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import net.emerlink.stream.R
-import net.emerlink.stream.core.AppIntentActions
 import net.emerlink.stream.core.notification.AppNotificationManager
 import net.emerlink.stream.service.StreamService
 import net.emerlink.stream.util.PathUtils
@@ -114,8 +112,6 @@ class MediaManager(
         uri?.let {
             resolver.openOutputStream(it)?.use { outputStream ->
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
-                Log.d(TAG, "Sending broadcast ACTION_TOOK_PICTURE")
-                context.sendBroadcast(Intent(AppIntentActions.TOOK_PICTURE))
                 notificationManager.showPhotoNotification(context.getString(R.string.saved_photo))
             } ?: run {
                 val errorMessage = context.getString(R.string.saved_photo_failed)
@@ -148,8 +144,6 @@ class MediaManager(
         )
 
         Log.d(TAG, "Saved photo to: $filePath")
-        Log.d(TAG, "Sending broadcast ACTION_TOOK_PICTURE")
-        context.sendBroadcast(Intent(AppIntentActions.TOOK_PICTURE))
         notificationManager.showPhotoNotification(context.getString(R.string.saved_photo))
     }
 

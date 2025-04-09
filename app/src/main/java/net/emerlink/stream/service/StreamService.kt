@@ -19,6 +19,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
+import com.pedro.common.VideoCodec
 import com.pedro.encoder.input.video.CameraHelper
 import com.pedro.library.util.BitrateAdapter
 import com.pedro.library.view.OpenGlView
@@ -37,6 +38,7 @@ import net.emerlink.stream.service.media.RecordingListener
 import net.emerlink.stream.service.microphone.MicrophoneMonitor
 import net.emerlink.stream.service.stream.StreamInterface
 import org.koin.java.KoinJavaComponent.inject
+import java.util.*
 import kotlin.math.log10
 
 class StreamService :
@@ -93,11 +95,14 @@ class StreamService :
                 if (action != null) {
                     when (action) {
                         AppIntentActions.START_STREAM -> startStream()
-                        AppIntentActions.STOP_STREAM -> stopStream(null, null)
+                        AppIntentActions.STOP_STREAM -> stopStream(null)
 
                         AppIntentActions.EXIT_APP -> {
                             exiting = true
-                            stopStream(null, null)
+                            stopStream(null)
+                            LocalBroadcastManager
+                                .getInstance(context)
+                                .sendBroadcast(Intent(AppIntentActions.FINISH_ACTIVITY))
                             stopSelf()
                         }
                     }
@@ -203,9 +208,6 @@ class StreamService :
             }
     }
 
-    /**
-     * Get the current audio level (0.0f - 1.0f)
-     */
     private fun getAudioLevel(): Float {
         try {
             val maxAmplitude = microphoneMonitor.getAudioLevel()
@@ -226,18 +228,12 @@ class StreamService :
         }
     }
 
-    /**
-     * Broadcast audio level to the UI
-     */
     private fun broadcastAudioLevel(audioLevel: Float) {
         val intent = Intent(AppIntentActions.BROADCAST_AUDIO_LEVEL)
         intent.putExtra(AppIntentActions.EXTRA_AUDIO_LEVEL, audioLevel)
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
     }
 
-    /**
-     * Start audio level updates
-     */
     private fun startAudioLevelUpdates() {
         if (!isRunningAudioLevelUpdates) {
             isRunningAudioLevelUpdates = true
@@ -247,9 +243,6 @@ class StreamService :
         }
     }
 
-    /**
-     * Stop audio level updates
-     */
     private fun stopAudioLevelUpdates() {
         isRunningAudioLevelUpdates = false
         audioLevelRunnable?.let {
@@ -266,24 +259,21 @@ class StreamService :
     override fun onBind(intent: Intent): IBinder = binder
 
     override fun onDestroy() {
+        Log.d(TAG, "onDestroy")
         observer.postValue(null)
-        if (isStreaming()) {
-            stopStream()
-        }
         stopPreview()
 
-        try {
-            unregisterReceiver(receiver)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error unregistering receiver", e)
-        }
+        microphoneMonitor.stopMonitoring()
+        stopAudioLevelUpdates()
+
+        unregisterReceiver(receiver)
 
         super.onDestroy()
     }
 
     // ConnectChecker implementation
     override fun onAuthError() {
-        stopStream(getString(R.string.auth_error), AppIntentActions.AUTH_ERROR)
+        stopStream(getString(R.string.auth_error))
     }
 
     override fun onAuthSuccess() {
@@ -293,32 +283,40 @@ class StreamService :
     override fun onConnectionFailed(reason: String) {
         Log.e(TAG, "Connection failed: $reason")
         try {
-            if (isStreaming()) {
-                stopStream(getString(R.string.connection_failed), AppIntentActions.CONNECTION_FAILED)
-            }
+            stopStream(getString(R.string.connection_failed))
         } catch (e: Exception) {
             Log.e(TAG, "Error handling connection failure", e)
             try {
                 stopStream()
-                notifyStreamStopped()
                 notificationManager.showErrorSafely(this, "Critical error: ${e.message}")
             } catch (e2: Exception) {
                 Log.e(TAG, "Double error", e2)
+                notificationManager.showErrorSafely(this, "Critical error occurred")
+                notifyStreamStopped()
             }
         }
     }
 
+    private fun notifyStreamStarted() {
+        Log.d(TAG, "Broadcasting stream started")
+        LocalBroadcastManager
+            .getInstance(this)
+            .sendBroadcast(Intent(AppIntentActions.BROADCAST_STREAM_STARTED).setPackage(packageName))
+    }
+
     private fun notifyStreamStopped() {
-        LocalBroadcastManager.getInstance(this).sendBroadcast(
-            Intent(AppIntentActions.BROADCAST_STREAM_STOPPED).setPackage(
-                packageName
-            )
-        )
+        Log.d(TAG, "Broadcasting stream stopped (Local)")
+        LocalBroadcastManager
+            .getInstance(this)
+            .sendBroadcast(Intent(AppIntentActions.BROADCAST_STREAM_STOPPED).setPackage(packageName))
     }
 
     override fun onConnectionStarted(url: String) {}
 
     override fun onConnectionSuccess() {
+        Log.d(TAG, "Connection success - notifying stream started")
+        notifyStreamStarted()
+
         val videoSettings = settingsRepository.videoSettingsFlow.value
         if (videoSettings.adaptiveBitrate) {
             bitrateAdapter =
@@ -387,6 +385,7 @@ class StreamService :
 
     fun startPreview(view: OpenGlView) {
         if (isPreviewActive) {
+            Log.w(TAG, "Service.startPreview called but preview already active.")
             return
         }
 
@@ -406,27 +405,34 @@ class StreamService :
             microphoneMonitor.startMonitoring()
         } catch (e: Exception) {
             Log.e(TAG, "Error starting preview", e)
+            isPreviewActive = false
         }
     }
 
     fun stopPreview() {
         if (!isPreviewActive) {
+            Log.d(TAG, "Service.stopPreview called but preview already inactive.")
             return
         }
 
+        isPreviewActive = false
+        Log.d(TAG, "Service.isPreviewActive set to false")
+
         try {
-            if (isOnPreview() && !isStreaming()) {
+            if (streamInterface.isOnPreview && !isStreaming()) {
+                Log.d(TAG, "Calling streamInterface.stopPreview()")
                 streamInterface.stopPreview()
-            } else if (isStreaming()) {
-                Log.d(TAG, "Not stopping preview because streaming is active")
+            } else {
+                Log.d(
+                    TAG,
+                    "Skipping streamInterface.stopPreview() call (isOnPreview=${streamInterface.isOnPreview}, isStreaming=${isStreaming()})"
+                )
             }
-            isPreviewActive = false
-            if (!isStreaming()) {
-                stopAudioLevelUpdates()
-            }
+            stopAudioLevelUpdates()
             microphoneMonitor.stopMonitoring()
+            Log.d(TAG, "Service stopPreview components stopped.")
         } catch (e: Exception) {
-            Log.e(TAG, "Error stopping preview", e)
+            Log.e(TAG, "Error stopping preview components", e)
         }
     }
 
@@ -443,7 +449,7 @@ class StreamService :
             sampleRate = audioSettings.sampleRate,
             isStereo = audioSettings.stereo
         )
-        streamInterface.setAudioCodec(AudioCodec.AAC)
+        streamInterface.setAudioCodec(AudioCodec.valueOf(audioSettings.codec))
     }
 
     /**
@@ -465,11 +471,24 @@ class StreamService :
             iFrameInterval = videoSettings.keyframeInterval,
             rotation = rotation
         )
+
+        if (Objects.equals(videoSettings.codec, VideoCodec.H265.name)) {
+            streamInterface.setVideoCodec(VideoCodec.H265)
+        } else if (Objects.equals(
+                videoSettings.codec,
+                VideoCodec.AV1.name
+            ) &&
+            connectionSettings.protocol != StreamType.UDP &&
+            connectionSettings.protocol != StreamType.SRT
+        ) {
+            streamInterface.setVideoCodec(VideoCodec.AV1)
+        } else {
+            streamInterface.setVideoCodec(VideoCodec.H264)
+        }
+
+        streamInterface.setVideoCodec(VideoCodec.valueOf(videoSettings.codec))
     }
 
-    /**
-     * Switch stream resolution during streaming
-     */
     private fun switchStreamResolution() {
         try {
             if (isOnPreview()) {
@@ -482,25 +501,12 @@ class StreamService :
         }
     }
 
-    /**
-     * Check if streaming is active
-     */
     fun isStreaming(): Boolean = streamInterface.isStreaming
 
-    /**
-     * Check if recording is active
-     */
     fun isRecording(): Boolean = streamInterface.isRecording
 
-    /**
-     * Check if preview is active
-     */
     fun isOnPreview(): Boolean = streamInterface.isOnPreview
 
-    /**
-     * Switches between available cameras
-     * @return true if camera switched successfully, false otherwise
-     */
     fun switchCamera(): Boolean {
         try {
             streamInterface.switchCamera()
@@ -512,10 +518,6 @@ class StreamService :
         }
     }
 
-    /**
-     * Toggles the flashlight/lantern
-     * @return true if lantern is enabled after toggle, false otherwise
-     */
     fun toggleLantern(): Boolean {
         try {
             lanternEnabled = !lanternEnabled
@@ -533,19 +535,17 @@ class StreamService :
         }
     }
 
-    /**
-     * Handles zoom gestures
-     */
     fun setZoom(motionEvent: MotionEvent) = streamInterface.setZoom(motionEvent)
 
-    /**h
-     * Handles tap-to-focus gestures
-     */
     fun tapToFocus(motionEvent: MotionEvent) = streamInterface.tapToFocus(motionEvent)
 
     fun startRecord(filePath: String) {
         try {
             streamInterface.startRecord(filePath, RecordingListener())
+            LocalBroadcastManager
+                .getInstance(
+                    this
+                ).sendBroadcast(Intent(AppIntentActions.BROADCAST_RECORD_STARTED).setPackage(packageName))
         } catch (e: Exception) {
             errorHandler.handleStreamError(e)
         }
@@ -554,6 +554,10 @@ class StreamService :
     fun stopRecord() {
         if (isRecording()) {
             streamInterface.stopRecord()
+            LocalBroadcastManager
+                .getInstance(
+                    this
+                ).sendBroadcast(Intent(AppIntentActions.BROADCAST_RECORD_STOPPED).setPackage(packageName))
         }
     }
 
@@ -564,17 +568,11 @@ class StreamService :
         }
     }
 
-    /**
-     * Gets available camera IDs from the Camera2Source
-     */
     private fun getCameraIds() {
         cameraIds.clear()
         cameraIds.addAll(streamInterface.getCameraIds())
     }
 
-    /**
-     * Handles resolution change by restarting preview with new settings
-     */
     fun handleResolutionChange() {
         openGlView?.let { view ->
             Log.d(TAG, "Перезапуск превью с новым разрешением")
@@ -587,26 +585,38 @@ class StreamService :
         }
     }
 
-    fun isPreviewRunning(): Boolean = openGlView != null
+    fun isPreviewRunning(): Boolean = isPreviewActive
 
     fun startStream() {
         if (isStreaming() || isRecording()) {
+            Log.w(TAG, "Start stream called but already streaming or recording.")
             return
         }
 
+        Log.d(TAG, "startStream called")
         val videoSettings = settingsRepository.videoSettingsFlow.value
+        var streamAttempted = false
+        var recordAttempted = false
+
         if (videoSettings.streamVideo) {
+            Log.d(TAG, "Attempting to start streaming...")
             startStreaming()
+            streamAttempted = true
         }
         if (videoSettings.recordVideo) {
+            Log.d(TAG, "Attempting to start recording...")
             mediaManager.startRecording()
+            recordAttempted = true
         }
 
-        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
-        sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_NORMAL)
+        if (streamAttempted || recordAttempted) {
+            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
+            sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_NORMAL)
 
-        // Show streaming notification
-        notificationManager.showNotification(getString(R.string.streaming), true)
+            notificationManager.showNotification(getString(R.string.streaming), true)
+        } else {
+            Log.w(TAG, "Start stream called, but neither streamVideo nor recordVideo is enabled.")
+        }
     }
 
     private fun startStreaming() {
@@ -635,20 +645,27 @@ class StreamService :
         }
     }
 
-    fun stopStream(
-        error: String? = null,
-        broadcastIntent: String? = null,
-    ) {
-        Log.d(TAG, "stopStream $error")
+    fun stopStream(error: String? = null) {
+        Log.d(TAG, "stopStream called with error: $error")
+
+        var streamWasStopped = false
+        var recordingWasStopped = false
 
         try {
             if (isStreaming()) {
+                Log.d(TAG, "Stopping stream interface...")
                 streamInterface.stopStream()
-                notifyStreamStopped()
+                streamWasStopped = true
             }
 
             if (isRecording()) {
+                Log.d(TAG, "Stopping media manager recording...")
                 mediaManager.stopRecording()
+                recordingWasStopped = true
+            }
+
+            if (streamWasStopped || recordingWasStopped) {
+                notifyStreamStopped()
             }
 
             try {
@@ -657,22 +674,19 @@ class StreamService :
                 Log.e(TAG, "Error unregistering sensor listener", e)
             }
 
-            if (error != null && broadcastIntent != null) {
+            if (error != null) {
                 notificationManager.showErrorNotification(error)
-                applicationContext.sendBroadcast(Intent(broadcastIntent))
+                notificationManager.showNotification(getString(R.string.ready_to_stream), true)
             } else {
                 notificationManager.showNotification(getString(R.string.ready_to_stream), true)
-            }
-
-            if (exiting) {
-                stopSelf()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error in stopStream", e)
             notifyStreamStopped()
 
-            val errorMsg = error?.let { "$it (${e.message})" } ?: e.message ?: "Unknown error"
-            notificationManager.showErrorSafely(errorMsg)
+            val errorMsg = error?.let { "$it (${e.message})" } ?: e.message ?: "Unknown error during stop"
+            notificationManager.showErrorSafely(this, errorMsg)
+            notificationManager.showNotification(getString(R.string.ready_to_stream), true)
             errorHandler.handleStreamError(e)
         }
     }
@@ -686,6 +700,7 @@ class StreamService :
     }
 
     fun getStreamInfo(): StreamInfo {
+        connectionSettings = connectionRepository.activeProfileFlow.value?.settings ?: ConnectionSettings()
         val streamSettings = settingsRepository.videoSettingsFlow.value
         return StreamInfo(
             protocol = connectionSettings.protocol.toString(),
@@ -695,9 +710,6 @@ class StreamService :
         )
     }
 
-    /**
-     * Set stream protocol type
-     */
     private fun updateStreamType() {
         connectionSettings = connectionRepository.activeProfileFlow.value?.settings ?: ConnectionSettings()
         if (connectionSettings.protocol != streamType) {
@@ -707,9 +719,6 @@ class StreamService :
         }
     }
 
-    /**
-     * Get the GL interface for rendering
-     */
     fun getGlInterface() = streamInterface.glInterface
 
     fun takePhoto() = mediaManager.takePhoto()
