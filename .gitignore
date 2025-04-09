@@ -135,3 +135,6 @@ local.properties
 
 # Release files
 release/
+
+# keystore
+.jks
