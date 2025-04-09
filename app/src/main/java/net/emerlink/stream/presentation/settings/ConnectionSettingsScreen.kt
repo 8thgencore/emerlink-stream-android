@@ -36,7 +36,6 @@ import net.emerlink.stream.presentation.settings.components.SwitchPreference
 import net.emerlink.stream.presentation.settings.viewmodel.ConnectionProfilesViewModel
 import net.emerlink.stream.presentation.settings.viewmodel.SettingsViewModel
 
-@Suppress("ktlint:standard:function-naming")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConnectionSettingsScreen(

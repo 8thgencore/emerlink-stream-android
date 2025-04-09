@@ -99,38 +99,40 @@ fun AppNavigation() {
 @Composable
 private fun HandleScreenOrientation(navController: NavHostController) {
     val context = LocalContext.current
-    val currentDestination =
+    val currentRoute =
         navController
             .currentBackStackEntryAsState()
             .value
             ?.destination
             ?.route
 
-    DisposableEffect(currentDestination) {
+    DisposableEffect(currentRoute) {
         val activity = context as? ComponentActivity
 
-        when (currentDestination) {
-            NavigationRoutes.SETTINGS,
-            NavigationRoutes.STREAM_SETTINGS,
-            NavigationRoutes.EDIT_CONNECTION_PROFILE,
-                -> activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        val unspecifiedRoutes =
+            listOf(
+                NavigationRoutes.SETTINGS,
+                NavigationRoutes.STREAM_SETTINGS,
+                NavigationRoutes.EDIT_CONNECTION_PROFILE
+            )
 
-            else -> {
-                // For camera screen, use the orientation from preferences
-                val preferences = PreferenceManager.getDefaultSharedPreferences(context)
-                val orientation =
-                    ScreenOrientation.fromString(
-                        preferences.getString(
-                            PreferenceKeys.SCREEN_ORIENTATION,
-                            ScreenOrientation.LANDSCAPE.name
-                        ) ?: ScreenOrientation.LANDSCAPE.name
-                    )
-                activity?.requestedOrientation =
-                    when (orientation) {
-                        ScreenOrientation.LANDSCAPE -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-                        ScreenOrientation.PORTRAIT -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                    }
-            }
+        if (currentRoute != null && unspecifiedRoutes.any { currentRoute.startsWith(it) }) {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        } else {
+            // For camera screen, use the orientation from preferences
+            val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+            val orientation =
+                ScreenOrientation.fromString(
+                    preferences.getString(
+                        PreferenceKeys.SCREEN_ORIENTATION,
+                        ScreenOrientation.LANDSCAPE.name
+                    ) ?: ScreenOrientation.LANDSCAPE.name
+                )
+            activity?.requestedOrientation =
+                when (orientation) {
+                    ScreenOrientation.LANDSCAPE -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                    ScreenOrientation.PORTRAIT -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                }
         }
 
         onDispose {}
