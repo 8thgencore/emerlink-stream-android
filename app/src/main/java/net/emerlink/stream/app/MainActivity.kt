@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -46,7 +47,8 @@ class MainActivity : ComponentActivity() {
                 add(Manifest.permission.POST_NOTIFICATIONS)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                add(Manifest.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION)
+                add(Manifest.permission.FOREGROUND_SERVICE_MICROPHONE)
+                add(Manifest.permission.FOREGROUND_SERVICE_CAMERA)
             }
         }.toTypedArray()
 
@@ -54,7 +56,14 @@ class MainActivity : ComponentActivity() {
     private val requestPermissionsLauncher =
         registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
-        ) { _ -> startMainUI() }
+        ) { permissions ->
+            if (permissions.all { it.value }) {
+                startServiceAndUI()
+            } else {
+                Log.e("MainActivity", "Required permissions were not granted.")
+                finish()
+            }
+        }
 
     private val finishActivityReceiver =
         object : BroadcastReceiver() {
@@ -76,10 +85,6 @@ class MainActivity : ComponentActivity() {
         val filter = IntentFilter(AppIntentActions.FINISH_ACTIVITY)
         LocalBroadcastManager.getInstance(this).registerReceiver(finishActivityReceiver, filter)
 
-        Intent(this, StreamService::class.java).also { intent ->
-            ContextCompat.startForegroundService(this, intent)
-        }
-
         val preferences = PreferenceManager.getDefaultSharedPreferences(this)
         val isFirstRun = preferences.getBoolean(PreferenceKeys.FIRST_RUN, true)
         if (isFirstRun) {
@@ -87,16 +92,29 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        if (!PermissionUtil.hasPermissions(this, requiredPermissions)) {
-            requestPermissionsLauncher.launch(requiredPermissions)
-        } else {
-            startMainUI()
-        }
+        checkPermissionsAndProceed()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         LocalBroadcastManager.getInstance(this).unregisterReceiver(finishActivityReceiver)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private fun checkPermissionsAndProceed() {
+        if (PermissionUtil.hasPermissions(this, requiredPermissions)) {
+            startServiceAndUI()
+        } else {
+            requestPermissionsLauncher.launch(requiredPermissions)
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private fun startServiceAndUI() {
+        Intent(this, StreamService::class.java).also { intent ->
+            ContextCompat.startForegroundService(this, intent)
+        }
+        startMainUI()
     }
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)

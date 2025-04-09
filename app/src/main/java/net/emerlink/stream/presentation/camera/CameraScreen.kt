@@ -2,7 +2,6 @@
 
 package net.emerlink.stream.presentation.camera
 
-import android.Manifest
 import android.app.Activity
 import android.content.res.Configuration
 import android.os.Build
@@ -53,50 +52,6 @@ fun CameraScreen(
     val streamInfo by viewModel.streamInfo.collectAsStateWithLifecycle()
     val audioLevel by viewModel.audioLevel.collectAsStateWithLifecycle()
     val flashOverlayVisible by viewModel.flashOverlayVisible.collectAsStateWithLifecycle()
-
-    // Permission launchers
-    lateinit var requestCameraPermissionLauncher: ActivityResultLauncher<String>
-    lateinit var requestMicrophonePermissionLauncher: ActivityResultLauncher<String>
-    lateinit var requestNotificationPermissionLauncher: ActivityResultLauncher<String>
-
-    @Composable
-    fun createPermissionLauncher(
-        permissionName: String,
-        onGranted: () -> Unit,
-    ): ActivityResultLauncher<String> =
-        rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { isGranted ->
-            if (isGranted) {
-                Log.d("CameraScreen", "Permission $permissionName granted")
-                onGranted()
-            } else {
-                Log.e("CameraScreen", "Permission $permissionName denied")
-            }
-        }
-
-    // Permission handling
-    requestCameraPermissionLauncher =
-        createPermissionLauncher(
-            permissionName = "Camera",
-            onGranted = {
-                requestMicrophonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-            }
-        )
-    requestMicrophonePermissionLauncher =
-        createPermissionLauncher(
-            permissionName = "Microphone",
-            onGranted = {
-                requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        )
-    requestNotificationPermissionLauncher =
-        createPermissionLauncher(
-            permissionName = "Notifications",
-            onGranted = {
-                Log.d("CameraScreen", "All permissions granted after Notification granted.")
-            }
-        )
 
     // Service lifecycle handling
     DisposableEffect(Unit) {
