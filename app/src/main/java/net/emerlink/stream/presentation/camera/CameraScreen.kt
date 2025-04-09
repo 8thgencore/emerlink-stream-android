@@ -55,11 +55,8 @@ fun CameraScreen(
     // Service lifecycle handling
     DisposableEffect(Unit) {
         viewModel.bindService(context)
-
-        // Keep screen on
         val activity = context as? Activity
         activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
         onDispose {
             viewModel.unbindService(context)
             activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -70,24 +67,15 @@ fun CameraScreen(
         val observer =
             LifecycleEventObserver { _, event ->
                 when (event) {
-                    Lifecycle.Event.ON_PAUSE -> {
-                        Log.d("CameraScreen", "onPause")
-                    }
+                    Lifecycle.Event.ON_PAUSE -> Log.d("CameraScreen", "onPause")
 
-                    Lifecycle.Event.ON_STOP -> {
-                        Log.d("CameraScreen", "onStop")
-                        viewModel.stopPreview()
-                    }
+                    Lifecycle.Event.ON_STOP -> viewModel.stopPreview()
 
-                    Lifecycle.Event.ON_RESUME -> {
-                        Log.d("CameraScreen", "onResume")
-                        viewModel.refreshStreamInfo()
-                    }
+                    Lifecycle.Event.ON_RESUME -> viewModel.refreshStreamInfo()
 
                     else -> {}
                 }
             }
-
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
@@ -137,24 +125,10 @@ fun CameraScreen(
             onSettingsClick = {
                 if (isStreaming || isRecording) {
                     viewModel.requestConfirmation(true) {
-                        try {
-                            viewModel.stopStreaming()
-                            viewModel.stopPreview()
-                            viewModel.setOpenGlView(null)
-                            onSettingsClick()
-                        } catch (e: Exception) {
-                            Log.e("CameraScreen", "Error executing settings confirmation action", e)
-                        }
+                        onSettingsClick()
                     }
                 } else {
-                    try {
-                        viewModel.stopStreaming()
-                        viewModel.stopPreview()
-                        viewModel.setOpenGlView(null)
-                        onSettingsClick()
-                    } catch (e: Exception) {
-                        Log.e("CameraScreen", "Error stopping preview before settings", e)
-                    }
+                    onSettingsClick()
                 }
             }
         )

@@ -384,9 +384,8 @@ class StreamService :
             Log.w(TAG, "Service.startPreview called but preview already active.")
             return
         }
-
         try {
-            refreshSettings()
+            updateStreamType()
             openGlView = view
 
             if (!isStreaming()) {
@@ -418,11 +417,6 @@ class StreamService :
             if (streamInterface.isOnPreview && !isStreaming()) {
                 Log.d(TAG, "Calling streamInterface.stopPreview()")
                 streamInterface.stopPreview()
-            } else {
-                Log.d(
-                    TAG,
-                    "Skipping streamInterface.stopPreview() call (isOnPreview=${streamInterface.isOnPreview}, isStreaming=${isStreaming()})"
-                )
             }
             stopAudioLevelUpdates()
             microphoneMonitor.stopMonitoring()
@@ -492,18 +486,6 @@ class StreamService :
         streamInterface.setVideoCodec(VideoCodec.valueOf(videoSettings.codec))
     }
 
-    private fun switchStreamResolution() {
-        try {
-            if (isOnPreview()) {
-                streamInterface.stopPreview()
-                prepareVideo()
-                openGlView?.let { view -> streamInterface.startPreview(view, true) }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка при изменении разрешения стрима: ${e.message}")
-        }
-    }
-
     fun isStreaming(): Boolean = streamInterface.isStreaming
 
     fun isRecording(): Boolean = streamInterface.isRecording
@@ -564,28 +546,9 @@ class StreamService :
         }
     }
 
-    private fun refreshSettings() {
-        updateStreamType()
-        if (isPreviewActive && openGlView != null) {
-            handleResolutionChange()
-        }
-    }
-
     private fun getCameraIds() {
         cameraIds.clear()
         cameraIds.addAll(streamInterface.getCameraIds())
-    }
-
-    fun handleResolutionChange() {
-        openGlView?.let { view ->
-            Log.d(TAG, "Перезапуск превью с новым разрешением")
-            try {
-                switchStreamResolution()
-                startPreview(view)
-            } catch (e: Exception) {
-                Log.e(TAG, "Ошибка при обновлении разрешения: ${e.message}", e)
-            }
-        }
     }
 
     fun isPreviewRunning(): Boolean = isPreviewActive

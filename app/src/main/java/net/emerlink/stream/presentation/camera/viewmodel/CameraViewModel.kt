@@ -178,17 +178,13 @@ class CameraViewModel : ViewModel() {
         if (isServiceBound.value) {
             try {
                 context.unbindService(connection)
-                _isServiceBound.value = false
-                streamServiceRef = null
             } catch (e: IllegalArgumentException) {
                 Log.w(TAG, "Service not registered or already unbound? ${e.message}")
-                _isServiceBound.value = false
-                streamServiceRef = null
             } catch (e: Exception) {
                 Log.e(TAG, "Error unbinding service", e)
-                _isServiceBound.value = false
-                streamServiceRef = null
             }
+            _isServiceBound.value = false
+            streamServiceRef = null
         } else {
             Log.d(TAG, "Unbind requested but already unbound.")
         }
@@ -213,7 +209,6 @@ class CameraViewModel : ViewModel() {
             if (!_isPreviewActive.value) _isPreviewActive.value = true
             return
         }
-
         viewModelScope.launch {
             try {
                 streamServiceRef?.get()?.startPreview(view)
