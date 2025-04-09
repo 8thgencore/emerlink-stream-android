@@ -2,6 +2,7 @@
 
 package net.emerlink.stream.presentation.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -83,6 +84,10 @@ fun SettingsScreen(
         audioEchoCancel = audioSettings.echoCancel
         audioNoiseReduction = audioSettings.noiseReduction
         audioCodec = audioSettings.codec
+    }
+
+    BackHandler {
+        onBackClick()
     }
 
     Scaffold(

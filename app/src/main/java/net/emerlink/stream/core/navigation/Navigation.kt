@@ -2,6 +2,7 @@
 
 package net.emerlink.stream.core.navigation
 
+import CameraLoaderScreen
 import android.content.pm.ActivityInfo
 import android.os.Build
 import androidx.activity.ComponentActivity
@@ -26,6 +27,7 @@ import net.emerlink.stream.presentation.settings.SettingsScreen
 
 // Define your navigation routes
 object NavigationRoutes {
+    const val CAMERA_LOADER = "camera_loader"
     const val CAMERA = "camera"
     const val SETTINGS = "settings"
     const val STREAM_SETTINGS = "stream_settings"
@@ -36,12 +38,19 @@ object NavigationRoutes {
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
-    LocalContext.current
 
     // Handle screen orientation based on current route
     HandleScreenOrientation(navController)
 
-    NavHost(navController = navController, startDestination = NavigationRoutes.CAMERA) {
+    NavHost(navController = navController, startDestination = NavigationRoutes.CAMERA_LOADER) {
+        composable(NavigationRoutes.CAMERA_LOADER) {
+            CameraLoaderScreen(onReady = {
+                navController.navigate(NavigationRoutes.CAMERA) {
+                    popUpTo(NavigationRoutes.CAMERA_LOADER) { inclusive = true }
+                }
+            })
+        }
+
         composable(NavigationRoutes.CAMERA) {
             CameraScreen(
                 onSettingsClick = { navController.navigate(NavigationRoutes.SETTINGS) }
@@ -50,7 +59,11 @@ fun AppNavigation() {
 
         composable(NavigationRoutes.SETTINGS) {
             SettingsScreen(
-                onBackClick = { navController.popBackStack() },
+                onBackClick = {
+                    navController.navigate(NavigationRoutes.CAMERA_LOADER) {
+                        popUpTo(NavigationRoutes.CAMERA) { inclusive = true }
+                    }
+                },
                 onStreamSettingsClick = { navController.navigate(NavigationRoutes.STREAM_SETTINGS) }
             )
         }
