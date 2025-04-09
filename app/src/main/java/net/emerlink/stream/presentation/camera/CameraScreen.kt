@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import net.emerlink.stream.presentation.camera.components.*
@@ -33,7 +34,7 @@ fun CameraScreen(
     viewModel: CameraViewModel = viewModel(),
 ) {
     val context = LocalContext.current
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
@@ -111,9 +112,7 @@ fun CameraScreen(
     ) {
         CameraPreview(
             viewModel = viewModel,
-            onOpenGlViewCreated = { view ->
-                viewModel.setOpenGlView(view)
-            }
+            onOpenGlViewCreated = { view -> viewModel.setOpenGlView(view) }
         )
 
         StreamStatusIndicator(
