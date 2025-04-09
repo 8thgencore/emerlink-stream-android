@@ -20,17 +20,13 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
 import com.pedro.common.VideoCodec
-import com.pedro.encoder.input.video.CameraHelper
 import com.pedro.library.util.BitrateAdapter
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.R
 import net.emerlink.stream.core.AppIntentActions
 import net.emerlink.stream.core.ErrorHandler
 import net.emerlink.stream.core.notification.AppNotificationManager
-import net.emerlink.stream.data.model.ConnectionSettings
-import net.emerlink.stream.data.model.Resolution
-import net.emerlink.stream.data.model.StreamInfo
-import net.emerlink.stream.data.model.StreamType
+import net.emerlink.stream.data.model.*
 import net.emerlink.stream.data.repository.ConnectionProfileRepository
 import net.emerlink.stream.data.repository.SettingsRepository
 import net.emerlink.stream.service.media.MediaManager
@@ -461,8 +457,14 @@ class StreamService :
 
         val videoSettings = settingsRepository.videoSettingsFlow.value
         val resolution = Resolution.parseFromSize(videoSettings.resolution)
-        val contextForOrientation = openGlView?.context ?: this
-        val rotation = CameraHelper.getCameraOrientation(contextForOrientation)
+
+        val rotation =
+            videoSettings.screenOrientation.let {
+                when (it) {
+                    ScreenOrientation.PORTRAIT -> 90
+                    ScreenOrientation.LANDSCAPE -> 0
+                }
+            }
 
         streamInterface.prepareVideo(
             width = resolution.width,

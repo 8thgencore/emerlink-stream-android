@@ -10,7 +10,10 @@ import android.view.WindowManager
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -47,9 +50,6 @@ fun CameraScreen(
     val audioLevel by viewModel.audioLevel.collectAsStateWithLifecycle()
     val flashOverlayVisible by viewModel.flashOverlayVisible.collectAsStateWithLifecycle()
     val isPreviewActive by viewModel.isPreviewActive.collectAsStateWithLifecycle()
-
-    // Remember the initial orientation
-    var previousOrientation by remember { mutableStateOf(configuration.orientation) }
 
     // Service lifecycle handling
     DisposableEffect(Unit) {

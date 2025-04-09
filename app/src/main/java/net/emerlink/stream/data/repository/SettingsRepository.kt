@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import net.emerlink.stream.data.model.AudioSettings
+import net.emerlink.stream.data.model.ScreenOrientation
 import net.emerlink.stream.data.model.VideoSettings
 import net.emerlink.stream.data.preferences.PreferenceKeys
 
@@ -50,12 +51,12 @@ class SettingsRepository(
             adaptiveBitrate =
                 preferences.getBoolean(
                     PreferenceKeys.VIDEO_ADAPTIVE_BITRATE,
-                    PreferenceKeys.VIDEO_ADAPTIVE_BITRATE_DEFAULT
+                    true
                 ),
             recordVideo =
                 preferences.getBoolean(
                     PreferenceKeys.RECORD_VIDEO,
-                    PreferenceKeys.RECORD_VIDEO_DEFAULT
+                    false
                 ),
             streamVideo =
                 preferences.getBoolean(
@@ -63,10 +64,12 @@ class SettingsRepository(
                     true
                 ),
             screenOrientation =
-                preferences.getString(
-                    PreferenceKeys.SCREEN_ORIENTATION,
-                    PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
-                ) ?: PreferenceKeys.SCREEN_ORIENTATION_DEFAULT,
+                ScreenOrientation.fromString(
+                    preferences.getString(
+                        PreferenceKeys.SCREEN_ORIENTATION,
+                        ScreenOrientation.LANDSCAPE.name
+                    ) ?: ScreenOrientation.LANDSCAPE.name
+                ),
             keyframeInterval =
                 preferences
                     .getString(
