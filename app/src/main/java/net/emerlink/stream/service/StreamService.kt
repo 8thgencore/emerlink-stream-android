@@ -483,7 +483,7 @@ class StreamService :
             streamInterface.setVideoCodec(VideoCodec.H264)
         }
 
-        streamInterface.setVideoCodec(VideoCodec.valueOf(videoSettings.codec))
+        streamInterface.setVideoCodec(VideoCodec.valueOf(videoSettings.codec.uppercase()))
     }
 
     fun isStreaming(): Boolean = streamInterface.isStreaming
