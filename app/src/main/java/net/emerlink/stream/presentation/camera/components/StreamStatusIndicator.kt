@@ -22,20 +22,14 @@ import androidx.compose.ui.unit.dp
 fun StreamStatusIndicator(
     isStreaming: Boolean,
     isRecording: Boolean,
-    isLandscape: Boolean,
     onInfoClick: () -> Unit,
 ) {
     Box(
         modifier =
             Modifier
                 .fillMaxSize()
-                .then(
-                    if (!isLandscape) {
-                        Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
-                    } else {
-                        Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
-                    }
-                ).padding(start = 16.dp),
+                .then(Modifier.windowInsetsPadding(WindowInsets.safeDrawing))
+                .padding(start = 16.dp),
         contentAlignment = Alignment.TopStart
     ) {
         Surface(
@@ -49,17 +43,15 @@ fun StreamStatusIndicator(
             ) {
                 Box(
                     modifier =
-                        Modifier
-                            .size(12.dp)
-                            .background(
-                                color =
-                                    when {
-                                        isStreaming -> MaterialTheme.colorScheme.error
-                                        isRecording -> MaterialTheme.colorScheme.primary
-                                        else -> MaterialTheme.colorScheme.surfaceVariant
-                                    },
-                                shape = CircleShape
-                            )
+                        Modifier.size(12.dp).background(
+                            color =
+                                when {
+                                    isStreaming -> MaterialTheme.colorScheme.error
+                                    isRecording -> MaterialTheme.colorScheme.primary
+                                    else -> MaterialTheme.colorScheme.surfaceVariant
+                                },
+                            shape = CircleShape
+                        )
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(

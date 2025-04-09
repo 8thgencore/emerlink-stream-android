@@ -7,19 +7,10 @@ import android.content.res.Configuration
 import android.os.Build
 import android.util.Log
 import android.view.WindowManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -110,16 +101,6 @@ fun CameraScreen(
         }
     }
 
-    // React to orientation changes
-    LaunchedEffect(configuration.orientation) {
-        if (configuration.orientation != previousOrientation) {
-            if (isPreviewActive && openGlView != null) {
-                viewModel.restartPreviewForOrientation()
-            }
-            previousOrientation = configuration.orientation
-        }
-    }
-
     // UI components
     Box(
         modifier =
@@ -138,7 +119,6 @@ fun CameraScreen(
         StreamStatusIndicator(
             isStreaming = isStreaming,
             isRecording = isRecording,
-            isLandscape = isLandscape,
             onInfoClick = { viewModel.toggleStreamInfo() }
         )
 

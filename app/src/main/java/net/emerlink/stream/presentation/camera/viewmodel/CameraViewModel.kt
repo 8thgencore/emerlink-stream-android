@@ -210,18 +210,14 @@ class CameraViewModel : ViewModel() {
 
     fun startPreview(view: OpenGlView) {
         if (_isPreviewActive.value || streamServiceRef?.get()?.isOnPreview() == true) {
-            Log.w(TAG, "startPreview called but already active or service reports preview on.")
             if (!_isPreviewActive.value) _isPreviewActive.value = true
             return
         }
 
         viewModelScope.launch {
             try {
-                streamServiceRef?.get()?.prepareAudio()
-                streamServiceRef?.get()?.prepareVideo()
                 streamServiceRef?.get()?.startPreview(view)
                 _isPreviewActive.value = true
-                Log.d(TAG, "Preview started successfully.")
             } catch (e: Exception) {
                 Log.e(TAG, "Error starting preview", e)
                 _isPreviewActive.value = false
@@ -230,26 +226,14 @@ class CameraViewModel : ViewModel() {
     }
 
     fun stopPreview() {
-        if (!_isPreviewActive.value) {
-            Log.d(TAG, "stopPreview called but already stopped.")
-            return
-        }
-
+        if (!_isPreviewActive.value) return
         _isPreviewActive.value = false
-        Log.d(TAG, "Attempting to stop preview via service.")
 
         viewModelScope.launch {
             try {
-                val service = streamServiceRef?.get()
-                if (service != null && service.isOnPreview() && !service.isStreaming() && !service.isRecording()) {
-                    service.stopPreview()
-                    Log.d(TAG, "Service preview stopped.")
-                } else {
-                    Log.d(TAG, "Skipping service stopPreview (streaming/recording or already stopped). Service: $service, isPreview: ${service?.isOnPreview()}, isStreaming: ${service?.isStreaming()}, isRecording: ${service?.isRecording()})")
-                }
+                streamServiceRef?.get()?.stopPreview()
             } catch (e: Exception) {
                 Log.e(TAG, "Error stopping preview in service", e)
-                _isPreviewActive.value = streamServiceRef?.get()?.isOnPreview() ?: false
             }
         }
     }
@@ -407,20 +391,6 @@ class CameraViewModel : ViewModel() {
                 Log.e(TAG, "Error executing confirmed action", e)
             } finally {
                 requestConfirmation(false)
-            }
-        }
-    }
-
-    fun restartPreviewForOrientation() {
-        viewModelScope.launch {
-            val view = _openGlView.value
-            if (view != null && _isPreviewActive.value) {
-                Log.d(TAG, "Restarting preview due to orientation change.")
-                stopPreview()
-                delay(100)
-                startPreview(view)
-            } else {
-                Log.d(TAG, "Skipping preview restart (view null or preview not active). View: $view, Active: ${_isPreviewActive.value}")
             }
         }
     }
