@@ -128,7 +128,7 @@ hs_err_pid*
 !gradle/wrapper/gradle-wrapper.jar
 
 # Cache of project
-.gradletasknamecache
+.gradletasknamecache    
 
 # Local properties
 local.properties
@@ -137,4 +137,4 @@ local.properties
 release/
 
 # keystore
-.jks
+*.jks
