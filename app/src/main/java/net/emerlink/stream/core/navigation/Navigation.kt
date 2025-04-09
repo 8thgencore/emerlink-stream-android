@@ -2,6 +2,7 @@
 
 package net.emerlink.stream.core.navigation
 
+import CameraLoaderScreen
 import android.content.pm.ActivityInfo
 import android.os.Build
 import androidx.activity.ComponentActivity
@@ -17,6 +18,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.preference.PreferenceManager
+import net.emerlink.stream.data.model.ScreenOrientation
 import net.emerlink.stream.data.preferences.PreferenceKeys
 import net.emerlink.stream.presentation.camera.CameraScreen
 import net.emerlink.stream.presentation.settings.ConnectionSettingsScreen
@@ -25,6 +27,7 @@ import net.emerlink.stream.presentation.settings.SettingsScreen
 
 // Define your navigation routes
 object NavigationRoutes {
+    const val CAMERA_LOADER = "camera_loader"
     const val CAMERA = "camera"
     const val SETTINGS = "settings"
     const val STREAM_SETTINGS = "stream_settings"
@@ -35,12 +38,19 @@ object NavigationRoutes {
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
-    LocalContext.current
 
     // Handle screen orientation based on current route
     HandleScreenOrientation(navController)
 
-    NavHost(navController = navController, startDestination = NavigationRoutes.CAMERA) {
+    NavHost(navController = navController, startDestination = NavigationRoutes.CAMERA_LOADER) {
+        composable(NavigationRoutes.CAMERA_LOADER) {
+            CameraLoaderScreen(onReady = {
+                navController.navigate(NavigationRoutes.CAMERA) {
+                    popUpTo(NavigationRoutes.CAMERA_LOADER) { inclusive = true }
+                }
+            })
+        }
+
         composable(NavigationRoutes.CAMERA) {
             CameraScreen(
                 onSettingsClick = { navController.navigate(NavigationRoutes.SETTINGS) }
@@ -49,7 +59,11 @@ fun AppNavigation() {
 
         composable(NavigationRoutes.SETTINGS) {
             SettingsScreen(
-                onBackClick = { navController.popBackStack() },
+                onBackClick = {
+                    navController.navigate(NavigationRoutes.CAMERA_LOADER) {
+                        popUpTo(NavigationRoutes.CAMERA) { inclusive = true }
+                    }
+                },
                 onStreamSettingsClick = { navController.navigate(NavigationRoutes.STREAM_SETTINGS) }
             )
         }
@@ -98,40 +112,39 @@ fun AppNavigation() {
 @Composable
 private fun HandleScreenOrientation(navController: NavHostController) {
     val context = LocalContext.current
-    val currentDestination =
+    val currentRoute =
         navController
             .currentBackStackEntryAsState()
             .value
             ?.destination
             ?.route
 
-    DisposableEffect(currentDestination) {
+    DisposableEffect(currentRoute) {
         val activity = context as? ComponentActivity
 
-        when (currentDestination) {
-            NavigationRoutes.CAMERA -> {
-                // For camera screen, use the orientation from preferences
-                val preferences = PreferenceManager.getDefaultSharedPreferences(context)
-                val orientation =
+        val unspecifiedRoutes =
+            listOf(
+                NavigationRoutes.SETTINGS,
+                NavigationRoutes.STREAM_SETTINGS,
+                NavigationRoutes.EDIT_CONNECTION_PROFILE
+            )
+
+        if (currentRoute != null && unspecifiedRoutes.any { currentRoute.startsWith(it) }) {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        } else {
+            // For camera screen, use the orientation from preferences
+            val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+            val orientation =
+                ScreenOrientation.fromString(
                     preferences.getString(
                         PreferenceKeys.SCREEN_ORIENTATION,
-                        PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
-                    ) ?: PreferenceKeys.SCREEN_ORIENTATION_DEFAULT
-
-                activity?.requestedOrientation =
-                    when (orientation) {
-                        "landscape" -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-                        "portrait" -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                        else -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-                    }
-            }
-
-            NavigationRoutes.SETTINGS,
-            NavigationRoutes.STREAM_SETTINGS,
-            NavigationRoutes.EDIT_CONNECTION_PROFILE,
-                -> {
-                    // For settings screens, use unspecified orientation
-                    activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        ScreenOrientation.LANDSCAPE.name
+                    ) ?: ScreenOrientation.LANDSCAPE.name
+                )
+            activity?.requestedOrientation =
+                when (orientation) {
+                    ScreenOrientation.LANDSCAPE -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                    ScreenOrientation.PORTRAIT -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
                 }
         }
 

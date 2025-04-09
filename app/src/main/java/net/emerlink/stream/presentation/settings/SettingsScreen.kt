@@ -2,6 +2,7 @@
 
 package net.emerlink.stream.presentation.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -19,6 +20,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import net.emerlink.stream.R
+import net.emerlink.stream.data.model.ScreenOrientation
 import net.emerlink.stream.presentation.settings.components.DropdownPreference
 import net.emerlink.stream.presentation.settings.components.InputPreference
 import net.emerlink.stream.presentation.settings.components.PreferenceCategory
@@ -82,6 +84,10 @@ fun SettingsScreen(
         audioEchoCancel = audioSettings.echoCancel
         audioNoiseReduction = audioSettings.noiseReduction
         audioCodec = audioSettings.codec
+    }
+
+    BackHandler {
+        onBackClick()
     }
 
     Scaffold(
@@ -169,10 +175,10 @@ fun SettingsScreen(
                     DropdownPreference(
                         title = stringResource(id = R.string.screen_orientation),
                         summary = stringResource(id = R.string.screen_orientation_summary),
-                        selectedValue = screenOrientation,
+                        selectedValue = screenOrientation.name.lowercase(),
                         options = listOf("landscape", "portrait"),
                         onValueSelected = { value ->
-                            screenOrientation = value
+                            screenOrientation = ScreenOrientation.fromString(value)
                             viewModel.updateScreenOrientation(value)
                         }
                     )

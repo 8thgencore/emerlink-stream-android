@@ -137,4 +137,4 @@ local.properties
 release/
 
 # keystore
-.jks
+*.jks

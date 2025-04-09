@@ -46,36 +46,22 @@ fun CameraControls(
     viewModel: CameraViewModel,
     onSettingsClick: () -> Unit,
 ) {
-    Box(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .then(
-                    if (!isLandscape) {
-                        Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
-                    } else {
-                        Modifier.windowInsetsPadding(WindowInsets.navigationBars)
-                    }
-                ).padding(16.dp),
-        contentAlignment = Alignment.BottomCenter
-    ) {
-        if (isLandscape) {
-            LandscapeCameraControls(
-                isStreaming = isStreaming,
-                isFlashOn = isFlashOn,
-                isMuted = isMuted,
-                viewModel = viewModel,
-                onSettingsClick = onSettingsClick
-            )
-        } else {
-            PortraitCameraControls(
-                isStreaming = isStreaming,
-                isFlashOn = isFlashOn,
-                isMuted = isMuted,
-                viewModel = viewModel,
-                onSettingsClick = onSettingsClick
-            )
-        }
+    if (isLandscape) {
+        LandscapeCameraControls(
+            isStreaming = isStreaming,
+            isFlashOn = isFlashOn,
+            isMuted = isMuted,
+            viewModel = viewModel,
+            onSettingsClick = onSettingsClick
+        )
+    } else {
+        PortraitCameraControls(
+            isStreaming = isStreaming,
+            isFlashOn = isFlashOn,
+            isMuted = isMuted,
+            viewModel = viewModel,
+            onSettingsClick = onSettingsClick
+        )
     }
 }
 
@@ -87,7 +73,13 @@ fun LandscapeCameraControls(
     viewModel: CameraViewModel,
     onSettingsClick: () -> Unit,
 ) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterEnd) {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.systemBars),
+        contentAlignment = Alignment.CenterEnd
+    ) {
         Column(
             modifier = Modifier.padding(end = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -101,7 +93,7 @@ fun LandscapeCameraControls(
                 }
             )
 
-            AdaptiveSpacer(smallSize = 8, largeSize = 16, isVertical = true)
+            AdaptiveSpacer(smallSize = 4, largeSize = 8, isVertical = true)
             RecordButton(
                 isStreaming = isStreaming,
                 onClick = {
@@ -112,7 +104,7 @@ fun LandscapeCameraControls(
                     }
                 }
             )
-            AdaptiveSpacer(smallSize = 8, largeSize = 16, isVertical = true)
+            AdaptiveSpacer(smallSize = 4, largeSize = 8, isVertical = true)
 
             PhotoButton(
                 onClick = {
@@ -132,7 +124,7 @@ fun LandscapeCameraControls(
         modifier =
             Modifier
                 .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.navigationBars),
+                .windowInsetsPadding(WindowInsets.safeContent),
         contentAlignment = Alignment.CenterStart
     ) {
         Box(modifier = Modifier) {
@@ -149,64 +141,60 @@ fun PortraitCameraControls(
     viewModel: CameraViewModel,
     onSettingsClick: () -> Unit,
 ) {
-    RecordButton(
-        isStreaming = isStreaming,
-        onClick = {
-            if (isStreaming) {
-                viewModel.stopStreamingWithConfirmation()
-            } else {
-                viewModel.startStreaming()
-            }
-        }
-    )
-
-    Row(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(bottom = 6.dp),
-        horizontalArrangement = Arrangement.Start,
-        verticalAlignment = Alignment.Bottom
-    ) {
-        FlashButton(
-            isFlashOn = isFlashOn,
-            onClick = {
-                viewModel.toggleFlash()
-            }
-        )
-        AdaptiveSpacer(smallSize = 12, largeSize = 24, isVertical = false)
-        PhotoButton(
-            onClick = {
-                viewModel.takePhoto()
-            }
-        )
-    }
-
-    Row(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(bottom = 6.dp),
-        horizontalArrangement = Arrangement.End,
-        verticalAlignment = Alignment.Bottom
-    ) {
-        MuteButton(
-            isMuted = isMuted,
-            onClick = {
-                viewModel.toggleMute()
-            }
-        )
-        AdaptiveSpacer(smallSize = 12, largeSize = 24, isVertical = false)
-        SettingsButton(onClick = onSettingsClick)
-    }
-
     Box(
+        contentAlignment = Alignment.BottomCenter,
         modifier =
             Modifier
                 .fillMaxSize()
-                .padding(bottom = 16.dp, start = 0.dp),
-        contentAlignment = Alignment.CenterStart
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(bottom = 6.dp, start = 16.dp, end = 16.dp)
     ) {
-        SwitchCameraButton(onClick = { viewModel.switchCamera() })
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            FlashButton(
+                isFlashOn = isFlashOn,
+                onClick = {
+                    viewModel.toggleFlash()
+                }
+            )
+            PhotoButton(
+                onClick = {
+                    viewModel.takePhoto()
+                }
+            )
+            AdaptiveSpacer(smallSize = 8, largeSize = 16, isVertical = false)
+
+            RecordButton(
+                isStreaming = isStreaming,
+                onClick = {
+                    if (isStreaming) {
+                        viewModel.stopStreamingWithConfirmation()
+                    } else {
+                        viewModel.startStreaming()
+                    }
+                }
+            )
+            AdaptiveSpacer(smallSize = 8, largeSize = 16, isVertical = false)
+
+            MuteButton(
+                isMuted = isMuted,
+                onClick = {
+                    viewModel.toggleMute()
+                }
+            )
+            SettingsButton(onClick = onSettingsClick)
+        }
+
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(start = 0.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            SwitchCameraButton(onClick = { viewModel.switchCamera() })
+        }
     }
 }

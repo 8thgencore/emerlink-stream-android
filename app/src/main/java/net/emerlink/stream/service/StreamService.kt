@@ -20,17 +20,13 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
 import com.pedro.common.VideoCodec
-import com.pedro.encoder.input.video.CameraHelper
 import com.pedro.library.util.BitrateAdapter
 import com.pedro.library.view.OpenGlView
 import net.emerlink.stream.R
 import net.emerlink.stream.core.AppIntentActions
 import net.emerlink.stream.core.ErrorHandler
 import net.emerlink.stream.core.notification.AppNotificationManager
-import net.emerlink.stream.data.model.ConnectionSettings
-import net.emerlink.stream.data.model.Resolution
-import net.emerlink.stream.data.model.StreamInfo
-import net.emerlink.stream.data.model.StreamType
+import net.emerlink.stream.data.model.*
 import net.emerlink.stream.data.repository.ConnectionProfileRepository
 import net.emerlink.stream.data.repository.SettingsRepository
 import net.emerlink.stream.service.media.MediaManager
@@ -388,9 +384,8 @@ class StreamService :
             Log.w(TAG, "Service.startPreview called but preview already active.")
             return
         }
-
         try {
-            refreshSettings()
+            updateStreamType()
             openGlView = view
 
             if (!isStreaming()) {
@@ -422,11 +417,6 @@ class StreamService :
             if (streamInterface.isOnPreview && !isStreaming()) {
                 Log.d(TAG, "Calling streamInterface.stopPreview()")
                 streamInterface.stopPreview()
-            } else {
-                Log.d(
-                    TAG,
-                    "Skipping streamInterface.stopPreview() call (isOnPreview=${streamInterface.isOnPreview}, isStreaming=${isStreaming()})"
-                )
             }
             stopAudioLevelUpdates()
             microphoneMonitor.stopMonitoring()
@@ -461,7 +451,14 @@ class StreamService :
 
         val videoSettings = settingsRepository.videoSettingsFlow.value
         val resolution = Resolution.parseFromSize(videoSettings.resolution)
-        val rotation = CameraHelper.getCameraOrientation(this)
+
+        val rotation =
+            videoSettings.screenOrientation.let {
+                when (it) {
+                    ScreenOrientation.PORTRAIT -> 90
+                    ScreenOrientation.LANDSCAPE -> 0
+                }
+            }
 
         streamInterface.prepareVideo(
             width = resolution.width,
@@ -486,19 +483,7 @@ class StreamService :
             streamInterface.setVideoCodec(VideoCodec.H264)
         }
 
-        streamInterface.setVideoCodec(VideoCodec.valueOf(videoSettings.codec))
-    }
-
-    private fun switchStreamResolution() {
-        try {
-            if (isOnPreview()) {
-                streamInterface.stopPreview()
-                prepareVideo()
-                openGlView?.let { view -> streamInterface.startPreview(view, true) }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка при изменении разрешения стрима: ${e.message}")
-        }
+        streamInterface.setVideoCodec(VideoCodec.valueOf(videoSettings.codec.uppercase()))
     }
 
     fun isStreaming(): Boolean = streamInterface.isStreaming
@@ -561,28 +546,9 @@ class StreamService :
         }
     }
 
-    private fun refreshSettings() {
-        updateStreamType()
-        if (isPreviewActive && openGlView != null) {
-            handleResolutionChange()
-        }
-    }
-
     private fun getCameraIds() {
         cameraIds.clear()
         cameraIds.addAll(streamInterface.getCameraIds())
-    }
-
-    fun handleResolutionChange() {
-        openGlView?.let { view ->
-            Log.d(TAG, "Перезапуск превью с новым разрешением")
-            try {
-                switchStreamResolution()
-                startPreview(view)
-            } catch (e: Exception) {
-                Log.e(TAG, "Ошибка при обновлении разрешения: ${e.message}", e)
-            }
-        }
     }
 
     fun isPreviewRunning(): Boolean = isPreviewActive

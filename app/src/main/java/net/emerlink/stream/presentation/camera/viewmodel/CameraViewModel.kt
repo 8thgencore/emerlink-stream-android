@@ -67,7 +67,8 @@ class CameraViewModel : ViewModel() {
     private val _flashOverlayVisible = MutableStateFlow(false)
     val flashOverlayVisible: StateFlow<Boolean> = _flashOverlayVisible.asStateFlow()
 
-    private val isPreviewActive = MutableStateFlow(false)
+    private val _isPreviewActive = MutableStateFlow(false)
+    val isPreviewActive: StateFlow<Boolean> = _isPreviewActive.asStateFlow()
 
     private val confirmAction = MutableStateFlow<() -> Unit> {}
 
@@ -177,17 +178,13 @@ class CameraViewModel : ViewModel() {
         if (isServiceBound.value) {
             try {
                 context.unbindService(connection)
-                _isServiceBound.value = false
-                streamServiceRef = null
             } catch (e: IllegalArgumentException) {
                 Log.w(TAG, "Service not registered or already unbound? ${e.message}")
-                _isServiceBound.value = false
-                streamServiceRef = null
             } catch (e: Exception) {
                 Log.e(TAG, "Error unbinding service", e)
-                _isServiceBound.value = false
-                streamServiceRef = null
             }
+            _isServiceBound.value = false
+            streamServiceRef = null
         } else {
             Log.d(TAG, "Unbind requested but already unbound.")
         }
@@ -208,25 +205,24 @@ class CameraViewModel : ViewModel() {
     }
 
     fun startPreview(view: OpenGlView) {
-        if (isPreviewActive.value || streamServiceRef?.get()?.isOnPreview() == true) {
-            if (!isPreviewActive.value) isPreviewActive.value = true
+        if (_isPreviewActive.value || streamServiceRef?.get()?.isOnPreview() == true) {
+            if (!_isPreviewActive.value) _isPreviewActive.value = true
             return
         }
-
         viewModelScope.launch {
             try {
                 streamServiceRef?.get()?.startPreview(view)
-                isPreviewActive.value = true
+                _isPreviewActive.value = true
             } catch (e: Exception) {
                 Log.e(TAG, "Error starting preview", e)
-                isPreviewActive.value = false
+                _isPreviewActive.value = false
             }
         }
     }
 
     fun stopPreview() {
-        if (!isPreviewActive.value) return
-        isPreviewActive.value = false
+        if (!_isPreviewActive.value) return
+        _isPreviewActive.value = false
 
         viewModelScope.launch {
             try {
