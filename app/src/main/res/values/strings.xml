@@ -113,8 +113,6 @@
     <string name="delete_profile_confirmation">Вы уверены, что хотите удалить профиль \"%1$s\"?</string>
     <string name="profile_name">Название профиля</string>
     <string name="profile_name_summary">Введите название для этого профиля соединения</string>
-    <string name="default_profile">Профиль по умолчанию</string>
-    <string name="default_profile_summary">Использовать этот профиль по умолчанию при запуске приложения</string>
     <string name="profile_details">Детали профиля</string>
     <string name="connection_settings">Настройки соединения</string>
     <string name="no_profiles">Профили соединений не найдены</string>

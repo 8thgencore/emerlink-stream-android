@@ -89,8 +89,7 @@ class ConnectionProfileRepository(
                     address = "127.0.0.1",
                     port = 1935,
                     path = "live"
-                ),
-            isDefault = true
+                )
         )
 
     /**
@@ -99,31 +98,18 @@ class ConnectionProfileRepository(
     fun saveProfile(profile: ConnectionProfile) {
         val currentProfiles = _profilesFlow.value.toMutableList()
 
-        // If this is marked as default, unmark others
-        val updatedProfiles =
-            (
-                if (profile.isDefault) {
-                    currentProfiles.map {
-                        if (it.id == profile.id) it else it.copy(isDefault = false)
-                    }
-                } else {
-                    currentProfiles
-                }
-            ).toMutableList()
-
         // Find and replace existing profile or add new one
-        val index = updatedProfiles.indexOfFirst { it.id == profile.id }
+        val index = currentProfiles.indexOfFirst { it.id == profile.id }
         if (index >= 0) {
-            updatedProfiles[index] = profile
+            currentProfiles[index] = profile
         } else {
-            updatedProfiles.add(profile)
+            currentProfiles.add(profile)
         }
 
-        _profilesFlow.value = updatedProfiles
+        _profilesFlow.value = currentProfiles
         saveProfiles()
 
-        // If this is the only profile or marked as default, set it as active
-        if (updatedProfiles.size == 1 || profile.isDefault) {
+        if (currentProfiles.size == 1) {
             setActiveProfile(profile.id)
         }
     }
@@ -133,7 +119,6 @@ class ConnectionProfileRepository(
      */
     fun deleteProfile(profileId: String) {
         val currentProfiles = _profilesFlow.value.toMutableList()
-        val profileToDelete = currentProfiles.find { it.id == profileId }
 
         // Don't delete if it's the only profile
         if (currentProfiles.size <= 1) {
@@ -141,18 +126,12 @@ class ConnectionProfileRepository(
         }
 
         currentProfiles.removeIf { it.id == profileId }
-
-        // If we deleted the default profile, set a new default
-        if (profileToDelete?.isDefault == true && currentProfiles.isNotEmpty()) {
-            currentProfiles[0] = currentProfiles[0].copy(isDefault = true)
-        }
-
         _profilesFlow.value = currentProfiles
         saveProfiles()
 
-        // If we deleted the active profile, switch to the default or first available
+        // If we deleted the active profile, switch to the first available
         if (_activeProfileFlow.value?.id == profileId) {
-            val newActiveProfile = currentProfiles.find { it.isDefault } ?: currentProfiles.firstOrNull()
+            val newActiveProfile = currentProfiles.firstOrNull()
             newActiveProfile?.let { setActiveProfile(it.id) }
         }
     }
@@ -168,24 +147,6 @@ class ConnectionProfileRepository(
                 putString(KEY_ACTIVE_PROFILE_ID, profileId)
             }
         }
-    }
-
-    /**
-     * Create a new profile with a unique name
-     */
-    fun createProfile(
-        name: String,
-        settings: ConnectionSettings,
-    ): ConnectionProfile {
-        val profile =
-            ConnectionProfile(
-                id = UUID.randomUUID().toString(),
-                name = name,
-                settings = settings,
-                isDefault = _profilesFlow.value.isEmpty()
-            )
-        saveProfile(profile)
-        return profile
     }
 
     /**

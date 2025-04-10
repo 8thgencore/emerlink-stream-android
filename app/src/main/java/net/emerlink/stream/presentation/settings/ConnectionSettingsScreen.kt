@@ -341,14 +341,6 @@ fun ConnectionProfileItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-
-                if (profile.isDefault) {
-                    Text(
-                        text = stringResource(id = R.string.default_profile),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
             }
 
             // Actions
@@ -361,15 +353,12 @@ fun ConnectionProfileItem(
                     )
                 }
 
-                // Only show delete button if it's not the only profile
-                if (!profile.isDefault) {
-                    IconButton(onClick = onDeleteClick) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = stringResource(id = R.string.delete_profile),
-                            tint = textColor
-                        )
-                    }
+                IconButton(onClick = onDeleteClick) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = stringResource(id = R.string.delete_profile),
+                        tint = textColor
+                    )
                 }
             }
         }

@@ -50,7 +50,6 @@ fun EditConnectionProfileScreen(
 
     // State for profile fields
     var profileName by remember { mutableStateOf(existingProfile?.name ?: "") }
-    var isDefault by remember { mutableStateOf(existingProfile?.isDefault == true) }
 
     // Connection settings states
     var streamProtocol by remember {
@@ -135,8 +134,7 @@ fun EditConnectionProfileScreen(
                                     ConnectionProfile(
                                         id = newProfileId,
                                         name = profileName.takeIf { it.isNotEmpty() } ?: "Unnamed Profile",
-                                        settings = settings,
-                                        isDefault = isDefault
+                                        settings = settings
                                     )
 
                                 // Save profile
@@ -181,14 +179,6 @@ fun EditConnectionProfileScreen(
                         summary = stringResource(id = R.string.profile_name_summary),
                         value = profileName,
                         onValueChange = { profileName = it }
-                    )
-
-                    // Default profile
-                    SwitchPreference(
-                        title = stringResource(id = R.string.default_profile),
-                        summary = stringResource(id = R.string.default_profile_summary),
-                        checked = isDefault,
-                        onCheckedChange = { isDefault = it }
                     )
                 }
 
