@@ -52,7 +52,7 @@ class MediaManager(
         } catch (e: Exception) {
             Log.e(TAG, "Error taking photo: ${e.message}", e)
             val errorMessage = context.getString(R.string.saved_photo_failed) + ": " + e.message
-            notificationManager.showErrorSafely(errorMessage)
+            notificationManager.showErrorToast(errorMessage)
         }
     }
 
@@ -81,7 +81,7 @@ class MediaManager(
         } catch (e: Exception) {
             Log.e(TAG, "Error saving photo: ${e.message}", e)
             val errorMessage = context.getString(R.string.saved_photo_failed) + ": " + e.message
-            notificationManager.showErrorSafely(errorMessage)
+            notificationManager.showErrorToast(errorMessage)
         }
     }
 
@@ -112,10 +112,10 @@ class MediaManager(
         uri?.let {
             resolver.openOutputStream(it)?.use { outputStream ->
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
-                notificationManager.showPhotoNotification(context.getString(R.string.saved_photo))
+                notificationManager.showPhotoToast(context.getString(R.string.saved_photo))
             } ?: run {
                 val errorMessage = context.getString(R.string.saved_photo_failed)
-                notificationManager.showErrorSafely(errorMessage)
+                notificationManager.showErrorToast(errorMessage)
             }
         }
     }
@@ -144,7 +144,7 @@ class MediaManager(
         )
 
         Log.d(TAG, "Saved photo to: $filePath")
-        notificationManager.showPhotoNotification(context.getString(R.string.saved_photo))
+        notificationManager.showPhotoToast(context.getString(R.string.saved_photo))
     }
 
     /**
@@ -179,7 +179,7 @@ class MediaManager(
                 if (!videoFolder.exists() && !videoFolder.mkdirs()) {
                     Log.e(TAG, "Failed to create folder: ${videoFolder.absolutePath}")
                     val errorMessage = context.getString(R.string.failed_to_record)
-                    notificationManager.showErrorSafely(errorMessage)
+                    notificationManager.showErrorToast(errorMessage)
                     return false
                 }
                 filePath = "${videoFolder.absolutePath}/$filename"
@@ -194,7 +194,7 @@ class MediaManager(
         } catch (e: Exception) {
             Log.e(TAG, "Error starting recording: ${e.message}", e)
             val errorMessage = context.getString(R.string.failed_to_record) + ": " + e.message
-            notificationManager.showErrorSafely(errorMessage)
+            notificationManager.showErrorToast(errorMessage)
             return false
         }
     }

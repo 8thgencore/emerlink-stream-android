@@ -284,10 +284,11 @@ class StreamService :
             Log.e(TAG, "Error handling connection failure", e)
             try {
                 stopStream()
-                notificationManager.showErrorSafely(this, "Critical error: ${e.message}")
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                notificationManager.showErrorToast("Critical error: ${e.message}")
             } catch (e2: Exception) {
                 Log.e(TAG, "Double error", e2)
-                notificationManager.showErrorSafely(this, "Critical error occurred")
+                notificationManager.showErrorToast("Critical error occurred")
                 notifyStreamStopped()
             }
         }
@@ -641,7 +642,7 @@ class StreamService :
             }
 
             if (error != null) {
-                notificationManager.showErrorNotification(error)
+                notificationManager.showErrorToast(error)
                 notificationManager.showNotification(getString(R.string.ready_to_stream), true)
             } else {
                 notificationManager.showNotification(getString(R.string.ready_to_stream), true)
@@ -651,7 +652,8 @@ class StreamService :
             notifyStreamStopped()
 
             val errorMsg = error?.let { "$it (${e.message})" } ?: e.message ?: "Unknown error during stop"
-            notificationManager.showErrorSafely(this, errorMsg)
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            notificationManager.showErrorToast(errorMsg)
             notificationManager.showNotification(getString(R.string.ready_to_stream), true)
             errorHandler.handleStreamError(e)
         }

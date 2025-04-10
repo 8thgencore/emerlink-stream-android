@@ -7,11 +7,11 @@ import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import net.emerlink.stream.R
 import net.emerlink.stream.app.MainActivity
 import net.emerlink.stream.core.AppIntentActions
+import net.emerlink.stream.util.ToastUtil
 
 /**
  * Manages notifications for the application. Implements the Singleton pattern
@@ -26,13 +26,9 @@ class AppNotificationManager
 
             // Channel IDs
             const val NOTIFICATION_CHANNEL_ID = "CameraServiceChannel"
-            const val ERROR_CHANNEL_ID = "ErrorChannel"
-            const val PHOTO_CHANNEL_ID = "PhotoChannel"
 
             // Notification IDs
             const val START_STREAM_NOTIFICATION_ID = 3425
-            const val ERROR_STREAM_NOTIFICATION_ID = 3426
-            const val TAKE_PHOTO_NOTIFICATION_ID = 3427
 
             @SuppressLint("StaticFieldLeak")
             @Volatile
@@ -68,29 +64,8 @@ class AppNotificationManager
                     NotificationManager.IMPORTANCE_HIGH
                 )
 
-            // Error channel
-            val errorChannel =
-                NotificationChannel(
-                    ERROR_CHANNEL_ID,
-                    "Error Channel",
-                    NotificationManager.IMPORTANCE_HIGH
-                ).apply {
-                    enableLights(true)
-                    enableVibration(true)
-                }
-
-            // Photo channel
-            val photoChannel =
-                NotificationChannel(
-                    PHOTO_CHANNEL_ID,
-                    "Photo Channel",
-                    NotificationManager.IMPORTANCE_DEFAULT
-                )
-
-            // Register all channels
-            notificationManager.createNotificationChannels(
-                listOf(serviceChannel, errorChannel, photoChannel)
-            )
+            // Register service channel
+            notificationManager.createNotificationChannel(serviceChannel)
         }
 
         /**
@@ -150,20 +125,15 @@ class AppNotificationManager
                     .setOngoing(ongoing)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
 
-            // Add actions based on whether we're streaming or ready to stream
             if (hasActions) {
-                // Check if the notification text is "Ready to Stream"
                 val isReadyToStream = text == context.getString(R.string.ready_to_stream)
 
                 if (isReadyToStream) {
-                    // Add START button for "Ready to Stream" notification
                     addStartAction(builder)
                 } else {
-                    // Add STOP button for streaming notification
                     addStopAction(builder)
                 }
 
-                // Always add EXIT action
                 addExitAction(builder)
             }
 
@@ -255,84 +225,12 @@ class AppNotificationManager
         }
 
         /**
-         * Shows error notification
-         */
-        fun showErrorNotification(text: String) {
-            // For error notifications, create a special notification
-            val notificationIntent =
-                Intent(context, MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                }
-
-            val pendingIntentFlags =
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                } else {
-                    PendingIntent.FLAG_UPDATE_CURRENT
-                }
-
-            val pendingIntent =
-                PendingIntent.getActivity(
-                    context,
-                    0,
-                    notificationIntent,
-                    pendingIntentFlags
-                )
-
-            val builder =
-                NotificationCompat
-                    .Builder(context, ERROR_CHANNEL_ID)
-                    .setSmallIcon(R.drawable.ic_notification)
-                    .setContentTitle(context.getString(R.string.app_name))
-                    .setContentText(text)
-                    .setContentIntent(pendingIntent)
-                    .setPriority(NotificationCompat.PRIORITY_HIGH)
-                    .setAutoCancel(true)
-
-            notificationManager.notify(ERROR_STREAM_NOTIFICATION_ID, builder.build())
-        }
-
-        /**
-         * Safely shows an error notification
-         */
-        fun showErrorSafely(
-            service: Service?,
-            text: String,
-        ) {
-            try {
-                service?.stopForeground(Service.STOP_FOREGROUND_REMOVE)
-                showErrorNotification(text)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error showing error notification: ${e.message}", e)
-                showErrorNotification(text)
-            }
-        }
-
-        /**
          * Safely shows an error notification without a service reference
          */
-        fun showErrorSafely(text: String) {
-            try {
-                showErrorNotification(text)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error showing error notification: ${e.message}", e)
-            }
-        }
+        fun showErrorToast(text: String) = ToastUtil.showToast(context, text, true)
 
         /**
-         * Shows a photo notification
+         * Shows a photo notification as a Toast
          */
-        fun showPhotoNotification(text: String) {
-            val notification =
-                NotificationCompat
-                    .Builder(context, PHOTO_CHANNEL_ID)
-                    .setSmallIcon(R.drawable.ic_notification)
-                    .setContentTitle(context.getString(R.string.app_name))
-                    .setContentText(text)
-                    .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                    .setAutoCancel(true)
-                    .build()
-
-            notificationManager.notify(TAKE_PHOTO_NOTIFICATION_ID, notification)
-        }
+        fun showPhotoToast(text: String) = ToastUtil.showToast(context, text)
     }

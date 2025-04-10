@@ -31,6 +31,6 @@ class ErrorHandler(
                 else -> context.getString(R.string.unknown_error) + ": " + e.message
             }
 
-        notificationManager.showErrorSafely(errorMessage)
+        notificationManager.showErrorToast(errorMessage)
     }
 }
