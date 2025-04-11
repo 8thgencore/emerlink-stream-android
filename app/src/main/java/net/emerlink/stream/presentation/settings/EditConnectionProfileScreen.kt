@@ -86,6 +86,20 @@ fun EditConnectionProfileScreen(
         mutableStateOf(existingProfile?.settings?.certPassword ?: "")
     }
 
+    // SRT specific settings
+    var srtMode by remember {
+        mutableStateOf(existingProfile?.settings?.srtMode ?: "caller")
+    }
+    var srtLatency by remember {
+        mutableStateOf(existingProfile?.settings?.srtLatency?.toString() ?: "2000")
+    }
+    var srtOverheadBw by remember {
+        mutableStateOf(existingProfile?.settings?.srtOverheadBw?.toString() ?: "25")
+    }
+    var srtPassphrase by remember {
+        mutableStateOf(existingProfile?.settings?.srtPassphrase ?: "")
+    }
+
     // Get current stream type
     val currentStreamType =
         StreamType.entries.find {
@@ -125,7 +139,11 @@ fun EditConnectionProfileScreen(
                                         password = streamPassword,
                                         streamSelfSignedCert = streamSelfSignedCert,
                                         certFile = streamCertificate.takeIf { it.isNotEmpty() },
-                                        certPassword = streamCertificatePassword
+                                        certPassword = streamCertificatePassword,
+                                        srtMode = srtMode,
+                                        srtLatency = srtLatency.toIntOrNull() ?: 2000,
+                                        srtOverheadBw = srtOverheadBw.toIntOrNull() ?: 25,
+                                        srtPassphrase = srtPassphrase
                                     )
 
                                 // Create or update profile
@@ -313,6 +331,55 @@ fun EditConnectionProfileScreen(
                                 }
                             )
                         }
+                    }
+
+                    // SRT specific settings
+                    if (currentStreamType == StreamType.SRT) {
+                        // SRT Mode
+                        DropdownPreference(
+                            title = "SRT Mode",
+                            summary = "Connection mode for SRT streaming",
+                            selectedValue = srtMode,
+                            options = listOf("caller", "listener", "rendezvous"),
+                            onValueSelected = { value ->
+                                srtMode = value
+                            }
+                        )
+
+                        // SRT Latency
+                        InputPreference(
+                            title = "Latency",
+                            summary = "Packet delivery delay in milliseconds (default: 2000)",
+                            value = srtLatency,
+                            onValueChange = { value ->
+                                val filteredValue = value.filterNot { it.isWhitespace() }
+                                srtLatency = filteredValue
+                            },
+                            keyboardType = KeyboardType.Number
+                        )
+
+                        // SRT Overhead Bandwidth
+                        InputPreference(
+                            title = "Overhead Bandwidth",
+                            summary = "Recovery bandwidth overhead above input rate in percent (default: 25)",
+                            value = srtOverheadBw,
+                            onValueChange = { value ->
+                                val filteredValue = value.filterNot { it.isWhitespace() }
+                                srtOverheadBw = filteredValue
+                            },
+                            keyboardType = KeyboardType.Number
+                        )
+
+                        // SRT Passphrase
+                        InputPreference(
+                            title = "Passphrase",
+                            summary = "Optional encryption passphrase for SRT (10-79 characters)",
+                            value = srtPassphrase,
+                            isPassword = true,
+                            onValueChange = { value ->
+                                srtPassphrase = value
+                            }
+                        )
                     }
                 }
             }

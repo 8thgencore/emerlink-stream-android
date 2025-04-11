@@ -15,6 +15,11 @@ data class ConnectionSettings(
     var streamSelfSignedCert: Boolean = false,
     var certFile: String? = null,
     var certPassword: String = "",
+    // SRT specific parameters
+    var srtMode: String = "caller",
+    var srtLatency: Int = 2000,
+    var srtOverheadBw: Int = 25,
+    var srtPassphrase: String = "",
 ) {
     /**
      * Builds a stream URL based on the connection settings
@@ -71,17 +76,31 @@ data class ConnectionSettings(
             }
 
             StreamType.SRT -> {
-                // Format the streamid according to the required format
+                // Build SRT parameters
+                val srtParams = StringBuilder()
+
+                // Add streamid parameter (format depends on authentication)
                 val streamId =
                     if (username.isNotEmpty() && password.isNotEmpty()) {
                         "publish:$safePath:$username:$password"
                     } else {
                         "publish:$safePath"
                     }
-
-                val srtParams = StringBuilder()
                 srtParams.append("streamid=$streamId")
-                srtParams.append("&latency=2000")
+
+                // Add mode parameter
+                srtParams.append("&mode=$srtMode")
+
+                // Add latency parameter
+                srtParams.append("&latency=$srtLatency")
+
+                // Add overhead bandwidth parameter
+                srtParams.append("&oheadbw=$srtOverheadBw")
+
+                // Add passphrase if it's not empty
+                if (srtPassphrase.isNotEmpty()) {
+                    srtParams.append("&passphrase=$srtPassphrase")
+                }
 
                 "srt://$formattedAddress$formattedPort?$srtParams"
             }
