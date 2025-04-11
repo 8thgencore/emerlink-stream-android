@@ -61,7 +61,7 @@ class AppNotificationManager
                 NotificationChannel(
                     NOTIFICATION_CHANNEL_ID,
                     TAG,
-                    NotificationManager.IMPORTANCE_HIGH
+                    NotificationManager.IMPORTANCE_DEFAULT
                 )
 
             // Register service channel
