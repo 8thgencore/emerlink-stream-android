@@ -122,4 +122,15 @@
 
     <!-- Add this line if it doesn't exist yet -->
     <string name="start">Старт</string>
+
+    <!-- SRT specific settings -->
+    <string name="srt_settings">Настройки SRT</string>
+    <string name="srt_mode">Режим SRT</string>
+    <string name="srt_mode_summary">Режим подключения для SRT</string>
+    <string name="srt_latency">Latency</string>
+    <string name="srt_latency_summary">Задержка пакетов в миллисекундах (по умолчанию: 2000)</string>
+    <string name="srt_overhead_bandwidth">Overhead Bandwidth</string>
+    <string name="srt_overhead_bandwidth_summary">Перегрузка полосы пропускания выше входной скорости в процентах (по умолчанию: 25)</string>
+    <string name="srt_passphrase">Passphrase</string>
+    <string name="srt_passphrase_summary">Необязательный пароль для шифрования SRT (10-79 символов)</string>
 </resources>

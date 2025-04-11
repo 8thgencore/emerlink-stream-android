@@ -332,13 +332,14 @@ fun EditConnectionProfileScreen(
                             )
                         }
                     }
-
-                    // SRT specific settings
+                }
+                // SRT specific settings
+                PreferenceCategory(title = stringResource(id = R.string.srt_settings)) {
                     if (currentStreamType == StreamType.SRT) {
                         // SRT Mode
                         DropdownPreference(
-                            title = "SRT Mode",
-                            summary = "Connection mode for SRT streaming",
+                            title = stringResource(id = R.string.srt_mode),
+                            summary = stringResource(id = R.string.srt_mode_summary),
                             selectedValue = srtMode,
                             options = listOf("caller", "listener", "rendezvous"),
                             onValueSelected = { value ->
@@ -348,8 +349,8 @@ fun EditConnectionProfileScreen(
 
                         // SRT Latency
                         InputPreference(
-                            title = "Latency",
-                            summary = "Packet delivery delay in milliseconds (default: 2000)",
+                            title = stringResource(id = R.string.srt_latency),
+                            summary = stringResource(id = R.string.srt_latency_summary),
                             value = srtLatency,
                             onValueChange = { value ->
                                 val filteredValue = value.filterNot { it.isWhitespace() }
@@ -360,8 +361,8 @@ fun EditConnectionProfileScreen(
 
                         // SRT Overhead Bandwidth
                         InputPreference(
-                            title = "Overhead Bandwidth",
-                            summary = "Recovery bandwidth overhead above input rate in percent (default: 25)",
+                            title = stringResource(id = R.string.srt_overhead_bandwidth),
+                            summary = stringResource(id = R.string.srt_overhead_bandwidth_summary),
                             value = srtOverheadBw,
                             onValueChange = { value ->
                                 val filteredValue = value.filterNot { it.isWhitespace() }
@@ -372,8 +373,8 @@ fun EditConnectionProfileScreen(
 
                         // SRT Passphrase
                         InputPreference(
-                            title = "Passphrase",
-                            summary = "Optional encryption passphrase for SRT (10-79 characters)",
+                            title = stringResource(id = R.string.srt_passphrase),
+                            summary = stringResource(id = R.string.srt_passphrase_summary),
                             value = srtPassphrase,
                             isPassword = true,
                             onValueChange = { value ->
