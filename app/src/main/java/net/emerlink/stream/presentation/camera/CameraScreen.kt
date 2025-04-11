@@ -124,9 +124,13 @@ fun CameraScreen(
             viewModel = viewModel,
             onSettingsClick = {
                 if (isStreaming || isRecording) {
-                    viewModel.requestConfirmation(true) {
-                        onSettingsClick()
-                    }
+                    viewModel.requestConfirmation(
+                        show = true,
+                        actionOnConfirm = {
+                            viewModel.stopStreaming()
+                            onSettingsClick()
+                        }
+                    )
                 } else {
                     onSettingsClick()
                 }
