@@ -3,6 +3,7 @@ package net.emerlink.stream.service.stream
 import android.content.Context
 import android.media.MediaRecorder
 import android.view.MotionEvent
+import android.view.View
 import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
 import com.pedro.common.VideoCodec
@@ -89,7 +90,10 @@ interface StreamInterface {
 
     fun setZoom(motionEvent: MotionEvent)
 
-    fun tapToFocus(motionEvent: MotionEvent)
+    fun tapToFocus(
+        view: View,
+        motionEvent: MotionEvent,
+    )
 
     companion object {
         fun create(

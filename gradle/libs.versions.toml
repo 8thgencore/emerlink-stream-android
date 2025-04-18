@@ -13,13 +13,13 @@ junitVersion = "1.2.1"
 koinAndroid = "4.0.2"
 koinAndroidxCompose = "4.0.2"
 kotlin = "2.1.20"
-kotlinxCoroutinesAndroid = "1.10.1"
+kotlinxCoroutinesAndroid = "1.10.2"
 lifecycleRuntimeKtx = "2.8.7"
 navigationCompose = "2.8.9"
 preferenceKtx = "1.2.1"
 # Pedro dependencies
-library = "2.5.9"
-extraSources = "2.5.9"
+library = "e017e0d3f0b7330097560221937c4e760fcbaa1a"
+extraSources = "e017e0d3f0b7330097560221937c4e760fcbaa1a"
 
 [libraries]
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissions" }

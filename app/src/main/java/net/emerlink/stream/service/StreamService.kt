@@ -15,6 +15,7 @@ import android.hardware.SensorManager
 import android.os.*
 import android.util.Log
 import android.view.MotionEvent
+import android.view.View
 import androidx.lifecycle.MutableLiveData
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.pedro.common.AudioCodec
@@ -523,7 +524,7 @@ class StreamService :
 
     fun setZoom(motionEvent: MotionEvent) = streamInterface.setZoom(motionEvent)
 
-    fun tapToFocus(motionEvent: MotionEvent) = streamInterface.tapToFocus(motionEvent)
+    fun tapToFocus(motionEvent: MotionEvent) = streamInterface.tapToFocus(openGlView as View, motionEvent)
 
     fun startRecord(filePath: String) {
         try {

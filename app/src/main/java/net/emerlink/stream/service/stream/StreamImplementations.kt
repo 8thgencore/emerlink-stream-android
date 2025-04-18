@@ -2,6 +2,7 @@ package net.emerlink.stream.service.stream
 
 import android.content.Context
 import android.view.MotionEvent
+import android.view.View
 import com.pedro.common.AudioCodec
 import com.pedro.common.ConnectChecker
 import com.pedro.common.VideoCodec
@@ -16,6 +17,8 @@ import com.pedro.library.udp.UdpStream
 import com.pedro.library.view.GlInterface
 import com.pedro.library.view.OpenGlView
 import com.pedro.rtsp.rtsp.Protocol
+import com.pedro.srt.mpeg2ts.psi.Pmt
+import com.pedro.srt.mpeg2ts.service.Mpeg2TsService
 
 class RtmpStreamImpl(
     context: Context,
@@ -127,9 +130,12 @@ class RtmpStreamImpl(
         camera2Source.setZoom(motionEvent)
     }
 
-    override fun tapToFocus(motionEvent: MotionEvent) {
+    override fun tapToFocus(
+        view: View,
+        motionEvent: MotionEvent,
+    ) {
         val camera2Source = stream.videoSource as Camera2Source
-        camera2Source.tapToFocus(motionEvent)
+        camera2Source.tapToFocus(view, motionEvent)
     }
 }
 
@@ -243,9 +249,12 @@ class RtspStreamImpl(
         camera2Source.setZoom(motionEvent)
     }
 
-    override fun tapToFocus(motionEvent: MotionEvent) {
+    override fun tapToFocus(
+        view: View,
+        motionEvent: MotionEvent,
+    ) {
         val camera2Source = stream.videoSource as Camera2Source
-        camera2Source.tapToFocus(motionEvent)
+        camera2Source.tapToFocus(view, motionEvent)
     }
 }
 
@@ -298,7 +307,22 @@ class SrtStreamImpl(
         rotation = rotation
     )
 
-    override fun startStream(url: String) = stream.startStream(url)
+    override fun startStream(url: String) {
+        val service =
+            Mpeg2TsService(
+                name = "Emerlink Mobile",
+                providerName = "Emerlink"
+            )
+        val pmt =
+            Pmt(
+                pid = 1000,
+                version = 0,
+                service = service
+            )
+        service.pmt = pmt
+        stream.getStreamClient().setMpeg2TsService(service)
+        stream.startStream(url)
+    }
 
     override fun stopStream() = stream.stopStream()
 
@@ -359,9 +383,12 @@ class SrtStreamImpl(
         camera2Source.setZoom(motionEvent)
     }
 
-    override fun tapToFocus(motionEvent: MotionEvent) {
+    override fun tapToFocus(
+        view: View,
+        motionEvent: MotionEvent,
+    ) {
         val camera2Source = stream.videoSource as Camera2Source
-        camera2Source.tapToFocus(motionEvent)
+        camera2Source.tapToFocus(view, motionEvent)
     }
 }
 
@@ -475,8 +502,11 @@ class UdpStreamImpl(
         camera2Source.setZoom(motionEvent)
     }
 
-    override fun tapToFocus(motionEvent: MotionEvent) {
+    override fun tapToFocus(
+        view: View,
+        motionEvent: MotionEvent,
+    ) {
         val camera2Source = stream.videoSource as Camera2Source
-        camera2Source.tapToFocus(motionEvent)
+        camera2Source.tapToFocus(view, motionEvent)
     }
 }
