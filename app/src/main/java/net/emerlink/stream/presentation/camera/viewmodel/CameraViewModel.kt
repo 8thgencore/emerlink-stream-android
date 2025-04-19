@@ -215,7 +215,6 @@ class CameraViewModel : ViewModel() {
     }
 
     fun startPreview(view: OpenGlView) {
-        // No need for complex state checking - the service will handle it
         viewModelScope.launch {
             try {
                 Log.d(TAG, "ViewModel requesting to start preview")

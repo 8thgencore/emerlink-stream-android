@@ -383,9 +383,9 @@ class StreamService :
 
     fun startPreview(view: OpenGlView) {
         try {
-            // Simple check if already in preview
             if (isPreviewActive) {
                 Log.d(TAG, "Preview already active")
+                openGlView = view
                 return
             }
 
@@ -396,11 +396,13 @@ class StreamService :
             if (!isStreaming()) {
                 prepareVideo()
                 prepareAudio()
-                streamInterface.startPreview(view, true)
+            } else {
+                Log.d(TAG, "Setting view during active streaming")
             }
 
-            isPreviewActive = true
+            streamInterface.startPreview(view, true)
 
+            isPreviewActive = true
             startAudioLevelUpdates()
             microphoneMonitor.startMonitoring()
         } catch (e: Exception) {
@@ -427,8 +429,10 @@ class StreamService :
                 streamInterface.stopPreview()
             }
 
-            // Clear reference and state
-            openGlView = null
+            if (!isStreaming()) {
+                openGlView = null
+            }
+
             isPreviewActive = false
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping preview: ${e.message}", e)
@@ -500,7 +504,7 @@ class StreamService :
 
     fun isRecording(): Boolean = streamInterface.isRecording
 
-    fun isOnPreview(): Boolean = streamInterface.isOnPreview
+    // fun isOnPreview(): Boolean = streamInterface.isOnPreview
 
     fun switchCamera(): Boolean {
         try {
