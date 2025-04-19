@@ -382,11 +382,14 @@ class StreamService :
     }
 
     fun startPreview(view: OpenGlView) {
-        if (isPreviewActive) {
-            Log.w(TAG, "Service.startPreview called but preview already active.")
-            return
-        }
         try {
+            // Simple check if already in preview
+            if (isPreviewActive) {
+                Log.d(TAG, "Preview already active")
+                return
+            }
+
+            // Basic setup
             updateStreamType()
             openGlView = view
 
@@ -401,30 +404,35 @@ class StreamService :
             startAudioLevelUpdates()
             microphoneMonitor.startMonitoring()
         } catch (e: Exception) {
-            Log.e(TAG, "Error starting preview", e)
+            Log.e(TAG, "Error starting preview: ${e.message}", e)
             isPreviewActive = false
         }
     }
 
     fun stopPreview() {
         if (!isPreviewActive) {
-            Log.d(TAG, "Service.stopPreview called but preview already inactive.")
+            Log.d(TAG, "Preview already inactive")
             return
         }
 
-        isPreviewActive = false
-        Log.d(TAG, "Service.isPreviewActive set to false")
+        Log.d(TAG, "Stopping preview")
 
         try {
-            if (streamInterface.isOnPreview && !isStreaming()) {
-                Log.d(TAG, "Calling streamInterface.stopPreview()")
-                streamInterface.stopPreview()
-            }
+            // Stop monitors first
             stopAudioLevelUpdates()
             microphoneMonitor.stopMonitoring()
-            Log.d(TAG, "Service stopPreview components stopped.")
+
+            // Stop the actual preview if not streaming
+            if (streamInterface.isOnPreview && !isStreaming()) {
+                streamInterface.stopPreview()
+            }
+
+            // Clear reference and state
+            openGlView = null
+            isPreviewActive = false
         } catch (e: Exception) {
-            Log.e(TAG, "Error stopping preview components", e)
+            Log.e(TAG, "Error stopping preview: ${e.message}", e)
+            isPreviewActive = false
         }
     }
 
@@ -524,6 +532,7 @@ class StreamService :
 
     fun setZoom(motionEvent: MotionEvent) = streamInterface.setZoom(motionEvent)
 
+    // TODO: null cannot be cast to non-null type android.view.View
     fun tapToFocus(motionEvent: MotionEvent) = streamInterface.tapToFocus(openGlView as View, motionEvent)
 
     fun startRecord(filePath: String) {

@@ -50,7 +50,6 @@ fun CameraScreen(
     val streamInfo by viewModel.streamInfo.collectAsStateWithLifecycle()
     val audioLevel by viewModel.audioLevel.collectAsStateWithLifecycle()
     val flashOverlayVisible by viewModel.flashOverlayVisible.collectAsStateWithLifecycle()
-    val isPreviewActive by viewModel.isPreviewActive.collectAsStateWithLifecycle()
 
     // Service lifecycle handling
     DisposableEffect(Unit) {
@@ -71,7 +70,10 @@ fun CameraScreen(
 
                     Lifecycle.Event.ON_STOP -> viewModel.stopPreview()
 
-                    Lifecycle.Event.ON_RESUME -> viewModel.refreshStreamInfo()
+                    Lifecycle.Event.ON_RESUME -> {
+                        viewModel.startPreview()
+                        viewModel.refreshStreamInfo()
+                    }
 
                     else -> {}
                 }
@@ -84,9 +86,7 @@ fun CameraScreen(
 
     LaunchedEffect(openGlView, isServiceBound) {
         if (openGlView != null && isServiceBound) {
-            if (!isPreviewActive) {
-                viewModel.startPreview(openGlView!!)
-            }
+            viewModel.startPreview(openGlView!!)
         }
     }
 

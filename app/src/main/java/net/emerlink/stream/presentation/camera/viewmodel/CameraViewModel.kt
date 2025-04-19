@@ -67,9 +67,6 @@ class CameraViewModel : ViewModel() {
     private val _flashOverlayVisible = MutableStateFlow(false)
     val flashOverlayVisible: StateFlow<Boolean> = _flashOverlayVisible.asStateFlow()
 
-    private val _isPreviewActive = MutableStateFlow(false)
-    val isPreviewActive: StateFlow<Boolean> = _isPreviewActive.asStateFlow()
-
     private val confirmAction = MutableStateFlow<() -> Unit> {}
 
     init {
@@ -204,32 +201,36 @@ class CameraViewModel : ViewModel() {
         streamServiceRef = null
     }
 
-    fun startPreview(view: OpenGlView) {
-        if (_isPreviewActive.value || streamServiceRef?.get()?.isOnPreview() == true) {
-            if (!_isPreviewActive.value) _isPreviewActive.value = true
-            return
-        }
+    fun startPreview() {
         viewModelScope.launch {
             try {
-                streamServiceRef?.get()?.startPreview(view)
-                _isPreviewActive.value = true
+                Log.d(TAG, "ViewModel requesting to start preview with existing view")
+                _openGlView.value?.let { view ->
+                    streamServiceRef?.get()?.startPreview(view)
+                } ?: Log.e(TAG, "Cannot start preview - no OpenGlView available")
             } catch (e: Exception) {
                 Log.e(TAG, "Error starting preview", e)
-                _isPreviewActive.value = false
+            }
+        }
+    }
+
+    fun startPreview(view: OpenGlView) {
+        // No need for complex state checking - the service will handle it
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "ViewModel requesting to start preview")
+                _openGlView.value = view
+                streamServiceRef?.get()?.startPreview(view)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error starting preview", e)
             }
         }
     }
 
     fun stopPreview() {
-        if (!_isPreviewActive.value) return
-        _isPreviewActive.value = false
-
         viewModelScope.launch {
-            try {
-                streamServiceRef?.get()?.stopPreview()
-            } catch (e: Exception) {
-                Log.e(TAG, "Error stopping preview in service", e)
-            }
+            Log.d(TAG, "ViewModel requesting to stop preview")
+            streamServiceRef?.get()?.stopPreview()
         }
     }
 
